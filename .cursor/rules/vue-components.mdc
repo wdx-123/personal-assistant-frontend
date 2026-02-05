@@ -1,0 +1,58 @@
+---
+description: Vue 组件开发规范 - 组件定义和模板规范
+globs: "**/*.vue"
+alwaysApply: false
+---
+
+# Vue 组件规范
+
+## 组件结构顺序
+
+```vue
+<script setup lang="ts">
+// 1. 导入依赖
+import { ref, computed, onMounted } from 'vue'
+
+// 2. 定义 Props（使用 withDefaults）
+interface Props {
+  title: string
+  count?: number
+}
+const props = withDefaults(defineProps<Props>(), {
+  count: 0
+})
+
+// 3. 定义 Emits
+interface Emits {
+  (e: 'update', value: string): void
+}
+const emit = defineEmits<Emits>()
+
+// 4. 响应式数据
+const isLoading = ref(false)
+
+// 5. 计算属性
+const totalCount = computed(() => props.count * 2)
+
+// 6. 方法
+const handleClick = () => { /* ... */ }
+
+// 7. 生命周期
+onMounted(() => { /* ... */ })
+</script>
+
+<template>
+  <div class="component-name">
+    <!-- 模板内容 -->
+  </div>
+</template>
+
+<style scoped>
+/* 复杂动画使用 CSS，简单样式用 Tailwind */
+</style>
+```
+
+## 命名规范
+
+- 组件文件：`PascalCase.vue`（如 `UserProfile.vue`）
+- 布尔变量：`is/has/should` 前缀（如 `isLoading`）

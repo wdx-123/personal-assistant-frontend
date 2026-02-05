@@ -1,0 +1,40 @@
+---
+description: 命名规范 - 变量、函数、文件命名标准
+alwaysApply: true
+---
+
+# 命名规范
+
+## 变量命名
+
+| 类型 | 规范 | 示例 |
+|------|------|------|
+| 组件名 | PascalCase | `UserProfile` |
+| 函数名 | camelCase | `fetchUserData`, `handleSubmit` |
+| 常量 | UPPER_SNAKE_CASE | `API_BASE_URL`, `MAX_RETRY` |
+| 接口/类型 | PascalCase | `UserInfo`, `LoginRequest` |
+| 布尔值 | is/has/should 前缀 | `isLoading`, `hasError` |
+
+## 文件命名
+
+| 类型 | 规范 | 示例 |
+|------|------|------|
+| Vue 组件 | PascalCase.vue | `UserProfile.vue` |
+| 工具文件 | camelCase.ts | `formatDate.ts` |
+| 类型文件 | camelCase.types.ts | `user.types.ts` |
+| 服务文件 | camelCase.service.ts | `auth.service.ts` |
+| 样式文件 | camelCase.module.css | `card.module.css` |
+
+## 领域语言
+
+```typescript
+// ✅ 正确 - 符合业务领域语言
+const submitOrder = () => {}
+const userId = ref(0)
+const isLoggedIn = computed(() => !!user.value)
+
+// ❌ 错误 - 技术实现细节命名
+const submitData = () => {}
+const uData = ref(0)
+const checkLogin = computed(() => !!user.value)
+```

@@ -1,0 +1,57 @@
+---
+description: Tailwind CSS 样式规范 - 样式使用和设计规范
+globs: "**/*.vue"
+alwaysApply: false
+---
+
+# Tailwind CSS 规范
+
+## 基本原则
+
+```vue
+<!-- ✅ 推荐：使用 Tailwind 工具类 -->
+<div class="flex items-center justify-between p-4 bg-white rounded-lg shadow-md">
+  <h2 class="text-lg font-semibold text-gray-900">标题</h2>
+  <button class="px-4 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-600">
+    按钮
+  </button>
+</div>
+
+<!-- ❌ 避免：内联样式 -->
+<div style="display: flex; padding: 16px;">...</div>
+```
+
+## 设计系统
+
+```typescript
+// 颜色系统
+primary: '#1890FF'    // 品牌蓝
+success: '#52C41A'    // 成功绿
+warning: '#FAAD14'    // 警告橙
+error: '#F5222D'      // 错误红
+
+// 圆角
+card: '12px'
+button: '6px'
+input: '6px'
+
+// 阴影
+card: '0 2px 8px rgba(0,0,0,0.08)'
+hover: '0 4px 16px rgba(0,0,0,0.12)'
+```
+
+## 复杂动画
+
+对于复杂动画，使用 `<style scoped>`：
+
+```vue
+<style scoped>
+@keyframes flip {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(180deg); }
+}
+.flip-card {
+  animation: flip 0.6s ease-in-out;
+}
+</style>
+```

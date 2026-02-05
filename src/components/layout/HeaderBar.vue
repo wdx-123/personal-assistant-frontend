@@ -417,8 +417,9 @@ onUnmounted(() => {
 
 .header-bar-content {
   max-width: 1200px;
+  height: 64px;
   margin: 0 auto;
-  padding: 16px 24px;
+  padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -713,7 +714,8 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .header-bar-content {
-    padding: 12px 16px;
+    height: 64px;
+    padding: 0 16px;
   }
 
   .logo h1 {

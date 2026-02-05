@@ -334,7 +334,14 @@ const columns = ref([
 ]);
 
 const isColumnFilterOpen = ref(false);
-const tempColumns = ref<any[]>([]);
+
+interface ColumnConfig {
+  key: string;
+  label: string;
+  visible: boolean;
+}
+
+const tempColumns = ref<ColumnConfig[]>([]);
 
 const toggleColumnFilter = () => {
   if (!isColumnFilterOpen.value) {
@@ -514,7 +521,7 @@ const editingApi = reactive({
   status: 'enabled'
 });
 
-const openEditModal = (api?: any) => {
+const openEditModal = (api?: ApiRow) => {
   if (api) {
     modalType.value = 'edit';
     editingApi.id = api.id;

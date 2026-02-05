@@ -400,7 +400,14 @@ const columns = ref([
 ]);
 
 const isColumnFilterOpen = ref(false);
-const tempColumns = ref<any[]>([]);
+
+interface ColumnConfig {
+  key: string;
+  label: string;
+  visible: boolean;
+}
+
+const tempColumns = ref<ColumnConfig[]>([]);
 
 const toggleColumnFilter = () => {
   if (!isColumnFilterOpen.value) {
@@ -452,12 +459,16 @@ const totalRoles = ref(0);
 
 const toStatus = (status?: number): RoleStatus => (status === 1 ? 'enabled' : 'disabled');
 const toStatusValue = (status?: string) => (status === 'enabled' ? 1 : status === 'disabled' ? 0 : undefined);
-const toRoleRow = (role: RoleItem): RoleRow => ({
+interface RoleItemWithTime extends RoleItem {
+  updated_at?: string;
+}
+
+const toRoleRow = (role: RoleItemWithTime): RoleRow => ({
   id: role.id,
   name: role.name,
   key: role.code,
   status: toStatus(role.status),
-  updateTime: (role as any).updated_at ?? '-',
+  updateTime: role.updated_at ?? '-',
   desc: role.desc
 });
 
@@ -571,7 +582,7 @@ const editingRole = reactive({
   status: 'enabled'
 });
 
-const openEditModal = (role?: any) => {
+const openEditModal = (role?: RoleRow) => {
   if (role) {
     modalType.value = 'edit';
     editingRole.id = role.id;
@@ -683,7 +694,7 @@ const toggleMenuSelection = (node: PermissionNode) => {
   updateSelectedMenuIds(ids, shouldSelect);
 };
 
-const openPermissionModal = async (role: any) => {
+const openPermissionModal = async (role: RoleRow) => {
   permissionRole.id = role.id;
   permissionRole.name = role.name;
   const [menuTree, roleMenuIds, apiPage] = await Promise.all([

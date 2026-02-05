@@ -17,7 +17,9 @@ export interface RequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean
 }
 
-export type RequestOptions = Partial<Pick<RequestConfig, 'skipTip' | 'skipErrTip' | 'skipSuccTip' | 'customErrTip' | 'customSuccTip'>>
+export type RequestOptions = Partial<Pick<RequestConfig, 'skipTip' | 'skipErrTip' | 'skipSuccTip' | 'customErrTip' | 'customSuccTip'>> & {
+  params?: Record<string, unknown>
+}
 
 const apiBaseURL =
   import.meta.env.DEV && import.meta.env.VITE_API_PREFIX
@@ -54,8 +56,8 @@ let isRefreshing = false
 
 type RefreshQueueItem = {
   config: RequestConfig
-  resolve: (value: any) => void
-  reject: (reason?: any) => void
+  resolve: (value: AxiosResponse) => void
+  reject: (reason?: unknown) => void
 }
 let refreshQueue: RefreshQueueItem[] = []
 
@@ -86,7 +88,7 @@ const handleLogout = async () => {
   const { default: router } = await import('@/router')
   await router.replace('/login')
 }
-const handleTokenExpired = async (_response: AxiosResponse, config: RequestConfig): Promise<any> => {
+const handleTokenExpired = async (_response: AxiosResponse, config: RequestConfig): Promise<AxiosResponse> => {
   if (config._retry) {
     await handleLogout()
     return Promise.reject(new Error('Token 刷新失败'))
@@ -136,7 +138,7 @@ const handleTokenExpired = async (_response: AxiosResponse, config: RequestConfi
 
 const responseInterceptor = (
   response: AxiosResponse
-): any => {
+): unknown => {
   const res = response.data as ApiResponse
   const config = response.config as RequestConfig
 
@@ -182,7 +184,7 @@ const responseInterceptor = (
 
 const errorInterceptor = async (
   error: AxiosError<ApiResponse>
-): Promise<any> => {
+): Promise<never> => {
   const originalRequest = error.config as RequestConfig
 
   const config = originalRequest
@@ -200,23 +202,23 @@ const errorInterceptor = async (
   return Promise.reject(error)
 }
 
-(apiClientRaw.interceptors.response.use as any)(responseInterceptor, errorInterceptor)
+apiClientRaw.interceptors.response.use(responseInterceptor, errorInterceptor)
 
 const apiClient = {
-  get<T = any>(url: string, config?: RequestOptions): Promise<T> {
-    return apiClientRaw.get(url, config as any)
+  get<T = unknown>(url: string, config?: RequestOptions): Promise<T> {
+    return apiClientRaw.get(url, config as InternalAxiosRequestConfig)
   },
-  post<T = any>(url: string, data?: any, config?: RequestOptions): Promise<T> {
-    return apiClientRaw.post(url, data, config as any)
+  post<T = unknown>(url: string, data?: Record<string, unknown> | unknown, config?: RequestOptions): Promise<T> {
+    return apiClientRaw.post(url, data, config as InternalAxiosRequestConfig)
   },
-  put<T = any>(url: string, data?: any, config?: RequestOptions): Promise<T> {
-    return apiClientRaw.put(url, data, config as any)
+  put<T = unknown>(url: string, data?: Record<string, unknown> | unknown, config?: RequestOptions): Promise<T> {
+    return apiClientRaw.put(url, data, config as InternalAxiosRequestConfig)
   },
-  delete<T = any>(url: string, config?: RequestOptions): Promise<T> {
-    return apiClientRaw.delete(url, config as any)
+  delete<T = unknown>(url: string, config?: RequestOptions): Promise<T> {
+    return apiClientRaw.delete(url, config as InternalAxiosRequestConfig)
   },
-  patch<T = any>(url: string, data?: any, config?: RequestOptions): Promise<T> {
-    return apiClientRaw.patch(url, data, config as any)
+  patch<T = unknown>(url: string, data?: Record<string, unknown> | unknown, config?: RequestOptions): Promise<T> {
+    return apiClientRaw.patch(url, data, config as InternalAxiosRequestConfig)
   },
 }
 

@@ -1,0 +1,95 @@
+---
+description: 前端性能与用户体验优化规范
+globs: "**/*.{vue,ts}"
+alwaysApply: false
+---
+
+# 性能与体验优化规范
+
+## 加载优化
+
+```typescript
+// ✅ 路由懒加载
+const UserProfile = () => import('@/views/UserProfile.vue')
+
+// ✅ 组件懒加载（大型组件：弹窗、图表、编辑器）
+const HeavyChart = defineAsyncComponent(() => import('./HeavyChart.vue'))
+
+// ✅ 图片懒加载
+<img v-lazy="imageUrl" alt="描述" />
+```
+
+## 渲染优化
+
+```vue
+<!-- ✅ 频繁切换用 v-show（Tab、下拉菜单） -->
+<div v-show="isActive">内容</div>
+
+<!-- ✅ 条件渲染用 v-if -->
+<div v-if="hasPermission">敏感内容</div>
+
+<!-- ✅ 列表 key 使用唯一 ID -->
+<div v-for="item in list" :key="item.id">{{ item.name }}</div>
+
+<!-- ❌ 禁止使用 index 作为 key -->
+<div v-for="(item, index) in list" :key="index">...</div>
+```
+
+## 防抖节流
+
+```typescript
+// ✅ 搜索输入防抖（300ms）
+const handleSearch = useDebounceFn((keyword: string) => {
+  searchApi(keyword)
+}, 300)
+
+// ✅ 滚动/窗口调整节流（100ms）
+const handleScroll = useThrottleFn(() => {
+  // 处理滚动逻辑
+}, 100)
+```
+
+## 用户体验
+
+```vue
+<!-- ✅ 按钮 loading 状态 -->
+<button :disabled="isSubmitting" @click="handleSubmit">
+  <span v-if="isSubmitting">提交中...</span>
+  <span v-else>提交</span>
+</button>
+
+<!-- ✅ 骨架屏 -->
+<template v-if="isLoading">
+  <div class="animate-pulse bg-gray-200 h-4 rounded" />
+</template>
+<template v-else>
+  {{ data }}
+</template>
+```
+
+## 请求优化
+
+```typescript
+// ✅ 路由切换时取消未完成请求
+onBeforeUnmount(() => {
+  abortController.abort()
+})
+
+// ✅ 防止重复提交
+const isSubmitting = ref(false)
+const handleSubmit = async () => {
+  if (isSubmitting.value) return
+  isSubmitting.value = true
+  try {
+    await submitApi(data)
+  } finally {
+    isSubmitting.value = false
+  }
+}
+```
+
+## 核心原则
+
+- **不过早优化**：先保证功能正确，再针对性优化
+- **80/20 法则**：优先优化用户最常用的功能
+- **可感知优先**：用户能感知到的优化 > 纯技术指标

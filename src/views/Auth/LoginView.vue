@@ -75,12 +75,13 @@ const handleLogin = async () => {
     } else {
       captchaRef.value?.refresh();
     }
-  } catch (error: any) {
-    if(error?.code === 5000) {
+  } catch (error: unknown) {
+    const err = error as { code?: number; error?: string };
+    if(err?.code === 5000) {
       message.warning("请检查网络或联系工作人员");
       return;
     }
-    const errorMsg = error?.error || "登录失败，请检查手机号、密码、验证码是否有误";
+    const errorMsg = err?.error || "登录失败，请检查手机号、密码、验证码是否有误";
     message.error(errorMsg);
 
     captchaRef.value?.refresh();

@@ -109,7 +109,6 @@ onBeforeRouteLeave((to, from, next) => {
 .content-container {
   flex: 1;
   padding: 24px;
-  padding-top: 50px;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
