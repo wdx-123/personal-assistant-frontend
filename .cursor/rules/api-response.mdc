@@ -1,0 +1,54 @@
+---
+description: API 响应处理规范 - 状态码和错误处理
+alwaysApply: true
+---
+
+# API 响应规范
+
+## 统一响应格式
+
+```typescript
+interface ApiResponse<T = any> {
+  code: number      // 状态码
+  message: string   // 响应消息
+  data: T           // 响应数据
+}
+```
+
+## 状态码说明
+
+| 状态码 | 说明 |
+|--------|------|
+| 2000 | 操作成功 |
+| 4000 | 请求参数错误 |
+| 4010 | 未授权（未登录或 Token 无效） |
+| 4011 | Token 已过期 |
+| 4014 | 用户不存在 |
+| 4015 | 用户已被冻结 |
+| 5000 | 服务器内部错误 |
+
+## 错误处理位置
+
+```typescript
+// 在页面/组件中处理错误
+const handleLogin = async () => {
+  try {
+    const response = await authService.login(data)
+    // 成功处理
+    authStore.setUser(response.user)
+    Message.success('登录成功')
+    router.push('/home')
+  } catch (error: any) {
+    // 错误处理在这里
+    const message = error.response?.data?.message || '登录失败'
+    Message.error(message)
+  }
+}
+```
+
+## 401 Token 刷新
+
+401 错误由 `utils/request.ts` 拦截器自动处理：
+1. 自动调用 `/refreshToken` 刷新 Token
+2. 刷新成功后重试原请求
+3. 刷新失败则跳转登录页

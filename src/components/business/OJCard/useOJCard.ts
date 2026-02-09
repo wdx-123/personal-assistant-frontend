@@ -120,8 +120,9 @@ export function useOJCard(options: UseOJCardOptions) {
       if (userInfo.value) {
         onBound?.(userInfo.value)
       }
-    } catch (error : any) {
-      if(error.code === 4290){
+    } catch (error: unknown) {
+      const err = error as { code?: number };
+      if(err?.code === 4290){
         message.error('距离上次修改超过48h后才能再次修改')
       }else {
         message.error('绑定失败')

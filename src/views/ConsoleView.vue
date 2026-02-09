@@ -72,8 +72,8 @@ onBeforeRouteLeave((to, from, next) => {
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  /* 统一右侧半透明样式 */
-  background: rgba(255, 255, 255, 0.8);
+  /* 统一右侧背景色，与侧边栏一致 */
+  background: rgba(242, 243, 245, 0.95);
   backdrop-filter: blur(10px);
   /* 进场动画延迟，等侧边栏出来后再渐显 */
   animation: fade-in 0.8s ease-out backwards;
@@ -109,7 +109,6 @@ onBeforeRouteLeave((to, from, next) => {
 .content-container {
   flex: 1;
   padding: 24px;
-  padding-top: 50px;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '@/types'
+import type { RequestOptions } from '@/utils/request'
 import { login as loginApi, logout as logoutApi } from '@/services/auth.service'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -37,7 +38,7 @@ export const useAuthStore = defineStore('auth', () => {
     password: string,
     captcha: string,
     captchaId: string,
-    config?: any
+    config?: RequestOptions
   ) => {
     const { user: userData, access_token, access_token_expires_at, refresh_token } = await loginApi(
       { phone, password, captcha, captcha_id: captchaId },
@@ -54,7 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
     return { success: true }
   }
 
-  const logout = async (config?: any) => {
+  const logout = async (config?: RequestOptions) => {
     try {
       await logoutApi({
         skipSuccTip: true,

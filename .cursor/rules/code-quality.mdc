@@ -1,0 +1,63 @@
+---
+description: 代码质量规范 - 代码审查和质量标准
+alwaysApply: true
+---
+
+# 代码质量规范
+
+## 代码结构限制
+
+- 单个文件不超过 **300 行**
+- 单个函数不超过 **50 行**
+- 嵌套层级不超过 **3 层**
+- 循环复杂度不超过 **10**
+
+## 禁止事项
+
+```typescript
+// ❌ 禁止：使用 any
+const data: any = await api.getUser()
+
+// ❌ 禁止：忽略类型错误（无说明原因）
+// @ts-ignore
+
+// ❌ 禁止：硬编码
+const apiUrl = 'http://localhost:8080'
+
+// ❌ 禁止：魔法数字
+if (attempts >= 3) { }
+if (code.length === 6) { }
+```
+
+## 必须遵守
+
+```typescript
+// ✅ 使用常量
+import { MAX_LOGIN_ATTEMPTS, CAPTCHA_LENGTH } from '@/constants'
+if (attempts >= MAX_LOGIN_ATTEMPTS) { }
+
+// ✅ 使用环境变量
+const apiUrl = import.meta.env.VITE_API_BASE_URL
+
+// ✅ 所有异步操作包含 try-catch
+async function fetchData() {
+  try {
+    const data = await api.getData()
+    return data
+  } catch (error) {
+    console.error('获取数据失败:', error)
+    throw error
+  }
+}
+```
+
+## 质量要求
+你是一名资深前端工程师，
+你给的代码兼顾性能与用户体验感！并且所用的知识尽量简单，毕竟你不是为了炫技，只是为了实用！
+
+## 提交前检查
+
+- [ ] 无 `console.log` 或 `debugger`
+- [ ] 无注释掉的代码
+- [ ] 无 any 类型
+- [ ] 无硬编码配置

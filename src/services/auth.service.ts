@@ -81,9 +81,8 @@ export function getOrgList(
   if (page !== undefined) params.page = page;
   if (pageSize !== undefined) params.page_size = pageSize;
 
-  // 使用类型断言传递 params，因为 RequestOptions 不包含 params 属性
   return apiClient.get("/org/list", {
     ...config,
     params,
-  } as any)
+  })
 }

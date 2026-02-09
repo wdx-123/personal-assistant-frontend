@@ -1,0 +1,51 @@
+---
+description: TypeScript 类型规范 - 类型定义和使用规范
+globs: "**/*.ts"
+alwaysApply: false
+---
+
+# TypeScript 规范
+
+## 类型定义
+
+```typescript
+// ✅ 推荐：明确的接口定义
+interface User {
+  id: number
+  name: string
+  role: 'student' | 'teacher'
+}
+
+// ✅ 推荐：联合类型
+type Status = 'pending' | 'success' | 'error'
+
+// ✅ 推荐：泛型使用
+function fetchData<T>(url: string): Promise<T> {
+  return apiClient.get<T>(url)
+}
+
+// ❌ 禁止：使用 any
+const data: any = fetchData() // 错误！
+```
+
+## 命名规范
+
+```typescript
+// 函数名：camelCase
+function fetchUserData() {}
+const handleSubmit = () => {}
+
+// 常量：UPPER_SNAKE_CASE
+const API_BASE_URL = 'https://api.example.com'
+const MAX_RETRY_COUNT = 3
+
+// 接口/类型：PascalCase
+interface UserInfo {}
+type UserRole = 'student' | 'teacher'
+```
+
+## 文件命名
+
+- 工具文件：`camelCase.ts`（如 `formatDate.ts`）
+- 类型文件：`camelCase.types.ts`（如 `user.types.ts`）
+- 服务文件：`camelCase.service.ts`（如 `auth.service.ts`）

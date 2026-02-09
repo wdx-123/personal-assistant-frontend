@@ -1,0 +1,64 @@
+---
+description: Pinia 状态管理规范 - Store 定义和使用规范
+globs: "**/stores/*.ts"
+alwaysApply: false
+---
+
+# Pinia 状态管理规范
+
+## Store 定义（推荐 Setup 语法）
+
+```typescript
+// stores/auth.ts
+import { ref, computed } from 'vue'
+import { defineStore } from 'pinia'
+import type { User } from '@/types'
+
+export const useAuthStore = defineStore('auth', () => {
+  // State
+  const user = ref<User | null>(null)
+  const token = ref<string>('')
+  
+  // Getters
+  const isLoggedIn = computed(() => !!user.value && !!token.value)
+  
+  // Actions
+  const setUser = (newUser: User) => {
+    user.value = newUser
+  }
+  
+  const logout = () => {
+    user.value = null
+    token.value = ''
+    localStorage.removeItem('access_token')
+  }
+  
+  return {
+    user,
+    token,
+    isLoggedIn,
+    setUser,
+    logout
+  }
+})
+```
+
+## 使用规范
+
+```typescript
+// ✅ 正确：在组件中使用
+import { useAuthStore } from '@/stores'
+
+const authStore = useAuthStore()
+const { user, isLoggedIn } = storeToRefs(authStore)
+
+// ✅ 正确：Action 调用不需要 storeToRefs
+authStore.logout()
+```
+
+## Store 职责
+
+- ✅ 管理全局状态
+- ✅ 提供 computed 派生状态
+- ✅ 提供修改状态的 actions
+- ❌ 不直接调用 API（通过 Service 层）
