@@ -1,0 +1,261 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "默认模块",
+    "description": "",
+    "version": "1.0.0"
+  },
+  "tags": [
+    {
+      "name": "图片管理"
+    }
+  ],
+  "paths": {
+    "/api/system/image/upload": {
+      "post": {
+        "summary": "上传图片（支持多文件）",
+        "deprecated": false,
+        "description": "上传一张或多张图片，支持指定分类和存储驱动。\n\n**限流**：受全局 QPS 限制 + 用户级频率限制双层保护。\n(QPS：Queries Per Second：每秒查询/请求数)\n\n**分类枚举**：0=未使用, 1=系统, 2=轮播, 3=封面, 4=插图, 5=广告, 6=Logo, 7=头像\n\n**注：** ！！尽量用七牛(qiniu)，不要使用local\n这样加载图片速度更快",
+        "operationId": "uploadImage",
+        "tags": [
+          "图片管理"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "files": {
+                    "format": "binary",
+                    "type": "string",
+                    "description": "图片文件（可多选）",
+                    "example": [
+                      "file://C:\\Users\\Lenovo\\OneDrive\\图片\\博客专用\\2024蓝桥真题-省赛.png",
+                      "file://C:\\Users\\Lenovo\\OneDrive\\图片\\博客专用\\CCPC图标.png"
+                    ]
+                  },
+                  "category": {
+                    "type": "integer",
+                    "default": 0,
+                    "description": "图片分类：0=未使用, 1=系统, 2=轮播, 3=封面, 4=插图, 5=广告, 6=Logo, 7=头像",
+                    "example": 0
+                  },
+                  "driver": {
+                    "type": "string",
+                    "enum": [
+                      "local",
+                      "qiniu"
+                    ],
+                    "description": "指定存储驱动，为空则使用当前默认配置\n（！！尽量用七牛(qiniu)，不要使用local）\n这样加载图片速度更快",
+                    "example": "qiniu"
+                  }
+                },
+                "required": [
+                  "files"
+                ]
+              },
+              "examples": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "上传成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "操作成功"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ImageItem"
+                      }
+                    },
+                    "timestamp": {
+                      "type": "integer",
+                      "format": "int64",
+                      "description": "响应时间戳（毫秒）",
+                      "example": 1738944000000
+                    }
+                  }
+                },
+                "example": {
+                  "code": 0,
+                  "success": true,
+                  "message": "操作成功",
+                  "data": [
+                    {
+                      "id": 42,
+                      "url": "/images/20260208/a1b2c3d4e5f6.png",
+                      "name": "logo.png",
+                      "type": ".png",
+                      "size": 204800,
+                      "category": 6,
+                      "category_label": "Logo"
+                    }
+                  ],
+                  "timestamp": 1738944000000
+                }
+              }
+            },
+            "headers": {}
+          },
+          "429": {
+            "description": "请求过于频繁（限流触发）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": 14001,
+                  "success": false,
+                  "message": "上传过于频繁，请稍后再试",
+                  "data": null,
+                  "timestamp": 1738944000000
+                }
+              }
+            },
+            "headers": {
+              "X-RateLimit-Limit": {
+                "required": false,
+                "description": "限流上限",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "required": false,
+                "description": "剩余可用次数",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Retry-After": {
+                "required": false,
+                "description": "建议等待秒数",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "XAccessToken": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ImageItem": {
+        "type": "object",
+        "description": "单张图片信息",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "uint",
+            "description": "图片 ID",
+            "example": 42
+          },
+          "url": {
+            "type": "string",
+            "description": "图片访问 URL（本地驱动为相对路径，七牛为完整 URL）",
+            "example": "/images/20260208/a1b2c3d4e5f6.png"
+          },
+          "name": {
+            "type": "string",
+            "description": "原始文件名",
+            "example": "logo.png"
+          },
+          "type": {
+            "type": "string",
+            "description": "文件扩展名",
+            "example": ".png"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "文件大小（字节）",
+            "example": 204800
+          },
+          "category": {
+            "type": "integer",
+            "description": "图片分类：0=未使用, 1=系统, 2=轮播, 3=封面, 4=插图, 5=广告, 6=Logo, 7=头像",
+            "example": 6
+          },
+          "category_label": {
+            "type": "string",
+            "description": "图片分类中文标签",
+            "example": "Logo"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "description": "错误响应",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "业务错误码（非0）",
+            "example": 14001
+          },
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "上传过于频繁，请稍后再试"
+          },
+          "data": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1738944000000
+          }
+        }
+      }
+    },
+    "responses": {},
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Authorization: Bearer {token}"
+      },
+      "XAccessToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-access-token",
+        "description": "通过 x-access-token Header 传递 JWT Token"
+      }
+    }
+  },
+  "servers": [],
+  "security": []
+}

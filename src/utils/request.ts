@@ -27,7 +27,7 @@ const apiBaseURL =
     : import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 const apiClientRaw: AxiosInstance = axios.create({
-  baseURL: apiBaseURL,
+  baseURL: apiBaseURL,  
   timeout: 10000,
   withCredentials: true,
   headers: {

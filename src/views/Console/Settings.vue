@@ -1,13 +1,27 @@
+<script setup lang="ts">
+/**
+ * 设置页面
+ * 个人资料卡片 + 账号安全卡片，纵向排列
+ */
+import { defineAsyncComponent } from 'vue'
+
+const ProfileCard = defineAsyncComponent(
+  () => import('@/components/business/SettingsCard/ProfileCard.vue')
+)
+const SecurityCard = defineAsyncComponent(
+  () => import('@/components/business/SettingsCard/SecurityCard.vue')
+)
+</script>
+
 <template>
   <div class="console-page">
     <div class="page-header">
       <h2>设置</h2>
-      <p>系统与个人偏好设置</p>
+      <p>管理您的个人资料与账号安全</p>
     </div>
-    <div class="page-content">
-      <div class="placeholder-content">
-        <p>功能开发中...</p>
-      </div>
+    <div class="settings-content">
+      <ProfileCard />
+      <SecurityCard />
     </div>
   </div>
 </template>
@@ -31,17 +45,9 @@
   color: #6b7280;
 }
 
-.placeholder-content {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(5px);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
+.settings-content {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  color: #9ca3af;
-  font-size: 18px;
+  flex-direction: column;
+  gap: 24px;
 }
 </style>

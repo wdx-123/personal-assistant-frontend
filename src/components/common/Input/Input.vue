@@ -135,7 +135,7 @@ if (props.autofocus) {
       />
 
       <!-- 清除按钮 -->
-      <span v-if="showClear" class="input-clear" @click="handleClear">
+      <span v-if="showClear" class="input-clear" @mousedown.prevent @click="handleClear">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
@@ -235,6 +235,16 @@ if (props.autofocus) {
 .input-field:disabled {
   cursor: not-allowed;
   background-color: #f5f5f5;
+}
+
+/* 隐藏浏览器原生密码显示按钮（Edge/Chrome） */
+.input-field::-ms-reveal,
+.input-field::-ms-clear {
+  display: none;
+}
+
+.input-field::-webkit-credentials-auto-fill-button {
+  display: none;
 }
 
 /* 前缀图标 */

@@ -9,7 +9,7 @@ export interface ApiResponse<T = unknown> {
   messages?: string
   data: T
   error?: string       // 错误详情字段
-  tip?: string         // ✅【用户友好提示】专门给前端弹窗展示的友好文案
+  tip?: string         // 【用户友好提示】专门给前端弹窗展示的友好文案
 }
 
 // 分页请求参数

@@ -164,14 +164,13 @@ const isActive = (path: string) => {
 .console-sidebar {
   width: 240px;
   height: 100%;
-  background: #fafbfc;
+  background: #f2f3f5;
   color: #333;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   overflow: hidden;
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.06);
-  border-right: 1px solid #e8e8e8;
+  box-shadow: 1px 0 24px rgba(0, 0, 0, 0.06), 1px 0 8px rgba(0, 0, 0, 0.04);
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -191,9 +190,11 @@ const isActive = (path: string) => {
   font-size: 18px;
   font-weight: 600;
   gap: 12px;
-  border-bottom: 1px solid #e8e8e8;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   white-space: nowrap;
+  position: relative;
+  z-index: 1;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -268,6 +269,7 @@ const isActive = (path: string) => {
   height: 24px;
   background: #1890ff;
   border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 8px rgba(24, 144, 255, 0.4);
 }
 
 .menu-title {
@@ -293,11 +295,11 @@ const isActive = (path: string) => {
 
 .menu-title:hover {
   color: #1890ff;
-  background-color: #e6f7ff;
+  background-color: rgba(24, 144, 255, 0.08);
 }
 
 .menu-item.active > .menu-title {
-  background: #e6f7ff;
+  background: rgba(24, 144, 255, 0.1);
   color: #1890ff;
   font-weight: 500;
 }
@@ -361,7 +363,7 @@ const isActive = (path: string) => {
    子菜单
    ============================================ */
 .submenu {
-  background: #f0f2f5;
+  background: rgba(0, 0, 0, 0.03);
   margin: 0 8px;
   border-radius: 8px;
   overflow: hidden;
@@ -440,11 +442,13 @@ const isActive = (path: string) => {
   align-items: center;
   padding: 0 16px;
   cursor: pointer;
-  border-top: 1px solid #e8e8e8;
+  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.04);
   color: #8c8c8c;
   font-size: 13px;
   gap: 10px;
   background: #fff;
+  position: relative;
+  z-index: 1;
   transition: all 0.2s ease;
 }
 
@@ -456,7 +460,7 @@ const isActive = (path: string) => {
 
 .sidebar-footer:hover {
   color: #1890ff;
-  background: #e6f7ff;
+  background: rgba(24, 144, 255, 0.06);
 }
 
 .collapse-icon {
