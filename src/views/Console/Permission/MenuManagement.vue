@@ -1,346 +1,299 @@
 <template>
-  <div class="console-page">
-    <!-- 顶部搜索栏 -->
-    <div class="search-bar">
-      <div class="search-item">
-        <span class="label">菜单名称：</span>
+  <div class="h-full flex flex-col gap-4">
+    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex items-center gap-4">
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium text-gray-700">菜单名称：</label>
         <input
           v-model="searchQuery.name"
           type="text"
           placeholder="请输入"
-          class="input-field"
+          class="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-48"
         />
       </div>
-      <div class="search-item">
-        <span class="label">状态：</span>
-        <select v-model="searchQuery.status" class="input-field select-field">
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium text-gray-700">状态：</label>
+        <select
+          v-model="searchQuery.status"
+          class="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-32 text-gray-600"
+        >
           <option value="">请选择</option>
           <option value="enabled">启用</option>
           <option value="disabled">禁用</option>
         </select>
       </div>
-      <div class="search-actions">
-        <button class="btn btn-primary" @click="handleSearch">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          搜索
-        </button>
-        <button class="btn btn-secondary" @click="resetSearch">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-            <path d="M3 3v5h5"></path>
-          </svg>
-          重置
-        </button>
-      </div>
+      <button @click="search" class="flex items-center gap-1 bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        搜索
+      </button>
+      <button @click="resetSearch" class="flex items-center gap-1 bg-white border border-gray-300 text-gray-700 px-4 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        重置
+      </button>
     </div>
 
-    <!-- 操作栏 -->
-    <div class="action-bar">
-      <div class="left-actions">
+    <div class="bg-white pl-2 pr-4 py-4 rounded-lg shadow-sm border border-gray-100 flex-1 flex flex-col">
+      <div class="flex justify-between items-center mb-4 px-2 pt-2">
         <button
-          class="btn btn-danger"
-          :disabled="selectedIds.length === 0"
-          :class="{ 'opacity-50 cursor-not-allowed': selectedIds.length === 0 }"
           @click="batchDelete"
+          :disabled="selectedIds.length === 0"
+          :class="[
+            'mt-1 px-4 py-1.5 rounded text-sm border transition-colors flex items-center gap-1',
+            selectedIds.length > 0
+              ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 cursor-pointer'
+              : 'bg-gray-100 text-gray-400 border-transparent cursor-not-allowed'
+          ]"
         >
           批量删除 ({{ selectedIds.length }})
         </button>
-      </div>
-      <div class="right-actions">
-        <button class="btn btn-primary" @click="openAddModal">
-          新增菜单管理
-        </button>
-        <button class="btn btn-icon" @click="refreshData" title="刷新">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3" />
-          </svg>
-          刷新
-        </button>
-        <div class="relative">
-          <button class="btn btn-icon" @click="toggleColumnFilter" title="列筛选">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M3 6h18M7 12h10M10 18h4" />
-            </svg>
-            列筛选
+        <div class="flex items-center gap-4 pr-2">
+          <button @click="openEditModal()" class="mt-1 bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 transition-colors flex items-center gap-1">
+            新增菜单管理
           </button>
-          <!-- 列筛选弹窗 -->
-          <div v-if="isColumnFilterOpen" class="column-filter-popover">
-            <div class="filter-header">
-              <label class="checkbox-label">
-                <input
-                  type="checkbox"
-                  v-model="isAllColumnsSelected"
-                  @change="toggleAllColumns"
-                />
-                全选
-              </label>
-            </div>
-            <div class="filter-body">
-              <label
-                v-for="col in columns"
-                :key="col.key"
-                class="checkbox-label"
-              >
-                <input type="checkbox" v-model="col.visible" />
-                {{ col.label }}
-              </label>
-            </div>
-            <div class="filter-footer">
-              <button class="btn btn-sm btn-secondary" @click="isColumnFilterOpen = false">取消</button>
-              <button class="btn btn-sm btn-primary" @click="isColumnFilterOpen = false">筛选</button>
+          <button @click="refresh" class="mt-1 bg-white border border-gray-300 text-gray-600 px-3 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            刷新
+          </button>
+          <div class="relative">
+            <button @click="toggleColumnFilter" class="mt-1 bg-white border border-gray-300 text-gray-600 px-3 py-1.5 rounded text-sm hover:bg-gray-50 transition-colors flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              列筛选
+            </button>
+            <div v-if="isColumnFilterOpen" class="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-10 animate-fade-in">
+              <div class="p-2 border-b border-gray-100">
+                <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded cursor-pointer">
+                  <input type="checkbox" v-model="isAllSelected" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                  <span class="text-sm text-gray-700">全选</span>
+                </label>
+              </div>
+              <div class="p-2 space-y-1">
+                <label v-for="col in tempColumns" :key="col.key" class="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded cursor-pointer">
+                  <input type="checkbox" v-model="col.visible" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                  <span class="text-sm text-gray-700">{{ col.label }}</span>
+                </label>
+              </div>
+              <div class="p-2 border-t border-gray-100 flex justify-end gap-2">
+                <button @click="closeColumnFilter" class="px-2 py-1 text-xs border border-gray-200 rounded text-gray-600 hover:bg-gray-50">取消</button>
+                <button @click="applyColumnFilter" class="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">筛选</button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 列表内容 -->
-    <div class="table-container">
-      <table class="data-table table-fixed">
-        <thead>
-          <tr>
-            <th class="w-10 text-center">
-              <input
-                type="checkbox"
-                :checked="isAllSelected"
-                @change="toggleSelectAll"
-              />
-            </th>
-            <th v-if="isColumnVisible('id')" class="w-16">ID</th>
-            <th v-if="isColumnVisible('name')" class="w-56">菜单名称</th>
-            <th v-if="isColumnVisible('permission')" class="w-32">权限标识</th>
-            <th v-if="isColumnVisible('type')" class="w-20">类型操作</th>
-            <th v-if="isColumnVisible('routeName')" class="w-32">路由名称</th>
-            <th v-if="isColumnVisible('routePath')" class="w-32">路由路径</th>
-            <th v-if="isColumnVisible('componentPath')" class="w-32">组件路径</th>
-            <th v-if="isColumnVisible('status')" class="w-16">状态</th>
-            <th v-if="isColumnVisible('sort')" class="w-14">排序</th>
-            <th v-if="isColumnVisible('actions')" class="w-32 text-center sticky-col header-sticky">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in displayRows" :key="row.id" class="hover:bg-gray-50">
-            <td class="text-center">
-              <input
-                type="checkbox"
-                :checked="selectedIds.includes(row.id)"
-                @change="toggleSelection(row.id)"
-              />
-            </td>
-            <td v-if="isColumnVisible('id')" class="truncate" :title="row.id.toString()">
-              {{ row.id }}
-            </td>
-            <td v-if="isColumnVisible('name')">
-              <div class="flex items-center" :style="{ paddingLeft: row.level * 20 + 'px' }">
-                <button
-                  v-if="row.hasChildren"
-                  @click="toggleExpand(row.id)"
-                  class="expand-btn mr-2 flex-shrink-0"
+      <div class="flex-1 overflow-y-auto overflow-x-hidden">
+        <table class="w-full text-left border-collapse table-fixed">
+          <colgroup>
+            <col style="width:40px" />
+            <col v-if="getColumnVisible('id')" style="width:64px" />
+            <col v-if="getColumnVisible('name')" style="width:240px" />
+            <col v-if="getColumnVisible('type')" style="width:100px" />
+            <col v-if="getColumnVisible('permission')" style="width:160px" />
+            <col v-if="getColumnVisible('routeName')" style="width:120px" />
+            <col v-if="getColumnVisible('routePath')" style="width:160px" />
+            <col v-if="getColumnVisible('componentPath')" style="width:160px" />
+            <col v-if="getColumnVisible('status')" style="width:80px" />
+            <col v-if="getColumnVisible('sort')" style="width:60px" />
+            <col v-if="getColumnVisible('actions')" style="width:140px" />
+          </colgroup>
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-200">
+              <th class="px-3 py-2">
+                <input type="checkbox" v-model="isAllSelectedRows" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+              </th>
+              <th v-if="getColumnVisible('id')" class="px-3 py-2 text-sm font-medium text-gray-900">ID</th>
+              <th v-if="getColumnVisible('name')" class="px-3 py-2 text-sm font-medium text-gray-900">菜单名称</th>
+              <th v-if="getColumnVisible('type')" class="px-3 py-2 text-sm font-medium text-gray-900">菜单类型</th>
+              <th v-if="getColumnVisible('permission')" class="px-3 py-2 text-sm font-medium text-gray-900">权限标识</th>
+              <th v-if="getColumnVisible('routeName')" class="px-3 py-2 text-sm font-medium text-gray-900">路由名称</th>
+              <th v-if="getColumnVisible('routePath')" class="px-3 py-2 text-sm font-medium text-gray-900">路由路径</th>
+              <th v-if="getColumnVisible('componentPath')" class="px-3 py-2 text-sm font-medium text-gray-900">组件路径</th>
+              <th v-if="getColumnVisible('status')" class="px-3 py-2 text-sm font-medium text-gray-900">状态</th>
+              <th v-if="getColumnVisible('sort')" class="px-3 py-2 text-sm font-medium text-gray-900">排序</th>
+              <th v-if="getColumnVisible('actions')" class="px-3 py-2 text-sm font-medium text-gray-900 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in displayRows" :key="row.id" :class="['border-b transition-colors', expandedIds.has(row.id) ? 'bg-blue-50' : 'hover:bg-gray-50']">
+              <td class="px-3 py-2 align-middle">
+                <input type="checkbox" :checked="selectedIds.includes(row.id)" @change="toggleSelection(row.id)" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+              </td>
+              <td v-if="getColumnVisible('id')" class="px-3 py-2 text-sm text-gray-700 truncate align-middle" :title="String(row.id)">{{ row.id }}</td>
+              <td v-if="getColumnVisible('name')" class="px-3 py-2 text-sm text-gray-700 align-middle">
+                <div class="flex items-center" :style="{ paddingLeft: row.level * 16 + 'px' }">
+                  <button
+                    v-if="row.hasChildren"
+                    @click="toggleExpand(row.id)"
+                    class="text-gray-500 hover:text-gray-700 mr-2"
+                  >
+                    <svg v-if="expandedIds.has(row.id)" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                  <span class="truncate max-w-[240px] inline-block" :title="row.name">{{ row.name }}</span>
+                </div>
+              </td>
+              <td v-if="getColumnVisible('type')" class="px-3 py-2 text-sm align-middle">
+                <span
+                  :class="{
+                    'text-green-600': row.type === 'directory',
+                    'text-blue-600': row.type === 'menu',
+                    'text-red-600': row.type === 'button'
+                  }"
                 >
-                  <svg
-                    v-if="expandedIds.has(row.id)"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <polyline points="6 9 12 15 18 9"></polyline>
-                  </svg>
-                  <svg
-                    v-else
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                  </svg>
+                  {{ row.type === 'directory' ? '目录' : row.type === 'menu' ? '菜单' : '权限' }}
+                </span>
+              </td>
+              <td v-if="getColumnVisible('permission')" class="px-3 py-2 text-sm text-gray-500 truncate align-middle" :title="row.permission || '-'">{{ row.permission || '-' }}</td>
+              <td v-if="getColumnVisible('routeName')" class="px-3 py-2 text-sm text-gray-500 truncate align-middle" :title="row.routeName || '-'">{{ row.routeName || '-' }}</td>
+              <td v-if="getColumnVisible('routePath')" class="px-3 py-2 text-sm text-gray-500 truncate align-middle" :title="row.routePath || '-'">{{ row.routePath || '-' }}</td>
+              <td v-if="getColumnVisible('componentPath')" class="px-3 py-2 text-sm text-gray-500 truncate align-middle" :title="row.componentPath || '-'">{{ row.componentPath || '-' }}</td>
+              <td v-if="getColumnVisible('status')" class="px-3 py-2 text-sm font-medium align-middle">
+                <span :class="row.status === 'enabled' ? 'text-green-500' : 'text-gray-400'">
+                  {{ row.status === 'enabled' ? '启用' : '禁用' }}
+                </span>
+              </td>
+              <td v-if="getColumnVisible('sort')" class="px-3 py-2 text-sm text-gray-500 align-middle">{{ row.sort }}</td>
+              <td v-if="getColumnVisible('actions')" class="px-3 py-2 flex justify-end items-center gap-2">
+                <button @click="openEditModal(row)" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors">
+                  编辑
                 </button>
-                <span v-else class="w-6 inline-block flex-shrink-0"></span>
-                <span class="truncate" :title="row.name">{{ row.name }}</span>
-              </div>
-            </td>
-            <td v-if="isColumnVisible('permission')" class="truncate" :title="row.permission || '-'">
-              {{ row.permission || '-' }}
-            </td>
-            <td v-if="isColumnVisible('type')">
-              <span
-                class="status-tag"
-                :class="{
-                  'bg-green-100 text-green-700 border-green-200': row.type === 'directory',
-                  'bg-blue-100 text-blue-700 border-blue-200': row.type === 'menu',
-                  'bg-red-100 text-red-700 border-red-200': row.type === 'button'
-                }"
-              >
-                {{ row.type === 'directory' ? '目录' : row.type === 'menu' ? '菜单' : '权限' }}
-              </span>
-            </td>
-            <td v-if="isColumnVisible('routeName')" class="truncate" :title="row.routeName || '-'">{{ row.routeName || '-' }}</td>
-            <td v-if="isColumnVisible('routePath')" class="truncate" :title="row.routePath || '-'">{{ row.routePath || '-' }}</td>
-            <td v-if="isColumnVisible('componentPath')" class="truncate" :title="row.componentPath || '-'">{{ row.componentPath || '-' }}</td>
-            <td v-if="isColumnVisible('status')">
-              <span
-                class="status-text"
-                :class="row.status === 'enabled' ? 'text-green-600' : 'text-gray-400'"
-              >
-                {{ row.status === 'enabled' ? '启用' : '禁用' }}
-              </span>
-            </td>
-            <td v-if="isColumnVisible('sort')">{{ row.sort }}</td>
-            <td v-if="isColumnVisible('actions')" class="text-center sticky-col cell-sticky">
-              <div class="flex items-center justify-center gap-2">
-                <button class="btn-action btn-edit" @click="openEditModal(row)">编辑</button>
-                <button class="btn-action btn-delete" @click="deleteMenu(row)">删除</button>
-              </div>
-            </td>
-          </tr>
-          <tr v-if="displayRows.length === 0">
-            <td :colspan="visibleColumnCount + 1" class="text-center py-8 text-gray-400">
-              暂无数据
-            </td>
-          </tr>
-        </tbody>
-      </table>
+                <button @click="deleteMenu(row)" class="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600 transition-colors">
+                  删除
+                </button>
+              </td>
+            </tr>
+            <tr v-if="displayRows.length === 0">
+              <td :colspan="visibleColumnCount + 1" class="p-8 text-center text-gray-500 text-sm">
+                暂无数据
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-end items-center gap-4 mt-4 text-sm text-gray-600">
+        <span>共 {{ flatMenu.length }} 条数据</span>
+      </div>
     </div>
 
-    <!-- 新增/编辑弹窗 -->
-    <div v-if="isModalOpen" class="modal-overlay">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>{{ modalType === 'add' ? '新增菜单管理' : '编辑菜单管理' }}</h3>
-          <button class="close-btn" @click="closeModal">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label class="required">菜单名称：</label>
-            <input type="text" v-model="editingForm.name" placeholder="请输入" />
+    <div v-if="isEditModalOpen" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+      <div class="bg-white rounded-xl shadow-xl w-[680px] max-h-[80vh] overflow-y-auto animate-fade-in">
+        <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200">
+          <h3 class="text-base font-medium text-gray-900">{{ modalType === 'add' ? '新增菜单管理' : '编辑菜单管理' }}</h3>
+          <div class="flex items-center gap-2 text-gray-400">
+            <button class="hover:text-gray-600">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+            </button>
+            <button @click="closeEditModal" class="hover:text-gray-600">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <div class="form-group">
-            <label class="required">菜单类型：</label>
-            <div class="radio-group">
-              <label>
-                <input type="radio" v-model="editingForm.type" value="directory" />
+        </div>
+        <div class="px-8 py-6 space-y-5">
+          <div class="flex items-center">
+            <label class="w-28 text-right text-sm text-gray-700 mr-4"><span class="text-red-500 mr-1">*</span>菜单名称：</label>
+            <div class="flex-1 relative">
+              <input
+                v-model="editingForm.name"
+                type="text"
+                placeholder="请输入"
+                class="w-full h-10 rounded-lg px-3 text-sm ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400"
+              />
+            </div>
+          </div>
+          <div class="flex items-center">
+            <label class="w-28 text-right text-sm text-gray-700 mr-4"><span class="text-red-500 mr-1">*</span>菜单类型：</label>
+            <div class="flex-1">
+              <label class="mr-6 text-sm text-gray-700">
+                <input type="radio" value="directory" v-model="editingForm.type" class="mr-2 align-middle" />
                 目录
               </label>
-              <label>
-                <input type="radio" v-model="editingForm.type" value="menu" />
+              <label class="mr-6 text-sm text-gray-700">
+                <input type="radio" value="menu" v-model="editingForm.type" class="mr-2 align-middle" />
                 菜单
               </label>
-              <label>
-                <input type="radio" v-model="editingForm.type" value="button" />
-                按钮
+              <label class="text-sm text-gray-700">
+                <input type="radio" value="button" v-model="editingForm.type" class="mr-2 align-middle" />
+                权限
               </label>
             </div>
           </div>
-          <div class="form-group" v-if="editingForm.type !== 'button'">
-            <label class="required">路由名称：</label>
-            <input type="text" v-model="editingForm.routeName" placeholder="请输入" />
+          <div class="flex items-center" v-if="editingForm.type !== 'button'">
+            <label class="w-28 text-right text-sm text-gray-700 mr-4"><span class="text-red-500 mr-1">*</span>路由名称：</label>
+            <div class="flex-1">
+              <input v-model="editingForm.routeName" type="text" placeholder="请输入" class="w-full h-10 rounded-lg px-3 text-sm ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400" />
+            </div>
           </div>
-          <div class="form-group" v-if="editingForm.type !== 'button'">
-            <label class="required">路由路径：</label>
-            <input type="text" v-model="editingForm.routePath" placeholder="请输入" />
+          <div class="flex items-center" v-if="editingForm.type !== 'button'">
+            <label class="w-28 text-right text-sm text-gray-700 mr-4"><span class="text-red-500 mr-1">*</span>路由路径：</label>
+            <div class="flex-1">
+              <input v-model="editingForm.routePath" type="text" placeholder="请输入" class="w-full h-10 rounded-lg px-3 text-sm ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400" />
+            </div>
           </div>
-           <div class="form-group" v-if="editingForm.type === 'menu'">
-            <label>组件路径：</label>
-            <input type="text" v-model="editingForm.componentPath" placeholder="请输入" />
+          <div class="flex items-center" v-if="editingForm.type === 'menu'">
+            <label class="w-28 text-right text-sm text-gray-700 mr-4">组件路径：</label>
+            <div class="flex-1">
+              <input v-model="editingForm.componentPath" type="text" placeholder="请输入" class="w-full h-10 rounded-lg px-3 text-sm ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400" />
+            </div>
           </div>
-          <div class="form-group" v-if="editingForm.type === 'button'">
-             <label>权限标识：</label>
-             <input type="text" v-model="editingForm.permission" placeholder="例如: system:user:add" />
+          <div class="flex items-center" v-if="editingForm.type === 'button'">
+            <label class="w-28 text-right text-sm text-gray-700 mr-4">权限标识：</label>
+            <div class="flex-1">
+              <input v-model="editingForm.permission" type="text" placeholder="system:user:add" class="w-full h-10 rounded-lg px-3 text-sm ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400" />
+            </div>
           </div>
-          <div class="form-group">
-            <label>图标：</label>
-            <input type="text" v-model="editingForm.icon" placeholder="请输入" />
+          <div class="flex items-center">
+            <label class="w-28 text-right text-sm text-gray-700 mr-4">图标：</label>
+            <div class="flex-1">
+              <input v-model="editingForm.icon" type="text" placeholder="请输入" class="w-full h-10 rounded-lg px-3 text-sm ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400" />
+            </div>
           </div>
-          <div class="form-group">
-            <label class="required">状态：</label>
-            <select v-model="editingForm.status">
-              <option value="enabled">启用</option>
-              <option value="disabled">禁用</option>
-            </select>
+          <div class="flex items-center">
+            <label class="w-28 text-right text-sm text-gray-700 mr-4"><span class="text-red-500 mr-1">*</span>状态：</label>
+            <div class="flex-1 relative">
+              <select v-model="editingForm.status" class="w-full h-10 rounded-lg px-3 text-sm ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white">
+                <option value="enabled">启用</option>
+                <option value="disabled">禁用</option>
+              </select>
+              <div class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>排序：</label>
-            <input type="number" v-model="editingForm.sort" placeholder="1" />
+          <div class="flex items-center">
+            <label class="w-28 text-right text-sm text-gray-700 mr-4">排序：</label>
+            <div class="flex-1">
+              <input v-model.number="editingForm.sort" type="number" placeholder="1" class="w-full h-10 rounded-lg px-3 text-sm ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400" />
+            </div>
           </div>
-          <div class="form-group">
-            <label>描述：</label>
-            <textarea v-model="editingForm.description" placeholder="请输入" rows="3"></textarea>
+          <div class="flex items-start">
+            <label class="w-28 text-right text-sm text-gray-700 mr-4">描述：</label>
+            <div class="flex-1">
+              <textarea v-model="editingForm.description" rows="3" placeholder="请输入" class="w-full rounded-lg px-3 py-2 text-sm ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400"></textarea>
+            </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" @click="closeModal">取消</button>
-          <button class="btn btn-primary" @click="saveMenu">
-            {{ modalType === 'add' ? '新增' : '更新' }}
-          </button>
+        <div class="flex justify-end items-center px-6 py-4 gap-4 border-t border-gray-200">
+          <button @click="closeEditModal" class="px-5 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 transition-colors">取消</button>
+          <button @click="saveMenu" class="px-5 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors shadow-sm">{{ modalType === 'add' ? '新增' : '更新' }}</button>
         </div>
       </div>
     </div>
@@ -348,690 +301,328 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
-import { getMenuTree, createMenu, updateMenu, deleteMenu as removeMenu } from '@/services/permission.service';
-import type { MenuItem, CreateMenuRequest, UpdateMenuRequest } from '@/types';
+import { ref, reactive, computed } from 'vue'
+import { message } from '@/components/common'
 
-interface Menu {
-  id: number;
-  name: string;
-  permission: string;
-  type: 'directory' | 'menu' | 'button';
-  routeName: string;
-  routePath: string;
-  componentPath: string;
-  status: 'enabled' | 'disabled';
-  sort: number;
-  children?: Menu[];
-  description?: string;
-  icon?: string;
-  parentId?: number;
+type MenuType = 'directory' | 'menu' | 'button'
+type MenuStatus = 'enabled' | 'disabled'
+
+interface MenuNode {
+  id: number
+  name: string
+  permission?: string
+  type: MenuType
+  routeName?: string
+  routePath?: string
+  componentPath?: string
+  status: MenuStatus
+  sort: number
+  icon?: string
+  description?: string
+  children?: MenuNode[]
 }
 
-const menus = ref<Menu[]>([]);
-const searchQuery = ref({
-  name: '',
-  status: ''
-});
-const selectedIds = ref<number[]>([]);
-const expandedIds = ref<Set<number>>(new Set());
-const isColumnFilterOpen = ref(false);
+interface FlatRow {
+  id: number
+  name: string
+  permission?: string
+  type: MenuType
+  routeName?: string
+  routePath?: string
+  componentPath?: string
+  status: MenuStatus
+  sort: number
+  level: number
+  hasChildren: boolean
+}
 
-const columns = reactive([
+const searchQuery = ref({ name: '', status: '' })
+
+const columns = ref([
   { key: 'id', label: 'ID', visible: true },
   { key: 'name', label: '菜单名称', visible: true },
+  { key: 'type', label: '菜单类型', visible: true },
   { key: 'permission', label: '权限标识', visible: true },
-  { key: 'type', label: '类型操作', visible: true },
   { key: 'routeName', label: '路由名称', visible: true },
   { key: 'routePath', label: '路由路径', visible: true },
   { key: 'componentPath', label: '组件路径', visible: true },
   { key: 'status', label: '状态', visible: true },
   { key: 'sort', label: '排序', visible: true },
   { key: 'actions', label: '操作', visible: true }
-]);
+])
 
-const visibleColumnCount = computed(() => columns.filter(c => c.visible).length);
-
-const isColumnVisible = (key: string) => {
-  return columns.find(c => c.key === key)?.visible;
-};
-
-const isModalOpen = ref(false);
-const modalType = ref<'add' | 'edit'>('add');
-const editingForm = reactive<Partial<Menu>>({
-  type: 'directory',
-  status: 'enabled',
-  sort: 1
-});
-
-interface FlatMenu extends Menu {
-  level: number;
-  hasChildren: boolean;
-}
-
-const toStatus = (status?: number) => (status === 1 ? 'enabled' : 'disabled');
-
-const mapMenuTree = (items: MenuItem[], parentId?: number): Menu[] => {
-  return items.map(item => {
-    const type = item.type === 1 ? 'directory' : item.type === 2 ? 'menu' : 'button';
-    return {
-      id: item.id,
-      name: item.name,
-      permission: item.code,
-      type,
-      routeName: item.code,
-      routePath: item.route_path || '',
-      componentPath: item.component_path || '',
-      status: toStatus(item.status),
-      sort: item.sort,
-      children: item.children ? mapMenuTree(item.children, item.id) : [],
-      description: item.desc,
-      icon: item.icon,
-      parentId: item.parent_id ?? parentId
-    };
-  });
-};
-
-const fetchMenus = async () => {
-  const data = await getMenuTree({ skipTip: true });
-  menus.value = mapMenuTree(data);
-  if (expandedIds.value.size === 0 && menus.value.length > 0) {
-    expandedIds.value.add(menus.value[0].id);
-  }
-};
-
-const flattenMenus = (
-  list: Menu[],
-  level = 0,
-  result: FlatMenu[] = []
-): FlatMenu[] => {
-  list.forEach(item => {
-    const nameMatch = !searchQuery.value.name || item.name.toLowerCase().includes(searchQuery.value.name.toLowerCase());
-    const statusMatch = !searchQuery.value.status || item.status === searchQuery.value.status;
-
-    if (nameMatch && statusMatch) {
-      const hasChildren = !!item.children && item.children.length > 0;
-      result.push({ ...item, level, hasChildren });
-
-      if (hasChildren && expandedIds.value.has(item.id)) {
-        flattenMenus(item.children!, level + 1, result);
-      }
-    }
-  });
-  return result;
-};
-
-const displayRows = computed(() => {
-  return flattenMenus(menus.value);
-});
-
-const allIds = computed(() => {
-    const ids: number[] = [];
-    const traverse = (items: Menu[]) => {
-        items.forEach(item => {
-            ids.push(item.id);
-            if(item.children) traverse(item.children);
-        });
-    };
-    traverse(menus.value);
-    return ids;
-});
-
-const isAllSelected = computed(() => {
-    return allIds.value.length > 0 && selectedIds.value.length === allIds.value.length;
-});
-
-const toggleSelectAll = () => {
-    if (isAllSelected.value) {
-        selectedIds.value = [];
-    } else {
-        selectedIds.value = [...allIds.value];
-    }
-};
-
-const toggleSelection = (id: number) => {
-    const index = selectedIds.value.indexOf(id);
-    if (index === -1) {
-        selectedIds.value.push(id);
-    } else {
-        selectedIds.value.splice(index, 1);
-    }
-};
-
-const toggleExpand = (id: number) => {
-  if (expandedIds.value.has(id)) {
-    expandedIds.value.delete(id);
-  } else {
-    expandedIds.value.add(id);
-  }
-};
-
-const handleSearch = () => {};
-
-const resetSearch = () => {
-  searchQuery.value.name = '';
-  searchQuery.value.status = '';
-};
-
-const refreshData = async () => {
-  await fetchMenus();
-};
-
-const batchDelete = async () => {
-  if (confirm(`确定要删除选中的 ${selectedIds.value.length} 个菜单项吗？`)) {
-    const ids = [...selectedIds.value];
-    await Promise.all(ids.map(id => removeMenu(id)));
-    selectedIds.value = [];
-    await fetchMenus();
-  }
-};
-
-const deleteMenu = async (row: Menu) => {
-  if (confirm(`确定要删除菜单 "${row.name}" 吗？`)) {
-    await removeMenu(row.id);
-    await fetchMenus();
-  }
-};
-
-const isAllColumnsSelected = computed(() => {
-  return columns.every(c => c.visible);
-});
-
-const toggleAllColumns = () => {
-  const newValue = !isAllColumnsSelected.value;
-  columns.forEach(c => c.visible = newValue);
-};
+const isColumnFilterOpen = ref(false)
+const tempColumns = ref<any[]>([])
 
 const toggleColumnFilter = () => {
-  isColumnFilterOpen.value = !isColumnFilterOpen.value;
-};
+  if (!isColumnFilterOpen.value) tempColumns.value = JSON.parse(JSON.stringify(columns.value))
+  isColumnFilterOpen.value = !isColumnFilterOpen.value
+}
+const closeColumnFilter = () => { isColumnFilterOpen.value = false }
+const isAllSelected = computed({
+  get: () => tempColumns.value.every(c => c.visible),
+  set: (val) => tempColumns.value.forEach(c => c.visible = val)
+})
+const applyColumnFilter = () => { columns.value = JSON.parse(JSON.stringify(tempColumns.value)); closeColumnFilter() }
+const getColumnVisible = (key: string) => columns.value.find(c => c.key === key)?.visible ?? true
+const visibleColumnCount = computed(() => columns.value.filter(c => c.visible).length)
 
-const openAddModal = () => {
-  modalType.value = 'add';
-  Object.assign(editingForm, {
-    id: undefined,
-    name: '',
-    permission: '',
-    type: 'directory',
-    routeName: '',
-    routePath: '',
-    componentPath: '',
-    status: 'enabled',
-    sort: 1,
-    description: '',
-    icon: '',
-    parentId: undefined
-  });
-  isModalOpen.value = true;
-};
+const tree = ref<MenuNode[]>([])
+const flatMenu = ref<FlatRow[]>([])
+const expandedIds = ref<Set<number>>(new Set())
+const selectedIds = ref<number[]>([])
 
-const openEditModal = (row: Menu) => {
-  modalType.value = 'edit';
-  Object.assign(editingForm, JSON.parse(JSON.stringify(row)));
-  isModalOpen.value = true;
-};
-
-const closeModal = () => {
-  isModalOpen.value = false;
-};
-
-const buildMenuPayload = () => {
-  const typeNumber = editingForm.type === 'directory' ? 1 : editingForm.type === 'menu' ? 2 : 3;
-  const code = (editingForm.permission || editingForm.routeName || editingForm.name || '').trim();
-  const payload = {
-    parent_id: editingForm.parentId ?? 0,
-    name: editingForm.name!,
-    code,
-    type: typeNumber,
-    icon: editingForm.icon || undefined,
-    route_path: editingForm.type === 'button' ? undefined : (editingForm.routePath || undefined),
-    component_path: editingForm.type === 'menu' ? (editingForm.componentPath || undefined) : undefined,
-    status: editingForm.status === 'enabled' ? 1 : 0,
-    sort: editingForm.sort || 0,
-    desc: editingForm.description || undefined
-  };
-  return payload;
-};
-
-const saveMenu = async () => {
-  if (!editingForm.name || !editingForm.type) {
-    alert('请填写必填项');
-    return;
+const mockMenu: MenuNode[] = [
+  {
+    id: 1, name: '系统管理', type: 'directory', status: 'enabled', sort: 1, icon: 'settings',
+    children: [
+      { id: 11, name: '用户管理', type: 'menu', routeName: 'UserList', routePath: '/users', componentPath: 'views/users/List.vue', status: 'enabled', sort: 1 },
+      { id: 12, name: '角色管理', type: 'menu', routeName: 'RoleList', routePath: '/roles', componentPath: 'views/roles/List.vue', status: 'enabled', sort: 2 },
+      { id: 13, name: '权限按钮-新增', type: 'button', permission: 'system:user:add', status: 'enabled', sort: 3 }
+    ]
+  },
+  {
+    id: 2, name: '内容管理', type: 'directory', status: 'enabled', sort: 2,
+    children: [
+      { id: 21, name: '文章管理', type: 'menu', routeName: 'ArticleList', routePath: '/articles', componentPath: 'views/articles/List.vue', status: 'enabled', sort: 1 },
+      { id: 22, name: '评论管理', type: 'menu', routeName: 'CommentList', routePath: '/comments', componentPath: 'views/comments/List.vue', status: 'enabled', sort: 2 },
+      { id: 23, name: '权限按钮-删除', type: 'button', permission: 'content:comment:delete', status: 'disabled', sort: 3 },
+      {
+        id: 24, name: '运营', type: 'directory', status: 'enabled', sort: 4,
+        children: [
+          { id: 241, name: '活动管理', type: 'menu', routeName: 'CampaignList', routePath: '/ops/campaigns', componentPath: 'views/ops/CampaignList.vue', status: 'enabled', sort: 1 },
+          { id: 242, name: '权限按钮-开启活动', type: 'button', permission: 'ops:campaign:start', status: 'enabled', sort: 2 }
+        ]
+      }
+    ]
   }
+]
 
-  if (modalType.value === 'add') {
-    const data = buildMenuPayload() as CreateMenuRequest;
-    await createMenu(data);
+const toFlat = (nodes: MenuNode[], level = 0): FlatRow[] => {
+  const res: FlatRow[] = []
+  for (const n of nodes) {
+    res.push({
+      id: n.id,
+      name: n.name,
+      permission: n.permission,
+      type: n.type,
+      routeName: n.routeName,
+      routePath: n.routePath,
+      componentPath: n.componentPath,
+      status: n.status,
+      sort: n.sort,
+      level,
+      hasChildren: !!(n.children && n.children.length)
+    })
+    if (n.children && expandedIds.value.has(n.id)) res.push(...toFlat(n.children, level + 1))
+  }
+  return res
+}
+
+const applySearch = () => {
+  const keyword = searchQuery.value.name.trim().toLowerCase()
+  const status = searchQuery.value.status
+  const filterTree = (nodes: MenuNode[]): MenuNode[] => {
+    const out: MenuNode[] = []
+    for (const n of nodes) {
+      const nameMatch = !keyword || n.name.toLowerCase().includes(keyword)
+      const statusMatch = !status || n.status === status
+      const children = n.children ? filterTree(n.children) : undefined
+      if (nameMatch && statusMatch || (children && children.length)) {
+        out.push({ ...n, children })
+      }
+    }
+    return out
+  }
+  const filtered = filterTree(tree.value)
+  flatMenu.value = toFlat(filtered, 0)
+}
+
+const search = () => { applySearch() }
+const resetSearch = () => { searchQuery.value = { name: '', status: '' }; applySearch() }
+const refresh = () => { tree.value = JSON.parse(JSON.stringify(mockMenu)); expandedIds.value = new Set(); selectedIds.value = []; applySearch(); message.success('已刷新菜单数据') }
+
+const isAllSelectedRows = computed({
+  get: () => displayRows.value.length > 0 && displayRows.value.every(r => selectedIds.value.includes(r.id)),
+  set: (val) => {
+    const currentIds = displayRows.value.map(r => r.id)
+    selectedIds.value = val ? Array.from(new Set([...selectedIds.value, ...currentIds])) : selectedIds.value.filter(id => !currentIds.includes(id))
+  }
+})
+
+const displayRows = computed(() => flatMenu.value)
+
+const toggleExpand = (id: number) => {
+  const next = new Set(expandedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  expandedIds.value = next
+  applySearch()
+}
+
+const toggleSelection = (id: number) => {
+  const i = selectedIds.value.indexOf(id)
+  if (i === -1) selectedIds.value.push(id)
+  else selectedIds.value.splice(i, 1)
+}
+
+const batchDelete = () => {
+  if (selectedIds.value.length === 0) {
+    message.warning('请选择要删除的菜单项')
+    return
+  }
+  if (!window.confirm('确认删除选中的菜单项吗？')) return
+  const count = selectedIds.value.length
+  const removeByIds = (nodes: MenuNode[]): MenuNode[] => {
+    const out: MenuNode[] = []
+    for (const n of nodes) {
+      if (selectedIds.value.includes(n.id)) continue
+      const children = n.children ? removeByIds(n.children) : undefined
+      out.push(children ? { ...n, children } : { ...n, children: undefined })
+    }
+    return out
+  }
+  tree.value = removeByIds(tree.value)
+  selectedIds.value = []
+  applySearch()
+  message.success(`已删除 ${count} 条菜单项`)
+}
+
+const deleteMenu = (row: FlatRow) => {
+  if (!window.confirm('确认删除该菜单项吗？')) return
+  const remove = (nodes: MenuNode[]): MenuNode[] => {
+    const out: MenuNode[] = []
+    for (const n of nodes) {
+      if (n.id === row.id) continue
+      const children = n.children ? remove(n.children) : undefined
+      out.push(children ? { ...n, children } : { ...n, children: undefined })
+    }
+    return out
+  }
+  tree.value = remove(tree.value)
+  selectedIds.value = selectedIds.value.filter(id => id !== row.id)
+  applySearch()
+  message.success('菜单项已删除')
+}
+
+const isEditModalOpen = ref(false)
+const modalType = ref<'add' | 'edit'>('add')
+const editingForm = reactive<MenuNode>({
+  id: 0,
+  name: '',
+  type: 'menu',
+  status: 'enabled',
+  sort: 1
+})
+
+const openEditModal = (row?: FlatRow) => {
+  if (row) {
+    modalType.value = 'edit'
+    const node = findNodeById(row.id, tree.value)
+    if (node) Object.assign(editingForm, node)
   } else {
-    const data = buildMenuPayload() as UpdateMenuRequest;
-    await updateMenu(editingForm.id as number, data);
+    modalType.value = 'add'
+    Object.assign(editingForm, { id: 0, name: '', type: 'menu', status: 'enabled', sort: 1, routeName: '', routePath: '', componentPath: '', permission: '' })
   }
-  closeModal();
-  await fetchMenus();
-};
+  isEditModalOpen.value = true
+}
+const closeEditModal = () => { isEditModalOpen.value = false }
 
-onMounted(fetchMenus);
+const findNodeById = (id: number, nodes: MenuNode[]): MenuNode | undefined => {
+  for (const n of nodes) {
+    if (n.id === id) return n
+    if (n.children) {
+      const found = findNodeById(id, n.children)
+      if (found) return found
+    }
+  }
+}
+
+const saveMenu = () => {
+  const name = editingForm.name.trim()
+  if (!name) {
+    message.warning('请填写菜单名称')
+    return
+  }
+  const duplicateName = (nodes: MenuNode[]) => {
+    for (const n of nodes) {
+      if (n.id !== editingForm.id && n.name === name) return true
+      if (n.children && duplicateName(n.children)) return true
+    }
+    return false
+  }
+  if (duplicateName(tree.value)) {
+    message.warning('菜单名称已存在')
+    return
+  }
+  if (modalType.value === 'add') {
+    const maxId = maxNodeId(tree.value)
+    const newNode: MenuNode = {
+      id: maxId + 1,
+      name,
+      permission: editingForm.permission,
+      type: editingForm.type,
+      routeName: editingForm.routeName,
+      routePath: editingForm.routePath,
+      componentPath: editingForm.componentPath,
+      status: editingForm.status,
+      sort: editingForm.sort,
+      icon: editingForm.icon,
+      description: editingForm.description
+    }
+    tree.value.push(newNode)
+  } else {
+    const update = (nodes: MenuNode[]) => {
+      for (const n of nodes) {
+        if (n.id === editingForm.id) {
+          n.name = name
+          n.permission = editingForm.permission
+          n.type = editingForm.type
+          n.routeName = editingForm.routeName
+          n.routePath = editingForm.routePath
+          n.componentPath = editingForm.componentPath
+          n.status = editingForm.status
+          n.sort = editingForm.sort
+          n.icon = editingForm.icon
+          n.description = editingForm.description
+          break
+        }
+        if (n.children) update(n.children)
+      }
+    }
+    update(tree.value)
+  }
+  applySearch()
+  closeEditModal()
+  message.success(modalType.value === 'add' ? '菜单新增成功' : '菜单更新成功')
+}
+
+const maxNodeId = (nodes: MenuNode[]): number => {
+  let max = 0
+  const walk = (ns: MenuNode[]) => {
+    for (const n of ns) {
+      max = Math.max(max, n.id)
+      if (n.children) walk(n.children)
+    }
+  }
+  walk(nodes)
+  return max
+}
+
+const init = () => {
+  tree.value = JSON.parse(JSON.stringify(mockMenu))
+  applySearch()
+}
+
+init()
 </script>
 
 <style scoped>
-.console-page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  height: 100%;
-  padding: 24px;
-  background-color: #f3f4f6;
-  overflow: hidden;
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
-
-/* 搜索栏 */
-.search-bar {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.search-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.label {
-  font-size: 14px;
-  color: #374151;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.input-field {
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  padding: 8px 12px;
-  font-size: 14px;
-  width: 200px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.input-field:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-.select-field {
-  background-color: white;
-}
-
-.search-actions {
-  display: flex;
-  gap: 12px;
-}
-
-/* 按钮样式 */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid transparent;
-}
-
-.btn-sm {
-  padding: 4px 12px;
-  font-size: 12px;
-}
-
-.btn-primary {
-  background-color: #2563eb;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #1d4ed8;
-}
-
-.btn-secondary {
-  background-color: white;
-  border-color: #d1d5db;
-  color: #374151;
-}
-
-.btn-secondary:hover {
-  background-color: #f9fafb;
-  border-color: #9ca3af;
-}
-
-.btn-danger {
-  background-color: #ef4444;
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: #dc2626;
-}
-
-.btn-icon {
-  padding: 8px;
-  background: white;
-  border: 1px solid #d1d5db;
-  color: #6b7280;
-  border-radius: 4px;
-}
-
-.btn-icon:hover {
-  color: #374151;
-  border-color: #9ca3af;
-}
-
-/* 操作栏 */
-.action-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.right-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-/* 表格容器 */
-.table-container {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  flex: 1;
-  overflow: auto;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 1000px;
-}
-
-.data-table th {
-  background-color: #f9fafb;
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-  border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
-}
-
-.data-table td {
-  padding: 12px 16px;
-  font-size: 14px;
-  color: #374151;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.expand-btn {
-  width: 20px;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: #6b7280;
-}
-
-.expand-btn:hover {
-  color: #374151;
-}
-
-/* 标签样式 */
-.status-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  border: 1px solid transparent;
-}
-
-.btn-action {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  color: white;
-  border: none;
-}
-
-.btn-edit {
-  background-color: #3b82f6;
-}
-.btn-edit:hover {
-  background-color: #2563eb;
-}
-
-.btn-delete {
-  background-color: #ef4444;
-}
-.btn-delete:hover {
-  background-color: #dc2626;
-}
-
-/* 列筛选弹窗 */
-.column-filter-popover {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 8px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e5e7eb;
-  width: 200px;
-  z-index: 50;
-  padding: 12px;
-}
-
-.filter-header {
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e5e7eb;
-  margin-bottom: 8px;
-}
-
-.filter-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.filter-footer {
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #374151;
-  cursor: pointer;
-}
-
-/* 弹窗样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  backdrop-filter: blur(2px);
-}
-
-.modal-content {
-  background: white;
-  border-radius: 8px;
-  width: 600px;
-  max-width: 90%;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  animation: modalSlideIn 0.3s ease-out;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.modal-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h3 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
-}
-
-.close-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: #9ca3af;
-  padding: 4px;
-  border-radius: 4px;
-}
-
-.close-btn:hover {
-  background: #f3f4f6;
-  color: #6b7280;
-}
-
-.modal-body {
-  padding: 24px;
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-.modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.form-group {
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-}
-
-.form-group label {
-  width: 100px;
-  font-size: 14px;
-  color: #374151;
-  text-align: right;
-  margin-right: 12px;
-}
-
-.form-group label.required::before {
-  content: '*';
-  color: #ef4444;
-  margin-right: 4px;
-}
-
-.form-group input[type="text"],
-.form-group input[type="number"],
-.form-group select,
-.form-group textarea {
-  flex: 1;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  padding: 8px 12px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-.radio-group {
-  display: flex;
-  gap: 16px;
-}
-
-.radio-group label {
-  width: auto;
-  text-align: left;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.sticky-col {
-  position: sticky;
-  right: 0;
-  z-index: 10;
-  background-color: white; /* Default background for sticky cells */
-}
-
-.header-sticky {
-  z-index: 20; /* Ensure header is above body cells */
-  background-color: #f9fafb; /* Match the header background color */
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05); /* Add shadow for separation */
-}
-
-.cell-sticky {
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05); /* Add shadow for separation */
-}
-
-/* Ensure hover state background works on sticky cells */
-.hover\:bg-gray-50:hover .cell-sticky {
-  background-color: #f9fafb; /* Match hover color */
-}
-
-/* Responsive adjustment if needed */
-@media (max-width: 640px) {
-  /* On very small screens, maybe disable sticky if it causes issues, but usually fine */
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
 }
 </style>
