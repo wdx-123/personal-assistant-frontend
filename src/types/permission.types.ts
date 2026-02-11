@@ -191,6 +191,7 @@ export interface ApiItem {
   path: string
   method: string
   detail?: string
+  category?: string
   status: number
   created_at?: string
   updated_at?: string
@@ -207,6 +208,7 @@ export interface CreateApiRequest {
   path: string
   method: string
   detail?: string
+  category?: string
   status?: number
 }
 
@@ -214,6 +216,7 @@ export interface UpdateApiRequest {
   path?: string
   method?: string
   detail?: string
+  category?: string
   status?: number
 }
 

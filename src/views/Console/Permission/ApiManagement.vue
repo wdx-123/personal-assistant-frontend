@@ -211,6 +211,17 @@
             </div>
           </div>
           <div class="form-row">
+            <label class="form-label">API类别：</label>
+            <div class="input-wrapper">
+              <Input
+                v-model="editingApi.category"
+                placeholder="请输入"
+                clearable
+                class="full-width"
+              />
+            </div>
+          </div>
+          <div class="form-row">
             <label class="form-label required">API方法：</label>
             <div class="input-wrapper">
               <select
@@ -307,6 +318,7 @@ interface ApiRow {
   id: number
   path: string
   description: string
+  category?: string
   method: string
   status: ApiStatus
 }
@@ -332,6 +344,7 @@ const fetchApis = async () => {
         id: item.id,
         path: item.path,
         description: item.detail || '',
+        category: item.category || '',
         method: item.method,
         status: item.status === 1 ? 'enabled' : 'disabled'
       }))
@@ -435,6 +448,7 @@ const editingApi = reactive({
   id: 0,
   path: '',
   description: '',
+  category: '',
   method: '',
   status: 'enabled' as ApiStatus
 })
@@ -442,10 +456,13 @@ const editingApi = reactive({
 const openEditModal = (api?: ApiRow) => {
   if (api) {
     modalType.value = 'edit'
-    Object.assign(editingApi, api)
+    Object.assign(editingApi, {
+      ...api,
+      category: api.category || ''
+    })
   } else {
     modalType.value = 'add'
-    Object.assign(editingApi, { id: 0, path: '', description: '', method: '', status: 'enabled' as ApiStatus })
+    Object.assign(editingApi, { id: 0, path: '', description: '', category: '', method: '', status: 'enabled' as ApiStatus })
   }
   isEditModalOpen.value = true
 }
@@ -458,6 +475,8 @@ const saveApi = async () => {
   const path = editingApi.path.trim()
   const description = editingApi.description.trim()
   const method = editingApi.method.trim()
+  const category = editingApi.category?.trim()
+
   if (!path || !description || !method) {
     message.warning('请填写完整的 API 信息')
     return
@@ -469,6 +488,7 @@ const saveApi = async () => {
         path,
         method,
         detail: description,
+        category,
         status: editingApi.status === 'enabled' ? 1 : 0
       }, { skipSuccTip: true })
     } else {
@@ -476,6 +496,7 @@ const saveApi = async () => {
         path,
         method,
         detail: description,
+        category,
         status: editingApi.status === 'enabled' ? 1 : 0
       }, { skipSuccTip: true })
     }
