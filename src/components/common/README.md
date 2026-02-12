@@ -3,6 +3,7 @@
 ## 组件列表
 
 - [Button](#button-按钮) - 按钮
+- [Badge](#badge-标签) - 标签
 - [Input](#input-输入框) - 输入框
 - [Modal](#modal-弹窗) - 弹窗
 - [Loading](#loading-加载) - 加载
@@ -63,6 +64,86 @@ const handleClick = () => {
 | loading | 是否加载中 | `boolean` | `false` |
 | block | 是否为块级按钮 | `boolean` | `false` |
 | ghost | 是否为幽灵按钮 | `boolean` | `false` |
+
+---
+
+## Badge 标签
+
+### 基础用法
+
+```vue
+<script setup lang="ts">
+import { Badge, StatusBadge, MenuTypeBadge } from '@/components/common'
+</script>
+
+<template>
+  <Badge tone="primary">自定义标签</Badge>
+  <StatusBadge status="enabled" />
+  <StatusBadge status="disabled" />
+  <MenuTypeBadge type="directory" />
+  <MenuTypeBadge type="menu" />
+  <MenuTypeBadge type="button" />
+</template>
+```
+
+### 变体与尺寸
+
+```vue
+<template>
+  <Badge tone="success" variant="soft" size="small">soft</Badge>
+  <Badge tone="success" variant="outline" size="medium">outline</Badge>
+  <Badge tone="danger" variant="solid">solid</Badge>
+</template>
+```
+
+### Props（Badge）
+
+| 参数 | 说明 | 类型 | 默认值 |
+|------|------|------|--------|
+| tone | 色彩语义 | `'primary' \| 'success' \| 'danger' \| 'neutral' \| 'warning'` | `'neutral'` |
+| variant | 视觉风格 | `'soft' \| 'solid' \| 'outline'` | `'soft'` |
+| size | 尺寸 | `'xsmall' \| 'small' \| 'medium'` | `'small'` |
+| showDot | 是否显示圆点 | `boolean` | `true` |
+| dotPulse | 圆点是否脉冲 | `boolean` | `false` |
+
+### Props（StatusBadge）
+
+| 参数 | 说明 | 类型 | 默认值 |
+|------|------|------|--------|
+| status | 状态值 | `'enabled' \| 'disabled' \| string` | - |
+| enabledText | 启用文案 | `string` | `'启用'` |
+| disabledText | 禁用文案 | `string` | `'禁用'` |
+| variant | 视觉风格 | `'soft' \| 'solid' \| 'outline'` | `'soft'` |
+| size | 尺寸 | `'xsmall' \| 'small' \| 'medium'` | `'small'` |
+| showDot | 是否显示圆点 | `boolean` | `true` |
+
+### Props（MenuTypeBadge）
+
+| 参数 | 说明 | 类型 | 默认值 |
+|------|------|------|--------|
+| type | 菜单类型 | `'directory' \| 'menu' \| 'button' \| string` | - |
+| directoryText | 目录文案 | `string` | `'目录'` |
+| menuText | 菜单文案 | `string` | `'菜单'` |
+| buttonText | 按钮文案 | `string` | `'按钮'` |
+| variant | 视觉风格 | `'soft' \| 'solid' \| 'outline'` | `按类型自动：目录='soft'，菜单='outline'，按钮='outline'` |
+| size | 尺寸 | `'xsmall' \| 'small' \| 'medium'` | `按类型自动：目录='medium'，菜单='small'，按钮='xsmall'` |
+| showDot | 是否显示圆点 | `boolean` | `false` |
+
+### 表格操作区推荐（控制台）
+
+```vue
+<template>
+  <td class="table-action-cell">
+    <button class="table-action-btn table-action-btn--neutral">查看</button>
+    <button class="table-action-btn table-action-btn--primary">编辑</button>
+    <button class="table-action-btn table-action-btn--danger">删除</button>
+  </td>
+</template>
+```
+
+- `table-action-cell`：统一操作区布局（右对齐、间距稳定）
+- `table-action-btn`：统一文字按钮基类（不位移，仅颜色/背景微反馈）
+- `table-action-btn--primary|neutral|danger|success`：语义色
 
 ---
 

@@ -94,7 +94,7 @@
               <th v-if="getColumnVisible('path')">API 路径</th>
               <th v-if="getColumnVisible('description')">API 详情</th>
               <th v-if="getColumnVisible('method')">API 方法</th>
-              <th v-if="getColumnVisible('status')">状态</th>
+              <th v-if="getColumnVisible('status')" class="table-col-center">状态</th>
               <th v-if="getColumnVisible('action')" class="text-right">操作</th>
             </tr>
           </thead>
@@ -106,16 +106,14 @@
               <td v-if="getColumnVisible('path')" :title="api.path">{{ api.path }}</td>
               <td v-if="getColumnVisible('description')" :title="api.description">{{ api.description }}</td>
               <td v-if="getColumnVisible('method')" :title="api.method || '-'">{{ api.method || '-' }}</td>
-              <td v-if="getColumnVisible('status')">
-                <span :class="api.status === 'enabled' ? 'status-enabled' : 'status-disabled'">
-                  {{ api.status === 'enabled' ? '启用' : '禁用' }}
-                </span>
+              <td v-if="getColumnVisible('status')" class="table-col-center">
+                <StatusBadge :status="api.status" />
               </td>
-              <td v-if="getColumnVisible('action')" class="action-cell">
-                <button @click="openEditModal(api)" class="btn-xs btn-primary">
+              <td v-if="getColumnVisible('action')" class="action-cell table-action-cell">
+                <button @click="openEditModal(api)" class="table-action-btn table-action-btn--primary">
                   编辑
                 </button>
-                <button @click="deleteApi(api.id)" class="btn-xs btn-danger">
+                <button @click="deleteApi(api.id)" class="table-action-btn table-action-btn--danger">
                   删除
                 </button>
               </td>
@@ -211,6 +209,17 @@
             </div>
           </div>
           <div class="form-row">
+            <label class="form-label">API类别：</label>
+            <div class="input-wrapper">
+              <Input
+                v-model="editingApi.category"
+                placeholder="请输入"
+                clearable
+                class="full-width"
+              />
+            </div>
+          </div>
+          <div class="form-row">
             <label class="form-label required">API方法：</label>
             <div class="input-wrapper">
               <select
@@ -255,7 +264,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { message, Confirm, Input } from '@/components/common'
+import { message, Confirm, Input, StatusBadge } from '@/components/common'
 import { getApiList, createApi, updateApi, deleteApi as deleteApiService } from '@/services/permission.service'
 
 const searchQuery = ref({
@@ -307,6 +316,7 @@ interface ApiRow {
   id: number
   path: string
   description: string
+  category?: string
   method: string
   status: ApiStatus
 }
@@ -332,6 +342,7 @@ const fetchApis = async () => {
         id: item.id,
         path: item.path,
         description: item.detail || '',
+        category: item.category || '',
         method: item.method,
         status: item.status === 1 ? 'enabled' : 'disabled'
       }))
@@ -435,6 +446,7 @@ const editingApi = reactive({
   id: 0,
   path: '',
   description: '',
+  category: '',
   method: '',
   status: 'enabled' as ApiStatus
 })
@@ -442,10 +454,13 @@ const editingApi = reactive({
 const openEditModal = (api?: ApiRow) => {
   if (api) {
     modalType.value = 'edit'
-    Object.assign(editingApi, api)
+    Object.assign(editingApi, {
+      ...api,
+      category: api.category || ''
+    })
   } else {
     modalType.value = 'add'
-    Object.assign(editingApi, { id: 0, path: '', description: '', method: '', status: 'enabled' as ApiStatus })
+    Object.assign(editingApi, { id: 0, path: '', description: '', category: '', method: '', status: 'enabled' as ApiStatus })
   }
   isEditModalOpen.value = true
 }
@@ -458,6 +473,8 @@ const saveApi = async () => {
   const path = editingApi.path.trim()
   const description = editingApi.description.trim()
   const method = editingApi.method.trim()
+  const category = editingApi.category?.trim()
+
   if (!path || !description || !method) {
     message.warning('请填写完整的 API 信息')
     return
@@ -469,6 +486,7 @@ const saveApi = async () => {
         path,
         method,
         detail: description,
+        category,
         status: editingApi.status === 'enabled' ? 1 : 0
       }, { skipSuccTip: true })
     } else {
@@ -476,6 +494,7 @@ const saveApi = async () => {
         path,
         method,
         detail: description,
+        category,
         status: editingApi.status === 'enabled' ? 1 : 0
       }, { skipSuccTip: true })
     }
@@ -739,15 +758,6 @@ onMounted(() => {
   background-color: #f9fafb;
 }
 
-.btn-danger {
-  background-color: #ef4444;
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: #dc2626;
-}
-
 .table-container {
   flex: 1;
   overflow: auto;
@@ -783,35 +793,11 @@ onMounted(() => {
   width: 48px;
 }
 
-.status-enabled {
-  color: #22c55e;
-}
-
-.status-disabled {
-  color: #9ca3af;
-}
-
 .action-cell {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  color: #3b82f6;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  margin-right: 8px;
-}
-
-.btn-link:hover {
-  color: #1d4ed8;
 }
 
 .empty-cell {

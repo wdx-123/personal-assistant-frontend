@@ -90,8 +90,8 @@
               <td v-if="getColumnVisible('phone')" class="p-4 text-sm text-gray-500">{{ user.phone || '-' }}</td>
               <td v-if="getColumnVisible('org')" class="p-4 text-sm text-gray-700">{{ user.orgName || '-' }}</td>
               <td v-if="getColumnVisible('roles')" class="p-4 text-sm text-gray-500">{{ user.roleNames || '-' }}</td>
-              <td v-if="getColumnVisible('action')" class="p-4 flex justify-end items-center gap-2">
-                <button @click="openRoleModal(user)" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors">
+              <td v-if="getColumnVisible('action')" class="p-4 table-action-cell">
+                <button @click="openRoleModal(user)" class="table-action-btn table-action-btn--primary">
                   配置角色
                 </button>
               </td>

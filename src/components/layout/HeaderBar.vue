@@ -321,7 +321,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
+  transition: background-color var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease),
+    border-color var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease),
+    box-shadow var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease),
+    color var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 1001;
 }
@@ -329,7 +332,6 @@ onUnmounted(() => {
 .trigger-button:hover {
   background: rgba(255, 255, 255, 1);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  transform: scale(1.05);
 }
 
 .trigger-button.active {
@@ -362,7 +364,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
+  transition: background-color var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease),
+    border-color var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease),
+    box-shadow var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease),
+    color var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 1001;
   text-decoration: none;
@@ -371,7 +376,6 @@ onUnmounted(() => {
 .notice-button:hover {
   background: rgba(255, 255, 255, 1);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  transform: scale(1.05);
 }
 
 .notice-button svg {
@@ -449,7 +453,8 @@ onUnmounted(() => {
   border: none;
   border-radius: 50%;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease),
+    box-shadow var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease);
 }
 
 .user-avatar-button:hover {
@@ -526,7 +531,8 @@ onUnmounted(() => {
   font-size: 14px;
   color: #262626;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease),
+    color var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease);
 }
 
 .dropdown-item:hover {
@@ -602,7 +608,7 @@ onUnmounted(() => {
 /* 下拉菜单淡入淡出动画 */
 .dropdown-fade-enter-active,
 .dropdown-fade-leave-active {
-  transition: all 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .dropdown-fade-enter-from,
@@ -620,7 +626,7 @@ onUnmounted(() => {
 /* 滑动动画 */
 .slide-down-enter-active,
 .slide-down-leave-active {
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .slide-down-enter-from,
@@ -655,7 +661,10 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: #595959;
-  transition: all 0.3s ease;
+  transition: background-color var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease),
+    border-color var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease),
+    color var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease),
+    box-shadow var(--ui-duration-hover, 140ms) var(--ui-ease-standard, ease);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   font-size: 14px;
   font-weight: 500;
@@ -666,7 +675,6 @@ onUnmounted(() => {
   border-color: #1890ff;
   color: white;
   box-shadow: 0 4px 16px rgba(24, 144, 255, 0.3);
-  transform: scale(1.05);
 }
 
 .console-button span {

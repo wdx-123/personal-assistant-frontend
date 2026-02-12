@@ -83,11 +83,11 @@
               <td v-if="getColumnVisible('code')" class="p-4 text-sm text-gray-500">{{ org.code || '-' }}</td>
               <td v-if="getColumnVisible('description')" class="p-4 text-sm text-gray-500">{{ org.description || '-' }}</td>
               <td v-if="getColumnVisible('owner')" class="p-4 text-sm text-gray-500">{{ org.ownerId || '-' }}</td>
-              <td v-if="getColumnVisible('action')" class="p-4 flex justify-end items-center gap-2">
-                <button @click="openEditModal(org)" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors">
+              <td v-if="getColumnVisible('action')" class="p-4 table-action-cell">
+                <button @click="openEditModal(org)" class="table-action-btn table-action-btn--primary">
                   编辑
                 </button>
-                <button @click="setCurrent(org.id)" class="bg-emerald-500 text-white px-3 py-1 rounded text-xs hover:bg-emerald-600 transition-colors">
+                <button @click="setCurrent(org.id)" class="table-action-btn table-action-btn--success">
                   设为当前
                 </button>
               </td>
