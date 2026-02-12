@@ -92,23 +92,38 @@ const routes: RouteRecordRaw[] = [
           }
         ]
       },
-      {
-        path: "user",
-        name: "ConsoleUser",
-        component: () => import("@/views/Console/UserManagement.vue"),
-        meta: { title: "控制台 - 人员管理" }
-      },
-      {
-        path: "org",
-        name: "ConsoleOrg",
-        component: () => import("@/views/Console/OrgManagement.vue"),
-        meta: { title: "控制台 - 组织管理" }
-      },
+      // {
+      //   path: "user",
+      //   name: "ConsoleUser",
+      //   component: () => import("@/views/Console/UserManagement.vue"),
+      //   meta: { title: "控制台 - 人员管理" }
+      // },
+      // {
+      //   path: "org",
+      //   name: "ConsoleOrg",
+      //   component: () => import("@/views/Console/OrgManagement.vue"),
+      //   meta: { title: "控制台 - 组织管理" }
+      // },
       {
         path: "team",
         name: "ConsoleTeam",
         component: () => import("@/views/Console/Team.vue"),
-        meta: { title: "控制台 - 我的团队" }
+        meta: { title: "控制台 - 团队管理" },
+        redirect: "/console/team/list",
+        children: [
+          {
+            path: "list",
+            name: "TeamList",
+            component: () => import("@/views/Console/Team/MyTeam.vue"),
+            meta: { title: "我的团队" }
+          },
+          {
+            path: "members",
+            name: "TeamMembers",
+            component: () => import("@/views/Console/Team/TeamMembers.vue"),
+            meta: { title: "团队成员" }
+          }
+        ]
       },
       {
         path: "settings",

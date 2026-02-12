@@ -52,38 +52,27 @@
         </div>
       </div>
 
-      <!-- 人员管理 -->
-      <div class="menu-item" :class="{ active: isActive('/console/user') }" @click="navigateTo('/console/user')">
-        <div class="menu-title" title="人员管理">
-          <div class="title-content">
-            <svg class="menu-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            <span class="menu-text">人员管理</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 组织管理 -->
-      <div class="menu-item" :class="{ active: isActive('/console/org') }" @click="navigateTo('/console/org')">
-        <div class="menu-title" title="组织管理">
-          <div class="title-content">
-            <svg class="menu-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M4 21V7a2 2 0 012-2h3V3h6v2h3a2 2 0 012 2v14M9 21V9h6v12" />
-            </svg>
-            <span class="menu-text">组织管理</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 我的团队 -->
-      <div class="menu-item" :class="{ active: isActive('/console/team') }" @click="navigateTo('/console/team')">
-        <div class="menu-title" title="我的团队">
+      <!-- 团队管理（带子菜单） -->
+      <div class="menu-item" :class="{ active: isActive('/console/team') }">
+        <div class="menu-title" title="团队管理" @click="toggleSubmenu('team')">
           <div class="title-content">
             <svg class="menu-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
-            <span class="menu-text">我的团队</span>
+            <span class="menu-text">团队管理</span>
+          </div>
+          <svg class="submenu-arrow" :class="{ rotated: isSubmenuOpen('team') }" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+        
+        <!-- 子菜单 -->
+        <div class="submenu" :class="{ open: isSubmenuOpen('team') }">
+          <div class="submenu-item" :class="{ active: isActive('/console/team/list') }" @click.stop="navigateTo('/console/team/list')">
+            我的团队
+          </div>
+          <div class="submenu-item" :class="{ active: isActive('/console/team/members') }" @click.stop="navigateTo('/console/team/members')">
+            团队成员
           </div>
         </div>
       </div>
