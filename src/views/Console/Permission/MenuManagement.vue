@@ -93,12 +93,12 @@
               </th>
               <th v-if="getColumnVisible('id')" style="width: 80px">ID</th>
               <th v-if="getColumnVisible('name')">菜单名称</th>
-              <th v-if="getColumnVisible('type')" style="width: 100px">菜单类型</th>
+              <th v-if="getColumnVisible('type')" class="table-col-center" style="width: 100px">菜单类型</th>
               <th v-if="getColumnVisible('permission')" style="width: 150px">按钮标识</th>
               <th v-if="getColumnVisible('routeName')" style="width: 150px">路由名称</th>
               <th v-if="getColumnVisible('routePath')" style="width: 150px">路由路径</th>
               <th v-if="getColumnVisible('componentPath')" style="width: 150px">组件路径</th>
-              <th v-if="getColumnVisible('status')" style="width: 80px">状态</th>
+              <th v-if="getColumnVisible('status')" class="table-col-center" style="width: 80px">状态</th>
               <th v-if="getColumnVisible('sort')" style="width: 80px">排序</th>
               <th v-if="getColumnVisible('actions')" class="text-right" style="width: 140px">操作</th>
             </tr>
@@ -126,32 +126,22 @@
                   <span :title="row.name">{{ row.name }}</span>
                 </div>
               </td>
-              <td v-if="getColumnVisible('type')" class="align-middle">
-                <span
-                  :class="{
-                    'text-success': row.type === 'directory',
-                    'text-primary': row.type === 'menu',
-                    'text-danger': row.type === 'button'
-                  }"
-                >
-                  {{ row.type === 'directory' ? '目录' : row.type === 'menu' ? '菜单' : '按钮' }}
-                </span>
+              <td v-if="getColumnVisible('type')" class="align-middle table-col-center">
+                <MenuTypeBadge :type="row.type" />
               </td>
               <td v-if="getColumnVisible('permission')" class="align-middle" :title="row.permission || '-'">{{ row.permission || '-' }}</td>
               <td v-if="getColumnVisible('routeName')" class="align-middle" :title="row.routeName || '-'">{{ row.routeName || '-' }}</td>
               <td v-if="getColumnVisible('routePath')" class="align-middle" :title="row.routePath || '-'">{{ row.routePath || '-' }}</td>
               <td v-if="getColumnVisible('componentPath')" class="align-middle" :title="row.componentPath || '-'">{{ row.componentPath || '-' }}</td>
-              <td v-if="getColumnVisible('status')" class="align-middle">
-                <span :class="row.status === 'enabled' ? 'status-enabled' : 'status-disabled'">
-                  {{ row.status === 'enabled' ? '启用' : '禁用' }}
-                </span>
+              <td v-if="getColumnVisible('status')" class="align-middle table-col-center">
+                <StatusBadge :status="row.status" />
               </td>
               <td v-if="getColumnVisible('sort')" class="align-middle">{{ row.sort }}</td>
-              <td v-if="getColumnVisible('actions')" class="action-cell">
-                <button @click="openEditModal(row)" class="btn-xs btn-primary">
+              <td v-if="getColumnVisible('actions')" class="action-cell table-action-cell">
+                <button @click="openEditModal(row)" class="table-action-btn table-action-btn--primary">
                   编辑
                 </button>
-                <button @click="handleDelete(row)" class="btn-xs btn-danger">
+                <button @click="handleDelete(row)" class="table-action-btn table-action-btn--danger">
                   删除
                 </button>
               </td>
@@ -315,11 +305,17 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { getMenuTree, getMenuDetail, createMenu, updateMenu, deleteMenu } from '@/services/permission.service'
-import { message, Confirm, Input } from '@/components/common'
+import { message, Confirm, Input, MenuTypeBadge, StatusBadge } from '@/components/common'
 import type { MenuItem, CreateMenuRequest, UpdateMenuRequest } from '@/types'
 
 type MenuType = 'directory' | 'menu' | 'button'
 type MenuStatus = 'enabled' | 'disabled'
+
+const menuTypeOrder: Record<MenuType, number> = {
+  directory: 0,
+  menu: 1,
+  button: 2
+}
 
 interface MenuNode {
   id: number
@@ -424,7 +420,15 @@ const mapToNode = (item: MenuItem): MenuNode => {
 
 const toFlat = (nodes: MenuNode[], level = 0): FlatRow[] => {
   const res: FlatRow[] = []
-  for (const n of nodes) {
+  const orderedNodes = [...nodes].sort((a, b) => {
+    const typeRank = menuTypeOrder[a.type] - menuTypeOrder[b.type]
+    if (typeRank !== 0) return typeRank
+    const sortRank = a.sort - b.sort
+    if (sortRank !== 0) return sortRank
+    return a.id - b.id
+  })
+
+  for (const n of orderedNodes) {
     res.push({
       id: n.id,
       name: n.name,
@@ -446,7 +450,15 @@ const toFlat = (nodes: MenuNode[], level = 0): FlatRow[] => {
 
 const toFlatAll = (nodes: MenuNode[], level = 0): FlatRow[] => {
   const res: FlatRow[] = []
-  for (const n of nodes) {
+  const orderedNodes = [...nodes].sort((a, b) => {
+    const typeRank = menuTypeOrder[a.type] - menuTypeOrder[b.type]
+    if (typeRank !== 0) return typeRank
+    const sortRank = a.sort - b.sort
+    if (sortRank !== 0) return sortRank
+    return a.id - b.id
+  })
+
+  for (const n of orderedNodes) {
     res.push({
       id: n.id,
       name: n.name,
@@ -957,15 +969,6 @@ onMounted(() => {
   background-color: #f9fafb;
 }
 
-.btn-danger {
-  background-color: #ef4444;
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: #dc2626;
-}
-
 .table-container {
   flex: 1;
   overflow: auto;
@@ -992,10 +995,6 @@ onMounted(() => {
 .max-w-240 {
   max-width: 240px;
 }
-
-.text-success { color: #22c55e; }
-.text-primary { color: #3b82f6; }
-.text-danger { color: #ef4444; }
 
 .align-middle { vertical-align: middle; }
 
@@ -1117,28 +1116,8 @@ onMounted(() => {
   max-width: 240px;
 }
 
-.text-green {
-  color: #16a34a;
-}
-
-.text-blue {
-  color: #2563eb;
-}
-
-.text-red {
-  color: #dc2626;
-}
-
 .col-checkbox {
   width: 48px;
-}
-
-.status-enabled {
-  color: #22c55e;
-}
-
-.status-disabled {
-  color: #9ca3af;
 }
 
 .action-cell {

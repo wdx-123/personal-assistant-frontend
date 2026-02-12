@@ -1,0 +1,118 @@
+﻿.console-view .main-content {
+  background: var(--ui-bg-page);
+}
+
+.console-view .search-card,
+.console-view .content-card,
+.console-view .settings-card,
+.console-view .placeholder-content,
+.console-view .dashboard-card {
+  background: var(--ui-bg-card);
+  border: 1px solid var(--ui-border-color);
+  box-shadow: var(--ui-shadow-card);
+}
+
+.console-view .search-card,
+.console-view .content-card,
+.console-view .settings-card,
+.console-view .placeholder-content,
+.console-view .dashboard-card,
+.console-view .dropdown-menu,
+.console-view .modal-content {
+  border-radius: var(--ui-radius-md);
+}
+
+.console-view .data-table th {
+  background: #f7f9fc;
+  color: var(--ui-text-primary);
+  font-weight: 600;
+}
+
+.console-view .data-table td {
+  color: var(--ui-text-secondary);
+}
+
+.console-view .data-table tr:hover {
+  background-color: rgba(22, 119, 255, 0.03);
+}
+
+.console-view .row-expanded {
+  background-color: rgba(22, 119, 255, 0.07);
+}
+
+th.table-col-center,
+td.table-col-center {
+  text-align: center !important;
+}
+
+td.table-col-center .badge {
+  margin: 0 auto;
+}
+
+.table-action-cell {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  outline: 0;
+  padding: 2px 6px;
+  min-height: 24px;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--ui-duration-hover) var(--ui-ease-standard),
+    background-color var(--ui-duration-hover) var(--ui-ease-standard),
+    box-shadow var(--ui-duration-hover) var(--ui-ease-standard);
+}
+
+.table-action-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.22);
+}
+
+.table-action-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.table-action-btn--primary {
+  color: #1677ff;
+}
+
+.table-action-btn--primary:hover {
+  background: var(--ui-primary-soft);
+}
+
+.table-action-btn--danger {
+  color: #dc2626;
+}
+
+.table-action-btn--danger:hover {
+  background: var(--ui-danger-soft);
+}
+
+.table-action-btn--neutral {
+  color: #4b5563;
+}
+
+.table-action-btn--neutral:hover {
+  background: rgba(100, 116, 139, 0.12);
+}
+
+.table-action-btn--success {
+  color: #15803d;
+}
+
+.table-action-btn--success:hover {
+  background: var(--ui-success-soft);
+}

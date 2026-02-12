@@ -93,7 +93,7 @@
               </th>
               <th v-if="getColumnVisible('name')">角色名称</th>
               <th v-if="getColumnVisible('key')">角色标识</th>
-              <th v-if="getColumnVisible('status')">状态</th>
+              <th v-if="getColumnVisible('status')" class="table-col-center">状态</th>
               <th v-if="getColumnVisible('updateTime')">更新时间</th>
               <th v-if="getColumnVisible('action')" class="text-right">操作</th>
             </tr>
@@ -105,24 +105,22 @@
               </td>
               <td v-if="getColumnVisible('name')" :title="role.name">{{ role.name }}</td>
               <td v-if="getColumnVisible('key')" :title="role.key">{{ role.key }}</td>
-              <td v-if="getColumnVisible('status')">
-                <span :class="role.status === 'enabled' ? 'status-enabled' : 'status-disabled'">
-                  {{ role.status === 'enabled' ? '启用' : '禁用' }}
-                </span>
+              <td v-if="getColumnVisible('status')" class="table-col-center">
+                <StatusBadge :status="role.status" />
               </td>
               <td v-if="getColumnVisible('updateTime')" :title="role.updateTime">{{ role.updateTime }}</td>
-              <td v-if="getColumnVisible('action')" class="action-cell">
-                <button @click="openPermissionModal(role)" class="btn-link">
+              <td v-if="getColumnVisible('action')" class="action-cell table-action-cell">
+                <button @click="openPermissionModal(role)" class="table-action-btn table-action-btn--neutral">
                   <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                   修改权限
                 </button>
-                <button @click="openEditModal(role)" class="btn-xs btn-primary">
+                <button @click="openEditModal(role)" class="table-action-btn table-action-btn--primary">
                   编辑
                 </button>
-                <button @click="deleteRole(role.id)" class="btn-xs btn-danger">
+                <button @click="deleteRole(role.id)" class="table-action-btn table-action-btn--danger">
                   删除
                 </button>
               </td>
@@ -373,7 +371,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { message, Confirm, Input } from '@/components/common'
+import { message, Confirm, Input, StatusBadge } from '@/components/common'
 import { getRoleList, createRole, updateRole, deleteRole as deleteRoleApi } from '@/services/permission.service'
 
 const searchQuery = ref({
@@ -1020,15 +1018,6 @@ onMounted(() => {
   background-color: #f9fafb;
 }
 
-.btn-danger {
-  background-color: #ef4444;
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: #dc2626;
-}
-
 .table-container {
   flex: 1;
   overflow: auto;
@@ -1064,35 +1053,11 @@ onMounted(() => {
   width: 48px;
 }
 
-.status-enabled {
-  color: #22c55e;
-}
-
-.status-disabled {
-  color: #9ca3af;
-}
-
 .action-cell {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  color: #3b82f6;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  margin-right: 8px;
-}
-
-.btn-link:hover {
-  color: #1d4ed8;
 }
 
 .empty-cell {

@@ -222,6 +222,10 @@ onBeforeUnmount(() => {
    侧边栏容器
    ============================================ */
 .console-sidebar {
+  --sidebar-width-duration: 250ms;
+  --submenu-duration: var(--ui-duration-expand, 220ms);
+  --sidebar-ease: var(--ui-ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
+
   width: 240px;
   height: 100%;
   background: #f2f3f5;
@@ -232,8 +236,8 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border-right: 1px solid rgba(15, 23, 42, 0.06);
   box-shadow: 1px 0 14px rgba(15, 23, 42, 0.06), 1px 0 4px rgba(15, 23, 42, 0.03);
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width var(--sidebar-width-duration) var(--sidebar-ease),
+              box-shadow var(--sidebar-width-duration) var(--sidebar-ease);
 }
 
 .console-sidebar.collapsed {
@@ -258,8 +262,8 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   position: relative;
   z-index: 1;
-  transition: padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              gap 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: padding var(--sidebar-width-duration) var(--sidebar-ease),
+              gap var(--sidebar-width-duration) var(--sidebar-ease);
 }
 
 /* 收起时 Header：Logo 图标完全居中 */
@@ -290,9 +294,9 @@ onBeforeUnmount(() => {
   font-weight: 600;
   opacity: 1;
   overflow: hidden;
-  transition: opacity 0.15s ease 0.1s, 
-              width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              margin 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.15s ease 0.1s,
+              width var(--sidebar-width-duration) var(--sidebar-ease),
+              margin var(--sidebar-width-duration) var(--sidebar-ease);
 }
 
 /* 收起时文字完全隐藏，不占空间 */
@@ -300,9 +304,9 @@ onBeforeUnmount(() => {
   opacity: 0;
   width: 0;
   margin: 0;
-  transition: opacity 0.1s ease, 
-              width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              margin 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.1s ease,
+              width var(--sidebar-width-duration) var(--sidebar-ease),
+              margin var(--sidebar-width-duration) var(--sidebar-ease);
 }
 
 /* ============================================
@@ -436,10 +440,10 @@ onBeforeUnmount(() => {
   max-height: 0;
   opacity: 0;
   pointer-events: none;
-  transition: max-height 0.22s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.22s ease,
-              margin 0.22s ease,
-              padding 0.22s ease;
+  transition: max-height var(--submenu-duration) var(--sidebar-ease),
+              opacity var(--submenu-duration) ease,
+              margin var(--submenu-duration) ease,
+              padding var(--submenu-duration) ease;
 }
 
 .submenu.open {
@@ -448,10 +452,10 @@ onBeforeUnmount(() => {
   margin-top: 4px;
   padding: 6px;
   pointer-events: auto;
-  transition: max-height 0.22s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.22s ease,
-              margin 0.22s ease,
-              padding 0.22s ease;
+  transition: max-height var(--submenu-duration) var(--sidebar-ease),
+              opacity var(--submenu-duration) ease,
+              margin var(--submenu-duration) ease,
+              padding var(--submenu-duration) ease;
 }
 
 .collapsed .submenu {

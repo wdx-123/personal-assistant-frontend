@@ -94,7 +94,7 @@
               <th v-if="getColumnVisible('path')">API 路径</th>
               <th v-if="getColumnVisible('description')">API 详情</th>
               <th v-if="getColumnVisible('method')">API 方法</th>
-              <th v-if="getColumnVisible('status')">状态</th>
+              <th v-if="getColumnVisible('status')" class="table-col-center">状态</th>
               <th v-if="getColumnVisible('action')" class="text-right">操作</th>
             </tr>
           </thead>
@@ -106,16 +106,14 @@
               <td v-if="getColumnVisible('path')" :title="api.path">{{ api.path }}</td>
               <td v-if="getColumnVisible('description')" :title="api.description">{{ api.description }}</td>
               <td v-if="getColumnVisible('method')" :title="api.method || '-'">{{ api.method || '-' }}</td>
-              <td v-if="getColumnVisible('status')">
-                <span :class="api.status === 'enabled' ? 'status-enabled' : 'status-disabled'">
-                  {{ api.status === 'enabled' ? '启用' : '禁用' }}
-                </span>
+              <td v-if="getColumnVisible('status')" class="table-col-center">
+                <StatusBadge :status="api.status" />
               </td>
-              <td v-if="getColumnVisible('action')" class="action-cell">
-                <button @click="openEditModal(api)" class="btn-xs btn-primary">
+              <td v-if="getColumnVisible('action')" class="action-cell table-action-cell">
+                <button @click="openEditModal(api)" class="table-action-btn table-action-btn--primary">
                   编辑
                 </button>
-                <button @click="deleteApi(api.id)" class="btn-xs btn-danger">
+                <button @click="deleteApi(api.id)" class="table-action-btn table-action-btn--danger">
                   删除
                 </button>
               </td>
@@ -266,7 +264,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { message, Confirm, Input } from '@/components/common'
+import { message, Confirm, Input, StatusBadge } from '@/components/common'
 import { getApiList, createApi, updateApi, deleteApi as deleteApiService } from '@/services/permission.service'
 
 const searchQuery = ref({
@@ -760,15 +758,6 @@ onMounted(() => {
   background-color: #f9fafb;
 }
 
-.btn-danger {
-  background-color: #ef4444;
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: #dc2626;
-}
-
 .table-container {
   flex: 1;
   overflow: auto;
@@ -804,35 +793,11 @@ onMounted(() => {
   width: 48px;
 }
 
-.status-enabled {
-  color: #22c55e;
-}
-
-.status-disabled {
-  color: #9ca3af;
-}
-
 .action-cell {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  color: #3b82f6;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  margin-right: 8px;
-}
-
-.btn-link:hover {
-  color: #1d4ed8;
 }
 
 .empty-cell {
