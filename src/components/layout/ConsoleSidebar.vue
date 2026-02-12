@@ -113,24 +113,79 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+const SUBMENU_CLOSE_MS = 220;
+const SIDEBAR_WIDTH_MS = 250;
+
 const isCollapsed = ref(false);
+const targetCollapsed = ref(false);
+const submenuForceClosed = ref(false);
+const transitionEpoch = ref(0);
 const openSubmenus = ref<Set<string>>(new Set(['permission'])); // 默认展开权限管理
 const route = useRoute();
 const router = useRouter();
+const timerIds: number[] = [];
+
+const clearTimers = () => {
+  while (timerIds.length > 0) {
+    const timerId = timerIds.pop();
+    if (timerId !== undefined) {
+      window.clearTimeout(timerId);
+    }
+  }
+};
+
+const scheduleWithEpoch = (epoch: number, delay: number, cb: () => void) => {
+  const timerId = window.setTimeout(() => {
+    const timerIndex = timerIds.indexOf(timerId);
+    if (timerIndex >= 0) {
+      timerIds.splice(timerIndex, 1);
+    }
+
+    if (transitionEpoch.value !== epoch) {
+      return;
+    }
+    cb();
+  }, delay);
+  timerIds.push(timerId);
+};
+
+const setCollapsedTarget = (next: boolean) => {
+  targetCollapsed.value = next;
+  transitionEpoch.value += 1;
+  const epoch = transitionEpoch.value;
+  clearTimers();
+
+  if (next) {
+    // Step 1: 先收子菜单（保留 openSubmenus 记忆）
+    submenuForceClosed.value = true;
+    // Step 2: 子菜单收起后再收窄侧边栏
+    scheduleWithEpoch(epoch, SUBMENU_CLOSE_MS, () => {
+      isCollapsed.value = true;
+    });
+    return;
+  }
+
+  // Step 1: 先展开侧边栏宽度
+  isCollapsed.value = false;
+  // Step 2: 宽度展开后再按记忆恢复子菜单显示
+  scheduleWithEpoch(epoch, SIDEBAR_WIDTH_MS, () => {
+    submenuForceClosed.value = false;
+  });
+};
 
 // 切换侧边栏收起/展开
 const toggleCollapse = () => {
-  isCollapsed.value = !isCollapsed.value;
+  setCollapsedTarget(!targetCollapsed.value);
 };
 
 // 切换子菜单展开/收起
 const toggleSubmenu = (key: string) => {
   // 如果侧边栏是收起状态，先展开侧边栏
-  if (isCollapsed.value) {
-    isCollapsed.value = false;
+  if (targetCollapsed.value) {
+    setCollapsedTarget(false);
   }
   
   // 切换子菜单状态
@@ -143,7 +198,7 @@ const toggleSubmenu = (key: string) => {
 
 // 检查子菜单是否展开
 const isSubmenuOpen = (key: string) => {
-  return openSubmenus.value.has(key) && !isCollapsed.value;
+  return openSubmenus.value.has(key) && !isCollapsed.value && !submenuForceClosed.value;
 };
 
 // 路由跳转
@@ -155,6 +210,11 @@ const navigateTo = (path: string) => {
 const isActive = (path: string) => {
   return route.path.startsWith(path);
 };
+
+onBeforeUnmount(() => {
+  transitionEpoch.value += 1;
+  clearTimers();
+});
 </script>
 
 <style scoped>
@@ -170,12 +230,15 @@ const isActive = (path: string) => {
   flex-direction: column;
   flex-shrink: 0;
   overflow: hidden;
-  box-shadow: 1px 0 24px rgba(0, 0, 0, 0.06), 1px 0 8px rgba(0, 0, 0, 0.04);
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-right: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 1px 0 14px rgba(15, 23, 42, 0.06), 1px 0 4px rgba(15, 23, 42, 0.03);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .console-sidebar.collapsed {
   width: 64px;
+  box-shadow: none;
 }
 
 /* ============================================
@@ -195,13 +258,12 @@ const isActive = (path: string) => {
   white-space: nowrap;
   position: relative;
   z-index: 1;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              gap 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 收起时 Header：Logo 图标完全居中 */
 .collapsed .sidebar-header {
-  padding: 0;
-  justify-content: center;
   gap: 0;
 }
 
@@ -258,20 +320,6 @@ const isActive = (path: string) => {
   position: relative;
 }
 
-/* 激活指示器 - 左边蓝条（收起时也能看到） */
-.menu-item.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 24px;
-  background: #1890ff;
-  border-radius: 0 3px 3px 0;
-  box-shadow: 0 0 8px rgba(24, 144, 255, 0.4);
-}
-
 .menu-title {
   margin: 0 8px;
   padding: 0 12px;
@@ -283,14 +331,17 @@ const isActive = (path: string) => {
   font-size: 14px;
   justify-content: space-between;
   border-radius: 8px;
-  transition: all 0.2s ease;
+  position: relative;
+  transition: margin 0.2s ease,
+              padding 0.2s ease,
+              color 0.2s ease,
+              background-color 0.2s ease;
 }
 
 /* 收起时菜单项居中 */
 .collapsed .menu-title {
   margin: 0 8px;
-  padding: 0;
-  justify-content: center;
+  padding: 0 14px;
 }
 
 .menu-title:hover {
@@ -302,6 +353,20 @@ const isActive = (path: string) => {
   background: rgba(24, 144, 255, 0.1);
   color: #1890ff;
   font-weight: 500;
+}
+
+/* 激活指示器 - 固定挂在菜单标题行，避免父项展开后错位 */
+.menu-item.active > .menu-title::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background: #1890ff;
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 8px rgba(24, 144, 255, 0.4);
 }
 
 .title-content {
@@ -365,72 +430,81 @@ const isActive = (path: string) => {
 .submenu {
   background: rgba(0, 0, 0, 0.03);
   margin: 0 8px;
-  border-radius: 8px;
+  padding: 0 6px;
+  border-radius: 10px;
   overflow: hidden;
   max-height: 0;
   opacity: 0;
-  transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.2s ease,
-              margin 0.2s ease;
+  pointer-events: none;
+  transition: max-height 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.22s ease,
+              margin 0.22s ease,
+              padding 0.22s ease;
 }
 
 .submenu.open {
-  max-height: 200px;
+  max-height: 220px;
   opacity: 1;
   margin-top: 4px;
-  transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.2s ease 0.05s,
-              margin 0.2s ease;
+  padding: 6px;
+  pointer-events: auto;
+  transition: max-height 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.22s ease,
+              margin 0.22s ease,
+              padding 0.22s ease;
 }
 
 .collapsed .submenu {
-  max-height: 0 !important;
-  opacity: 0 !important;
-  margin: 0 8px !important;
+  max-height: 0;
+  opacity: 0;
+  margin: 0 8px;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
 }
 
 .submenu-item {
-  padding: 0 12px 0 44px;
-  height: 38px;
+  padding: 0 12px 0 12px;
+  height: 34px;
+  margin: 2px 0;
+  border-radius: 9px;
+  border: 1px solid transparent;
   display: flex;
   align-items: center;
+  gap: 7px;
   cursor: pointer;
   color: #595959;
   font-size: 13px;
-  position: relative;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.submenu-item:first-child {
-  padding-top: 4px;
-}
-
-.submenu-item:last-child {
-  padding-bottom: 4px;
+.submenu-item::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: transparent;
+  flex-shrink: 0;
+  transform: scale(0.8);
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .submenu-item:hover {
   color: #1890ff;
-  background-color: rgba(24, 144, 255, 0.08);
+  background-color: rgba(24, 144, 255, 0.06);
 }
 
 .submenu-item.active {
-  color: #1890ff;
-  background: rgba(24, 144, 255, 0.12);
+  color: #1677ff;
+  background: rgba(24, 144, 255, 0.1);
+  border-color: rgba(24, 144, 255, 0.18);
   font-weight: 500;
 }
 
-/* 子菜单激活指示器 */
+/* 子菜单激活指示器（预留位置，避免激活时文字位移） */
 .submenu-item.active::before {
-  content: '';
-  position: absolute;
-  left: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 6px;
-  height: 6px;
-  background: #1890ff;
-  border-radius: 50%;
+  background: #1677ff;
+  transform: scale(1);
 }
 
 /* ============================================
@@ -440,7 +514,8 @@ const isActive = (path: string) => {
   height: 48px;
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  justify-content: center;
+  padding: 0 12px;
   cursor: pointer;
   box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.04);
   color: #8c8c8c;
@@ -449,13 +524,17 @@ const isActive = (path: string) => {
   background: #fff;
   position: relative;
   z-index: 1;
-  transition: all 0.2s ease;
+  transition: padding 0.2s ease,
+              gap 0.2s ease,
+              color 0.2s ease,
+              background-color 0.2s ease;
 }
 
 /* 收起时底部居中 */
 .collapsed .sidebar-footer {
   justify-content: center;
   padding: 0;
+  gap: 0;
 }
 
 .sidebar-footer:hover {
@@ -475,7 +554,9 @@ const isActive = (path: string) => {
 }
 
 .footer-text {
+  display: inline-block;
   opacity: 1;
+  overflow: hidden;
   white-space: nowrap;
   transition: opacity 0.15s ease 0.1s;
 }
