@@ -92,18 +92,6 @@ const routes: RouteRecordRaw[] = [
           }
         ]
       },
-      // {
-      //   path: "user",
-      //   name: "ConsoleUser",
-      //   component: () => import("@/views/Console/UserManagement.vue"),
-      //   meta: { title: "控制台 - 人员管理" }
-      // },
-      // {
-      //   path: "org",
-      //   name: "ConsoleOrg",
-      //   component: () => import("@/views/Console/OrgManagement.vue"),
-      //   meta: { title: "控制台 - 组织管理" }
-      // },
       {
         path: "team",
         name: "ConsoleTeam",

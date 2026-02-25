@@ -1,644 +1,373 @@
 <template>
   <div class="page-container">
-    <div class="search-card">
-      <div class="form-group">
-        <label class="form-label">角色名称:</label>
-        <Input
-          v-model="searchQuery.roleName"
-          placeholder="请输入"
-          @keydown.enter="search"
-          class="search-input"
-        />
-      </div>
-      <div class="form-group">
-        <label class="form-label">状态:</label>
-        <select
-          v-model="searchQuery.status"
-          class="form-select status-select"
-        >
-          <option value="">请选择</option>
-          <option value="enabled">启用</option>
-          <option value="disabled">禁用</option>
-        </select>
-      </div>
-      <button @click="search" class="btn btn-primary">
-        <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        搜索
-      </button>
-      <button @click="resetSearch" class="btn btn-secondary">
-        <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        重置
-      </button>
-    </div>
+    <a-card :bordered="false" class="search-card" :body-style="{ padding: '24px 24px 0 24px' }">
+      <a-form layout="inline" :model="searchQuery" class="search-form">
+        <a-form-item label="角色名称" name="roleName">
+          <a-input
+            v-model:value="searchQuery.roleName"
+            placeholder="请输入角色名称"
+            allow-clear
+            @pressEnter="search"
+          >
+            <template #prefix>
+              <SearchOutlined style="color: rgba(0, 0, 0, 0.25)" />
+            </template>
+          </a-input>
+        </a-form-item>
+        <a-form-item label="状态" name="status">
+          <a-select
+            v-model:value="searchQuery.status"
+            placeholder="请选择状态"
+            style="width: 150px"
+            allow-clear
+          >
+            <a-select-option value="enabled">启用</a-select-option>
+            <a-select-option value="disabled">禁用</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item>
+          <a-space>
+            <a-button type="primary" @click="search" class="btn-search">
+              <template #icon><SearchOutlined /></template>
+              搜索
+            </a-button>
+            <a-button @click="resetSearch" class="btn-reset">
+              <template #icon><ReloadOutlined /></template>
+              重置
+            </a-button>
+          </a-space>
+        </a-form-item>
+      </a-form>
+    </a-card>
 
-    <div class="content-card">
+    <a-card :bordered="false" class="content-card">
       <div class="toolbar">
-        <button
-          @click="batchDelete"
-          :disabled="selectedIds.length === 0"
-          :class="['btn', selectedIds.length > 0 ? 'btn-danger-light' : 'btn-disabled']"
-        >
-          批量删除 ({{ selectedIds.length }})
-        </button>
-        <div class="toolbar-actions">
-          <button @click="openEditModal()" class="btn btn-primary">
-            新增角色管理
-          </button>
-          <button @click="refresh" class="btn btn-secondary">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            刷新
-          </button>
-          <div class="dropdown-container">
-            <button @click="toggleColumnFilter" class="btn btn-secondary">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              列筛选
-            </button>
-            <div v-if="isColumnFilterOpen" class="dropdown-menu animate-fade-in">
-              <div class="dropdown-header">
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="isAllSelected" class="checkbox-input" />
-                  <span>全选</span>
-                </label>
-              </div>
-              <div class="dropdown-body">
-                <label v-for="col in tempColumns" :key="col.key" class="checkbox-label">
-                  <input type="checkbox" v-model="col.visible" class="checkbox-input" />
-                  <span>{{ col.label }}</span>
-                </label>
-              </div>
-              <div class="dropdown-footer">
-                <button @click="closeColumnFilter" class="btn-xs btn-default">取消</button>
-                <button @click="applyColumnFilter" class="btn-xs btn-primary">筛选</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <a-space>
+          <a-button type="primary" @click="openEditModal()">
+            <template #icon><PlusOutlined /></template>
+            新增角色
+          </a-button>
+          <a-button
+            danger
+            :disabled="!hasSelected"
+            @click="batchDelete"
+          >
+            <template #icon><DeleteOutlined /></template>
+            批量删除
+          </a-button>
+        </a-space>
+        <a-space>
+          <a-tooltip title="刷新">
+            <a-button type="text" shape="circle" @click="refresh">
+              <template #icon><ReloadOutlined /></template>
+            </a-button>
+          </a-tooltip>
+        </a-space>
       </div>
 
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th class="col-checkbox">
-                <input type="checkbox" v-model="isAllSelectedRows" class="checkbox-input" />
-              </th>
-              <th v-if="getColumnVisible('name')">角色名称</th>
-              <th v-if="getColumnVisible('key')">角色标识</th>
-              <th v-if="getColumnVisible('status')">状态</th>
-              <th v-if="getColumnVisible('updateTime')">更新时间</th>
-              <th v-if="getColumnVisible('action')" class="text-right">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="role in paginatedRoles" :key="role.id">
-              <td>
-                <input type="checkbox" :checked="selectedIds.includes(role.id)" @change="toggleSelection(role.id)" class="checkbox-input" />
-              </td>
-              <td v-if="getColumnVisible('name')" :title="role.name">{{ role.name }}</td>
-              <td v-if="getColumnVisible('key')" :title="role.key">{{ role.key }}</td>
-              <td v-if="getColumnVisible('status')">
-                <span :class="role.status === 'enabled' ? 'status-enabled' : 'status-disabled'">
-                  {{ role.status === 'enabled' ? '启用' : '禁用' }}
-                </span>
-              </td>
-              <td v-if="getColumnVisible('updateTime')" :title="role.updateTime">{{ role.updateTime }}</td>
-              <td v-if="getColumnVisible('action')" class="action-cell">
-                <button @click="openPermissionModal(role)" class="btn-link">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  修改权限
-                </button>
-                <button @click="openEditModal(role)" class="btn-xs btn-primary">
-                  编辑
-                </button>
-                <button @click="deleteRole(role.id)" class="btn-xs btn-danger">
-                  删除
-                </button>
-              </td>
-            </tr>
-            <tr v-if="paginatedRoles.length === 0">
-              <td :colspan="visibleColumnCount + 1" class="empty-cell">
-                暂无数据
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="pagination">
-        <span>共 {{ totalRoles }} 条数据</span>
-        <div class="page-controls">
-          <button
-            class="page-btn"
-            :disabled="currentPage === 1"
-            @click="changePage(currentPage - 1)"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <button
-            v-for="page in totalPages"
-            :key="page"
-            @click="changePage(page)"
-            :class="['page-number', currentPage === page ? 'active' : '']"
-          >
-            {{ page }}
-          </button>
-          <button
-            class="page-btn"
-            :disabled="currentPage === totalPages || totalPages === 0"
-            @click="changePage(currentPage + 1)"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-        <select
-          v-model.number="pageSize"
-          class="page-size-select"
-        >
-          <option :value="20">20 / page</option>
-          <option :value="50">50 / page</option>
-          <option :value="100">100 / page</option>
-        </select>
-      </div>
-    </div>
-
-    <div v-if="isEditModalOpen" class="modal-overlay">
-      <div class="modal-content animate-fade-in">
-        <div class="modal-header">
-          <h3>{{ modalType === 'add' ? '新增角色管理' : '编辑角色管理' }}</h3>
-          <div class="modal-close">
-            <button class="icon-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-              </svg>
-            </button>
-            <button @click="closeEditModal" class="icon-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div class="modal-body">
-          <div class="form-row">
-            <label class="form-label required">名称：</label>
-            <div class="input-wrapper">
-              <Input
-                v-model="editingRole.name"
-                placeholder="请输入"
-                clearable
-                class="full-width"
-              />
-            </div>
-          </div>
-          <div class="form-row">
-            <label class="form-label required">角色标识：</label>
-            <div class="input-wrapper">
-              <Input
-                v-model="editingRole.key"
-                placeholder="请输入"
-                clearable
-                class="full-width"
-              />
-            </div>
-          </div>
-          <div class="form-row" v-if="modalType === 'add'">
-            <label class="form-label">描述：</label>
-            <div class="input-wrapper">
-              <Input
-                v-model="editingRole.desc"
-                placeholder="请输入"
-                clearable
-                class="full-width"
-              />
-            </div>
-          </div>
-          <div class="form-row" v-else>
-            <label class="form-label">状态：</label>
-            <div class="input-wrapper">
-              <select
-                v-model="editingRole.status"
-                class="form-select full-width"
+      <a-table
+        :columns="columns"
+        :data-source="roles"
+        :pagination="pagination"
+        :row-selection="{ selectedRowKeys: selectedIds, onChange: onSelectChange }"
+        row-key="id"
+        @change="handleTableChange"
+        :loading="loading"
+        size="middle"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'status'">
+            <a-tag :color="record.status === 'enabled' ? 'success' : 'error'">
+              {{ record.status === 'enabled' ? '启用' : '禁用' }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'action'">
+            <div class="action-buttons">
+              <a-button type="link" size="small" class="btn-permission" @click="openPermissionModal(record)">
+                <template #icon><SettingOutlined /></template>
+                修改权限
+              </a-button>
+              <a-button type="primary" size="small" class="btn-edit" @click="openEditModal(record)">
+                编辑
+              </a-button>
+              <a-popconfirm
+                title="确认删除该角色吗？"
+                @confirm="deleteRole(record.id)"
+                ok-text="确定"
+                cancel-text="取消"
               >
-                <option value="enabled">启用</option>
-                <option value="disabled">禁用</option>
-              </select>
+                <a-button type="primary" danger size="small" class="btn-delete">
+                  删除
+                </a-button>
+              </a-popconfirm>
             </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="closeEditModal" class="btn btn-secondary">取消</button>
-          <button @click="saveRole" class="btn btn-primary">{{ modalType === 'add' ? '新增' : '更新' }}</button>
-        </div>
-      </div>
-    </div>
+          </template>
+        </template>
+      </a-table>
+    </a-card>
 
-    <div v-if="isPermissionModalOpen" class="modal-overlay">
-      <div class="modal-content large-modal animate-fade-in">
-        <div class="modal-header">
-          <div class="modal-title-wrapper">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon text-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <h3>修改权限 - {{ permissionRole.name }}</h3>
-          </div>
-          <button @click="closePermissionModal" class="icon-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div class="permission-body">
-          <div class="permission-panel">
-            <div class="panel-header">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon text-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              <span>功能权限</span>
-            </div>
-            <div class="panel-content custom-scrollbar">
-              <div v-for="item in functionalPermissions" :key="item.id" class="permission-item">
-                <div class="permission-row">
-                  <button v-if="item.children && item.children.length" @click="item.expanded = !item.expanded" class="expand-btn">
-                    <svg :class="['icon-sm transition-transform', item.expanded ? 'rotate-90' : '']" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                  <div v-else style="width: 16px; height: 16px;"></div>
-                  <label class="checkbox-label">
-                    <input type="checkbox" :checked="isMenuChecked(item.id)" @change="toggleMenuSelection(item)" class="checkbox-input" />
-                    <span>{{ item.label }}</span>
-                  </label>
-                </div>
-                <div v-if="item.children && item.expanded" class="permission-children">
-                  <div v-for="child in item.children" :key="child.id" class="permission-item">
-                    <div class="permission-row">
-                      <button v-if="child.children && child.children.length" @click="child.expanded = !child.expanded" class="expand-btn">
-                        <svg :class="['icon-sm transition-transform', child.expanded ? 'rotate-90' : '']" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </button>
-                      <div v-else style="width: 16px; height: 16px;"></div>
-                      <label class="checkbox-label">
-                        <input type="checkbox" :checked="isMenuChecked(child.id)" @change="toggleMenuSelection(child)" class="checkbox-input" />
-                        <span>{{ child.label }}</span>
-                      </label>
-                    </div>
-                    <div v-if="child.children && child.expanded" class="permission-children">
-                      <div v-for="grandChild in child.children" :key="grandChild.id" class="permission-child">
-                        <label class="checkbox-label">
-                          <input type="checkbox" :checked="isMenuChecked(grandChild.id)" @change="toggleMenuSelection(grandChild)" class="checkbox-input" />
-                          <span>{{ grandChild.label }}</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="permission-panel">
-            <div class="panel-header">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon text-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              <span>数据权限</span>
-            </div>
-            <div class="panel-content custom-scrollbar">
-              <div v-for="item in dataPermissions" :key="item.id" class="permission-item">
-                <div class="permission-row">
-                  <button v-if="item.children && item.children.length" @click="item.expanded = !item.expanded" class="expand-btn">
-                    <svg :class="['icon-sm transition-transform', item.expanded ? 'rotate-90' : '']" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                  <div v-else style="width: 16px; height: 16px;"></div>
-                  <label class="checkbox-label">
-                    <input type="checkbox" :checked="isApiChecked(item.id)" @change="toggleApiSelection(item)" class="checkbox-input" />
-                    <span>{{ item.label }}</span>
-                  </label>
-                </div>
-                <div v-if="item.children && item.expanded" class="permission-children">
-                  <div v-for="child in item.children" :key="child.id" class="permission-item">
-                    <div class="permission-row">
-                      <button v-if="child.children && child.children.length" @click="child.expanded = !child.expanded" class="expand-btn">
-                        <svg :class="['icon-sm transition-transform', child.expanded ? 'rotate-90' : '']" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </button>
-                      <div v-else style="width: 16px; height: 16px;"></div>
-                      <label class="checkbox-label">
-                        <input type="checkbox" :checked="isApiChecked(child.id)" @change="toggleApiSelection(child)" class="checkbox-input" />
-                        <span>{{ child.label }}</span>
-                      </label>
-                    </div>
-                    <div v-if="child.children && child.expanded" class="permission-children">
-                      <div v-for="grandChild in child.children" :key="grandChild.id" class="permission-child">
-                        <label class="checkbox-label">
-                          <input type="checkbox" :checked="isApiChecked(grandChild.id)" @change="toggleApiSelection(grandChild)" class="checkbox-input" />
-                          <span>{{ grandChild.label }}</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="closePermissionModal" class="btn btn-secondary">Cancel</button>
-          <button @click="savePermission" class="btn btn-primary">OK</button>
-        </div>
+    <!-- 编辑/新增 模态框 -->
+    <a-modal
+      v-model:open="isEditModalOpen"
+      :title="modalType === 'add' ? '新增角色' : '编辑角色'"
+      @ok="saveRole"
+      :confirmLoading="modalLoading"
+      :maskClosable="false"
+    >
+      <a-form :model="editingRole" layout="vertical" ref="roleFormRef">
+        <a-form-item label="角色名称" required name="name">
+          <a-input v-model:value="editingRole.name" placeholder="请输入角色名称" />
+        </a-form-item>
+        <a-form-item label="角色标识" required name="key">
+          <a-input v-model:value="editingRole.key" placeholder="请输入角色标识 (如: admin)" />
+        </a-form-item>
+        <a-form-item label="描述" name="desc">
+          <a-textarea v-model:value="editingRole.desc" placeholder="请输入角色描述" :rows="3" />
+        </a-form-item>
+        <a-form-item label="状态" name="status">
+          <a-radio-group v-model:value="editingRole.status">
+            <a-radio value="enabled">启用</a-radio>
+            <a-radio value="disabled">禁用</a-radio>
+          </a-radio-group>
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- 权限设置 模态框 -->
+    <a-modal
+      v-model:open="isPermissionModalOpen"
+      :title="`修改权限 - ${permissionRole.name}`"
+      width="800px"
+      @ok="savePermission"
+      :maskClosable="false"
+    >
+      <div class="permission-container">
+        <a-row :gutter="24">
+          <a-col :span="12">
+            <a-card title="功能权限" size="small" :bordered="true">
+              <a-tree
+                v-model:checkedKeys="selectedMenuIds"
+                checkable
+                defaultExpandAll
+                :tree-data="functionalPermissions"
+                :fieldNames="{ children: 'children', title: 'label', key: 'id' }"
+                :height="400"
+              />
+            </a-card>
+          </a-col>
+          <a-col :span="12">
+            <a-card title="数据权限" size="small" :bordered="true">
+              <a-tree
+                v-model:checkedKeys="selectedApiIds"
+                checkable
+                defaultExpandAll
+                :tree-data="dataPermissions"
+                :fieldNames="{ children: 'children', title: 'label', key: 'id' }"
+                :height="400"
+              />
+            </a-card>
+          </a-col>
+        </a-row>
       </div>
-    </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { message, Confirm, Input } from '@/components/common'
+import { message, Modal } from 'ant-design-vue'
+import { 
+  SearchOutlined, 
+  ReloadOutlined, 
+  PlusOutlined, 
+  DeleteOutlined, 
+  SettingOutlined 
+} from '@ant-design/icons-vue'
 import { getRoleList, createRole, updateRole, deleteRole as deleteRoleApi } from '@/services/permission.service'
 
-const searchQuery = ref({
+const searchQuery = reactive({
   roleName: '',
-  status: ''
+  status: undefined as string | undefined
 })
 
-const columns = ref([
-  { key: 'name', label: '角色名称', visible: true },
-  { key: 'key', label: '角色标识', visible: true },
-  { key: 'status', label: '状态', visible: true },
-  { key: 'updateTime', label: '更新时间', visible: true },
-  { key: 'action', label: '操作', visible: true }
-])
+const columns = [
+  { title: '角色名称', dataIndex: 'name', key: 'name', width: 200 },
+  { title: '角色标识', dataIndex: 'key', key: 'key', width: 150 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
+  { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 180 },
+  { title: '操作', key: 'action', width: 280, align: 'center', fixed: 'right' as const }
+]
 
-const isColumnFilterOpen = ref(false)
-const tempColumns = ref<any[]>([])
-
-const toggleColumnFilter = () => {
-  if (!isColumnFilterOpen.value) {
-    tempColumns.value = JSON.parse(JSON.stringify(columns.value))
-  }
-  isColumnFilterOpen.value = !isColumnFilterOpen.value
-}
-
-const closeColumnFilter = () => {
-  isColumnFilterOpen.value = false
-}
-
-const isAllSelected = computed({
-  get: () => tempColumns.value.every(c => c.visible),
-  set: (val) => tempColumns.value.forEach(c => c.visible = val)
+const roles = ref<any[]>([])
+const loading = ref(false)
+const pagination = reactive({
+  current: 1,
+  pageSize: 10,
+  total: 0,
+  showSizeChanger: true,
+  showQuickJumper: false,
+  showTotal: (total: number) => `共 ${total} 条`
 })
 
-const applyColumnFilter = () => {
-  columns.value = JSON.parse(JSON.stringify(tempColumns.value))
-  closeColumnFilter()
-}
-
-const getColumnVisible = (key: string) => {
-  const col = columns.value.find(c => c.key === key)
-  return col ? col.visible : true
-}
-const visibleColumnCount = computed(() => columns.value.filter(c => c.visible).length)
-
-type RoleStatus = 'enabled' | 'disabled'
-interface RoleRow {
-  id: number
-  name: string
-  key: string
-  status: RoleStatus
-  updateTime: string
-  desc?: string
-}
-
-interface PermissionNode {
-  id: number
-  label: string
-  expanded?: boolean
-  children?: PermissionNode[]
-}
-
-const roles = ref<RoleRow[]>([])
-const totalRoles = ref(0)
-const allRoles = ref<RoleRow[]>([])
-
-const currentPage = ref(1)
-const pageSize = ref(20)
-
-const paginatedRoles = computed(() => {
-  return roles.value
-})
-
-const totalPages = computed(() => Math.ceil(totalRoles.value / pageSize.value))
-
-// 获取角色列表
 const fetchRoles = async () => {
+  loading.value = true
   try {
     const params = {
-      page: currentPage.value,
-      page_size: pageSize.value,
-      keyword: searchQuery.value.roleName || undefined,
-      status: searchQuery.value.status === 'enabled' ? 1 : (searchQuery.value.status === 'disabled' ? 0 : undefined)
+      page: pagination.current,
+      page_size: pagination.pageSize,
+      keyword: searchQuery.roleName || undefined,
+      status: searchQuery.status === 'enabled' ? 1 : (searchQuery.status === 'disabled' ? 0 : undefined)
     }
     
     const data = await getRoleList(params, { skipSuccTip: true })
-    console.log(data)
     if (data) {
       roles.value = data.list.map((item: any) => ({
         id: item.id,
         name: item.name,
         key: item.code,
         status: item.status === 1 ? 'enabled' : 'disabled',
-        updateTime: item.updated_at || '',
-        desc: item.desc
+        updateTime: item.updated_at || '-',
+        desc: item.desc || '-'
       }))
-      totalRoles.value = data.total
+      pagination.total = data.total
     }
   } catch (error) {
     console.error('Failed to fetch roles:', error)
+  } finally {
+    loading.value = false
   }
 }
 
-const applySearch = () => {
+const handleTableChange = (pag: any) => {
+  pagination.current = pag.current
+  pagination.pageSize = pag.pageSize
   fetchRoles()
 }
 
 const search = () => {
-  currentPage.value = 1
+  pagination.current = 1
   fetchRoles()
 }
 
 const resetSearch = () => {
-  searchQuery.value.roleName = ''
-  searchQuery.value.status = ''
-  currentPage.value = 1
-  selectedIds.value = []
-  fetchRoles()
+  searchQuery.roleName = ''
+  searchQuery.status = undefined
+  search()
 }
 
 const refresh = () => {
-  selectedIds.value = []
   fetchRoles()
   message.success('已刷新角色数据')
 }
 
+// Selection
 const selectedIds = ref<number[]>([])
-
-const isAllSelectedRows = computed({
-  get: () => paginatedRoles.value.length > 0 && paginatedRoles.value.every(r => selectedIds.value.includes(r.id)),
-  set: (val) => {
-    const currentIds = paginatedRoles.value.map(r => r.id)
-    if (val) {
-      selectedIds.value = Array.from(new Set([...selectedIds.value, ...currentIds]))
-    } else {
-      selectedIds.value = selectedIds.value.filter(id => !currentIds.includes(id))
-    }
-  }
-})
-
-const toggleSelection = (id: number) => {
-  const idx = selectedIds.value.indexOf(id)
-  if (idx === -1) selectedIds.value.push(id)
-  else selectedIds.value.splice(idx, 1)
+const hasSelected = computed(() => selectedIds.value.length > 0)
+const onSelectChange = (selectedRowKeys: number[]) => {
+  selectedIds.value = selectedRowKeys
 }
 
-const batchDelete = async () => {
-  if (selectedIds.value.length === 0) {
-    message.warning('请选择要删除的角色')
-    return
-  }
-  try {
-    await Confirm({
-      title: '确认删除',
-      content: '确认删除选中的角色吗？',
-      type: 'warning',
-      okText: '删除',
-      cancelText: '取消'
-    })
-    
-    // 循环调用删除接口
-    await Promise.all(selectedIds.value.map(id => deleteRoleApi(id)))
-    
-    message.success('批量删除成功')
-    fetchRoles()
-    selectedIds.value = []
-  } catch (error) {
-    if (error) console.error(error)
-  }
+const batchDelete = () => {
+  Modal.confirm({
+    title: '确认删除',
+    content: `确认删除选中的 ${selectedIds.value.length} 个角色吗？此操作不可恢复。`,
+    okText: '确认',
+    cancelText: '取消',
+    okType: 'danger',
+    onOk: async () => {
+      try {
+        await Promise.all(selectedIds.value.map(id => deleteRoleApi(id)))
+        message.success('批量删除成功')
+        selectedIds.value = []
+        fetchRoles()
+      } catch (error) {
+        console.error(error)
+      }
+    }
+  })
 }
 
 const deleteRole = async (id: number) => {
   try {
-    await Confirm({
-      title: '确认删除',
-      content: '确认删除该角色吗？',
-      type: 'warning',
-      okText: '删除',
-      cancelText: '取消'
-    })
-    
     await deleteRoleApi(id, { skipSuccTip: true })
     message.success('删除成功')
-    
     fetchRoles()
-    selectedIds.value = selectedIds.value.filter(i => i !== id)
-  } catch (error) {
-    if (error) console.error(error)
-  }
-}
-
-const isEditModalOpen = ref(false)
-const modalType = ref<'add' | 'edit'>('add')
-const editingRole = reactive({
-  id: 0,
-  name: '',
-  key: '',
-  status: 'enabled' as RoleStatus,
-  desc: ''
-})
-
-const openEditModal = (role?: RoleRow) => {
-  if (role) {
-    modalType.value = 'edit'
-    Object.assign(editingRole, role)
-  } else {
-    modalType.value = 'add'
-    Object.assign(editingRole, { id: 0, name: '', key: '', status: 'enabled' as RoleStatus, desc: '' })
-  }
-  isEditModalOpen.value = true
-}
-
-const closeEditModal = () => {
-  isEditModalOpen.value = false
-}
-
-const saveRole = async () => {
-  const name = editingRole.name.trim()
-  const key = editingRole.key.trim()
-  if (!name || !key) {
-    message.warning('请填写完整的角色信息')
-    return
-  }
-  
-  try {
-    if (modalType.value === 'add') {
-      await createRole({
-        name,
-        code: key,
-        desc: editingRole.desc
-      }, { skipSuccTip: true })
-    } else {
-      await updateRole(editingRole.id, {
-        name,
-        code: key,
-        status: editingRole.status === 'enabled' ? 1 : 0,
-        desc: editingRole.desc
-      }, { skipSuccTip: true })
-    }
-    
-    message.success('保存成功')
-    
-    fetchRoles()
-    closeEditModal()
   } catch (error) {
     console.error(error)
   }
 }
 
-const isPermissionModalOpen = ref(false)
-const permissionRole = reactive({
+// Edit Modal
+const isEditModalOpen = ref(false)
+const modalType = ref<'add' | 'edit'>('add')
+const modalLoading = ref(false)
+const roleFormRef = ref()
+const editingRole = reactive({
   id: 0,
-  name: ''
+  name: '',
+  key: '',
+  status: 'enabled',
+  desc: ''
 })
 
-const functionalPermissions = ref<PermissionNode[]>([
+const openEditModal = (role?: any) => {
+  if (role) {
+    modalType.value = 'edit'
+    Object.assign(editingRole, role)
+  } else {
+    modalType.value = 'add'
+    Object.assign(editingRole, { id: 0, name: '', key: '', status: 'enabled', desc: '' })
+  }
+  isEditModalOpen.value = true
+}
+
+const saveRole = async () => {
+  if (!editingRole.name || !editingRole.key) {
+    message.warning('请填写角色名称和标识')
+    return
+  }
+  
+  modalLoading.value = true
+  try {
+    if (modalType.value === 'add') {
+      await createRole({
+        name: editingRole.name,
+        code: editingRole.key,
+        desc: editingRole.desc
+      }, { skipSuccTip: true })
+    } else {
+      await updateRole(editingRole.id, {
+        name: editingRole.name,
+        code: editingRole.key,
+        status: editingRole.status === 'enabled' ? 1 : 0,
+        desc: editingRole.desc
+      }, { skipSuccTip: true })
+    }
+    message.success(modalType.value === 'add' ? '新增成功' : '更新成功')
+    isEditModalOpen.value = false
+    fetchRoles()
+  } catch (error) {
+    console.error(error)
+  } finally {
+    modalLoading.value = false
+  }
+}
+
+// Permission Modal
+const isPermissionModalOpen = ref(false)
+const permissionRole = reactive({ id: 0, name: '' })
+const selectedMenuIds = ref<number[]>([])
+const selectedApiIds = ref<number[]>([])
+
+// Mock Data for Tree - 实际项目中应从后端获取
+const functionalPermissions = [
   { 
     id: 1000, 
     label: '权限管理', 
-    expanded: true, 
     children: [
       { 
         id: 1100, 
         label: '角色管理', 
-        expanded: true,
         children: [
           { id: 1101, label: '新增角色管理' },
           { id: 1102, label: '编辑角色信息' },
@@ -649,7 +378,6 @@ const functionalPermissions = ref<PermissionNode[]>([
       { 
         id: 1200, 
         label: 'API管理', 
-        expanded: true,
         children: [
           { id: 1201, label: '新增API管理' },
           { id: 1202, label: '编辑API信息' },
@@ -659,7 +387,6 @@ const functionalPermissions = ref<PermissionNode[]>([
       { 
         id: 1300, 
         label: '菜单管理', 
-        expanded: true,
         children: [
           { id: 1301, label: '新增菜单管理' },
           { id: 1302, label: '编辑菜单信息' },
@@ -668,20 +395,19 @@ const functionalPermissions = ref<PermissionNode[]>([
       }
     ]
   },
-  { id: 2000, label: '人员管理', expanded: true },
-  { id: 3000, label: '组织管理', expanded: true },
-  { id: 4000, label: '我的团队', expanded: true }
-])
-const dataPermissions = ref<PermissionNode[]>([
+  { id: 2000, label: '人员管理' },
+  { id: 3000, label: '组织管理' },
+  { id: 4000, label: '我的团队' }
+]
+
+const dataPermissions = [
   {
     id: 5000,
     label: '权限管理',
-    expanded: true,
     children: [
       {
         id: 5100,
         label: '角色管理',
-        expanded: true,
         children: [
           { id: 5101, label: 'POST /system/role' },
           { id: 5102, label: 'PUT /system/role/{id}' },
@@ -691,7 +417,6 @@ const dataPermissions = ref<PermissionNode[]>([
       {
         id: 5200,
         label: 'API管理',
-        expanded: true,
         children: [
           { id: 5201, label: 'POST /system/api' },
           { id: 5202, label: 'PUT /system/api/{id}' },
@@ -701,7 +426,6 @@ const dataPermissions = ref<PermissionNode[]>([
       {
         id: 5300,
         label: '菜单管理',
-        expanded: true,
         children: [
           { id: 5301, label: 'POST /system/menu' },
           { id: 5302, label: 'PUT /system/menu/{id}' },
@@ -710,222 +434,41 @@ const dataPermissions = ref<PermissionNode[]>([
       }
     ]
   }
-])
-const selectedMenuIds = ref<Set<number>>(new Set())
-const selectedApiIds = ref<Set<number>>(new Set())
+]
 
-const collectMenuIds = (node: PermissionNode): number[] => {
-  const ids = [node.id]
-  if (node.children) {
-    node.children.forEach(child => {
-      ids.push(...collectMenuIds(child))
-    })
-  }
-  return ids
-}
-
-const updateSelectedMenuIds = (ids: number[], selected: boolean) => {
-  const next = new Set(selectedMenuIds.value)
-  ids.forEach(id => selected ? next.add(id) : next.delete(id))
-  selectedMenuIds.value = next
-}
-
-const isMenuChecked = (id: number) => selectedMenuIds.value.has(id)
-
-const toggleMenuSelection = (node: PermissionNode) => {
-  const ids = collectMenuIds(node)
-  const shouldSelect = ids.some(id => !selectedMenuIds.value.has(id))
-  updateSelectedMenuIds(ids, shouldSelect)
-}
-
-const isApiChecked = (id: number) => selectedApiIds.value.has(id)
-
-const toggleApiSelection = (node: PermissionNode) => {
-  const ids = collectMenuIds(node)
-  const shouldSelect = ids.some(id => !selectedApiIds.value.has(id))
-  
-  const next = new Set(selectedApiIds.value)
-  ids.forEach(id => shouldSelect ? next.add(id) : next.delete(id))
-  selectedApiIds.value = next
-}
-
-const openPermissionModal = (role: RoleRow) => {
+const openPermissionModal = (role: any) => {
   permissionRole.id = role.id
   permissionRole.name = role.name
+  // Initialize checked keys - 实际应从后端获取当前角色的权限
+  selectedMenuIds.value = []
+  selectedApiIds.value = []
   isPermissionModalOpen.value = true
 }
 
-const closePermissionModal = () => {
-  isPermissionModalOpen.value = false
-}
-
 const savePermission = () => {
-  closePermissionModal()
-  message.success('权限已保存')
-}
-
-const changePage = (page: number) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page
-    fetchRoles()
-  }
-}
-
-const init = () => {
-  fetchRoles()
+  // 实际应调用保存接口
+  isPermissionModalOpen.value = false
+  message.success('权限配置已保存')
 }
 
 onMounted(() => {
-  init()
+  fetchRoles()
 })
 </script>
 
 <style scoped>
 .page-container {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: 24px;
+  background-color: #f0f2f5;
+  min-height: 100%;
 }
 
 .search-card {
-  background-color: white;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.form-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.form-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-}
-
-.form-input, .form-select {
-  padding: 6px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 14px;
-  outline: none;
-  transition: box-shadow 0.2s;
-  height: 36px; /* 统一高度 */
-}
-
-/* 覆盖 Input 组件样式以匹配页面风格 */
-:deep(.input-wrapper) {
-  border-radius: 4px;
-  border-color: #d1d5db;
-  transition: box-shadow 0.2s;
-}
-
-:deep(.input-focused) {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-  border-color: transparent;
-}
-
-:deep(.input-medium) {
-  height: 36px;
-}
-
-:deep(.input-field) {
-  font-size: 14px;
-}
-
-.form-input:focus, .form-select:focus {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-  border-color: transparent;
-}
-
-.search-input {
-  width: 192px;
-}
-
-.status-select {
-  width: 128px;
-  color: #4b5563;
-}
-
-.btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 16px;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: background-color 0.2s;
-}
-
-.btn-primary {
-  background-color: #2563eb;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #1d4ed8;
-}
-
-.btn-secondary {
-  background-color: white;
-  border-color: #d1d5db;
-  color: #374151;
-}
-
-.btn-secondary:hover {
-  background-color: #f9fafb;
-}
-
-.btn-danger-light {
-  background-color: #fef2f2;
-  color: #dc2626;
-  border-color: #fecaca;
-}
-
-.btn-danger-light:hover {
-  background-color: #fee2e2;
-}
-
-.btn-disabled {
-  background-color: #f3f4f6;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.icon {
-  height: 16px;
-  width: 16px;
-}
-
-.icon-lg {
-  height: 24px;
-  width: 24px;
-}
-
-.icon-sm {
-  height: 16px;
-  width: 16px;
+  margin-bottom: 24px;
 }
 
 .content-card {
-  background-color: white;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  min-height: 500px;
 }
 
 .toolbar {
@@ -933,467 +476,86 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
-  padding: 8px 8px 0 8px;
 }
 
-.toolbar-actions {
+/* 调整搜索表单样式 */
+.search-form :deep(.ant-form-item) {
+  margin-bottom: 24px; /* 统一底部间距 */
+}
+
+/* 搜索按钮颜色 - 接近截图中的蓝色 */
+.btn-search {
+  background-color: #1677ff;
+  border-color: #1677ff;
+}
+
+.btn-search:hover {
+  background-color: #4096ff;
+  border-color: #4096ff;
+}
+
+/* 调整操作按钮样式 */
+.action-buttons {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding-right: 8px;
+  justify-content: center;
+  gap: 12px;
 }
 
-.dropdown-container {
-  position: relative;
-}
-
-.dropdown-menu {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  margin-top: 8px;
-  width: 192px;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #f3f4f6;
-  z-index: 10;
-}
-
-.dropdown-header, .dropdown-footer {
-  padding: 8px;
-}
-
-.dropdown-header {
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.dropdown-footer {
-  border-top: 1px solid #f3f4f6;
+.btn-permission {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.dropdown-body {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 4px;
+  font-size: 14px;
 }
 
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 8px;
+.btn-edit,
+.btn-delete {
   border-radius: 4px;
-  cursor: pointer;
+  padding: 0 12px;
+  height: 28px;
   font-size: 13px;
-}
-
-.checkbox-label:hover {
-  background-color: #f9fafb;
-}
-
-.checkbox-input {
-  border-radius: 4px;
-  border-color: #d1d5db;
-  color: #2563eb;
-}
-
-.btn-xs {
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-
-.btn-default {
-  border-color: #e5e7eb;
-  color: #4b5563;
-  background-color: white;
-}
-
-.btn-default:hover {
-  background-color: #f9fafb;
-}
-
-.btn-danger {
-  background-color: #ef4444;
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: #dc2626;
-}
-
-.table-container {
-  flex: 1;
-  overflow: auto;
-}
-
-.data-table {
-  width: 100%;
-  text-align: left;
-  border-collapse: collapse;
-}
-
-.data-table th {
-  padding: 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #111827;
-  background-color: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.data-table td {
-  padding: 16px;
-  font-size: 14px;
-  color: #374151;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.data-table tr:hover {
-  background-color: #f9fafb;
-}
-
-.col-checkbox {
-  width: 48px;
-}
-
-.status-enabled {
-  color: #22c55e;
-}
-
-.status-disabled {
-  color: #9ca3af;
-}
-
-.action-cell {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  color: #3b82f6;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  margin-right: 8px;
-}
-
-.btn-link:hover {
-  color: #1d4ed8;
-}
-
-.empty-cell {
-  padding: 32px;
-  text-align: center;
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 16px;
-  margin-top: 16px;
-  font-size: 14px;
-  color: #4b5563;
-}
-
-.page-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.page-btn, .page-number {
-  border: 1px solid #e5e7eb;
-  background-color: white;
-  border-radius: 4px;
-  padding: 4px 8px;
-  cursor: pointer;
-  min-width: 32px;
-  text-align: center;
-}
-
-.page-btn:hover, .page-number:hover {
-  background-color: #f9fafb;
-}
-
-.page-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.page-number.active {
-  background-color: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.page-size-select {
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  padding: 4px 8px;
-  outline: none;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.modal-content {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  width: 500px;
+/* 覆盖 Ant Design 默认的按钮阴影，使其看起来更扁平，接近截图风格 */
+.btn-edit {
+  background-color: #3b82f6; /* 接近截图的蓝色 */
+  border-color: #3b82f6;
+  box-shadow: none;
 }
 
-.large-modal {
-  width: 1000px;
-  height: 750px;
-  display: flex;
-  flex-direction: column;
+.btn-edit:hover {
+  background-color: #2563eb;
+  border-color: #2563eb;
 }
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
+.btn-delete {
+  background-color: #ef4444; /* 接近截图的红色 */
+  border-color: #ef4444;
+  box-shadow: none;
+}
+
+.btn-delete:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+/* 图标与文字对齐调整 */
+:deep(.ant-btn) {
+  display: inline-flex;
   align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid #f3f4f6;
+  justify-content: center;
 }
 
-.modal-header h3 {
-  font-size: 18px;
-  font-weight: 500;
-  color: #1f2937;
-  margin: 0;
-}
-
-.modal-close {
-  display: flex;
-  gap: 8px;
-  color: #9ca3af;
-}
-
-.icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #9ca3af;
-}
-
-.icon-btn:hover {
-  color: #4b5563;
-}
-
-.modal-body {
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.form-row {
-  display: flex;
+:deep(.ant-btn > span) {
+  display: inline-flex;
   align-items: center;
 }
 
-.required::before {
-  content: "*";
-  color: #ef4444;
+:deep(.ant-btn .anticon) {
   margin-right: 4px;
-}
-
-.modal-body .form-label {
-  width: 96px;
-  text-align: right;
-  margin-right: 16px;
-  color: #4b5563;
-}
-
-.input-wrapper {
-  flex: 1;
-  position: relative;
-}
-
-.full-width {
-  width: 100%;
-}
-
-.relative-wrapper {
-  position: relative;
-}
-
-.select-arrow {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  color: #9ca3af;
-  display: flex;
-  align-items: center;
-}
-
-.clear-btn {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: #d1d5db;
-  cursor: pointer;
-}
-
-.clear-btn:hover {
-  color: #6b7280;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 16px;
-  gap: 12px;
-  border-top: 1px solid #f3f4f6;
-}
-
-.modal-title-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.text-purple {
-  color: #a855f7;
-}
-
-.permission-body {
-  flex: 1;
-  padding: 24px;
-  display: flex;
-  gap: 24px;
-  overflow: hidden;
-  font-size: 13px;
-}
-
-.permission-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  transition: box-shadow 0.2s, transform 0.2s;
-}
-
-.permission-panel:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-.panel-header {
-  padding: 16px;
-  border-bottom: 1px solid #e5e7eb;
-  background-color: #f8fafc;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.text-orange {
-  color: #f97316;
-}
-
-.text-blue {
-  color: #3b82f6;
-}
-
-.panel-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-}
-
-.permission-item {
-  margin-bottom: 4px;
-}
-
-.permission-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 0;
-}
-
-.expand-btn {
-  background: none;
-  border: none;
-  color: #9ca3af;
-  cursor: pointer;
-  padding: 0;
-}
-
-.expand-btn:hover {
-  color: #4b5563;
-}
-
-.transition-transform {
-  transition: transform 0.2s;
-}
-
-.rotate-90 {
-  transform: rotate(90deg);
-}
-
-.permission-children {
-  margin-left: 20px;
-  padding-left: 16px;
-  border-left: 2px solid #e5e7eb;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 2px;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
 }
 </style>

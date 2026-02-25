@@ -1,346 +1,197 @@
 <template>
   <div class="page-container">
-    <div class="search-card">
-      <div class="form-group">
-        <label class="form-label">API 路径:</label>
-        <Input
-          v-model="searchQuery.path"
-          placeholder="请输入"
-          @keydown.enter="search"
-          class="search-input"
-        />
-      </div>
-      <div class="form-group">
-        <label class="form-label">状态:</label>
-        <select
-          v-model="searchQuery.status"
-          class="form-select status-select"
-        >
-          <option value="">请选择</option>
-          <option value="enabled">启用</option>
-          <option value="disabled">禁用</option>
-        </select>
-      </div>
-      <button @click="search" class="btn btn-primary">
-        <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        搜索
-      </button>
-      <button @click="resetSearch" class="btn btn-secondary">
-        <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        重置
-      </button>
-    </div>
+    <a-card :bordered="false" class="search-card" :body-style="{ padding: '24px 24px 0 24px' }">
+      <a-form layout="inline" :model="searchQuery" class="search-form">
+        <a-form-item label="API 路径" name="path">
+          <a-input
+            v-model:value="searchQuery.path"
+            placeholder="请输入 API 路径"
+            allow-clear
+            @pressEnter="search"
+          >
+            <template #prefix>
+              <SearchOutlined style="color: rgba(0, 0, 0, 0.25)" />
+            </template>
+          </a-input>
+        </a-form-item>
+        <a-form-item label="状态" name="status">
+          <a-select
+            v-model:value="searchQuery.status"
+            placeholder="请选择状态"
+            style="width: 150px"
+            allow-clear
+          >
+            <a-select-option value="enabled">启用</a-select-option>
+            <a-select-option value="disabled">禁用</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item>
+          <a-space>
+            <a-button type="primary" @click="search" class="btn-search">
+              <template #icon><SearchOutlined /></template>
+              搜索
+            </a-button>
+            <a-button @click="resetSearch" class="btn-reset">
+              <template #icon><ReloadOutlined /></template>
+              重置
+            </a-button>
+          </a-space>
+        </a-form-item>
+      </a-form>
+    </a-card>
 
-    <div class="content-card">
+    <a-card :bordered="false" class="content-card">
       <div class="toolbar">
-        <button
-          @click="batchDelete"
-          :disabled="selectedIds.length === 0"
-          :class="['btn', selectedIds.length > 0 ? 'btn-danger-light' : 'btn-disabled']"
-        >
-          批量删除 ({{ selectedIds.length }})
-        </button>
-        <div class="toolbar-actions">
-          <button @click="openEditModal()" class="btn btn-primary">
-            新增API管理
-          </button>
-          <button @click="refresh" class="btn btn-secondary">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            刷新
-          </button>
-          <div class="dropdown-container">
-            <button @click="toggleColumnFilter" class="btn btn-secondary">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              列筛选
-            </button>
-            <div v-if="isColumnFilterOpen" class="dropdown-menu animate-fade-in">
-              <div class="dropdown-header">
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="isAllSelected" class="checkbox-input" />
-                  <span>全选</span>
-                </label>
-              </div>
-              <div class="dropdown-body">
-                <label v-for="col in tempColumns" :key="col.key" class="checkbox-label">
-                  <input type="checkbox" v-model="col.visible" class="checkbox-input" />
-                  <span>{{ col.label }}</span>
-                </label>
-              </div>
-              <div class="dropdown-footer">
-                <button @click="closeColumnFilter" class="btn-xs btn-default">取消</button>
-                <button @click="applyColumnFilter" class="btn-xs btn-primary">筛选</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <a-space>
+          <a-button type="primary" @click="openEditModal()">
+            <template #icon><PlusOutlined /></template>
+            新增API
+          </a-button>
+          <a-button
+            danger
+            :disabled="!hasSelected"
+            @click="batchDelete"
+          >
+            <template #icon><DeleteOutlined /></template>
+            批量删除
+          </a-button>
+        </a-space>
+        <a-space>
+          <a-tooltip title="刷新">
+            <a-button type="text" shape="circle" @click="refresh">
+              <template #icon><ReloadOutlined /></template>
+            </a-button>
+          </a-tooltip>
+        </a-space>
       </div>
 
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th class="col-checkbox">
-                <input type="checkbox" v-model="isAllSelectedRows" class="checkbox-input" />
-              </th>
-              <th v-if="getColumnVisible('path')">API 路径</th>
-              <th v-if="getColumnVisible('description')">API 详情</th>
-              <th v-if="getColumnVisible('method')">API 方法</th>
-              <th v-if="getColumnVisible('status')">状态</th>
-              <th v-if="getColumnVisible('action')" class="text-right">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="api in paginatedApis" :key="api.id">
-              <td>
-                <input type="checkbox" :checked="selectedIds.includes(api.id)" @change="toggleSelection(api.id)" class="checkbox-input" />
-              </td>
-              <td v-if="getColumnVisible('path')" :title="api.path">{{ api.path }}</td>
-              <td v-if="getColumnVisible('description')" :title="api.description">{{ api.description }}</td>
-              <td v-if="getColumnVisible('method')" :title="api.method || '-'">{{ api.method || '-' }}</td>
-              <td v-if="getColumnVisible('status')">
-                <span :class="api.status === 'enabled' ? 'status-enabled' : 'status-disabled'">
-                  {{ api.status === 'enabled' ? '启用' : '禁用' }}
-                </span>
-              </td>
-              <td v-if="getColumnVisible('action')" class="action-cell">
-                <button @click="openEditModal(api)" class="btn-xs btn-primary">
-                  编辑
-                </button>
-                <button @click="deleteApi(api.id)" class="btn-xs btn-danger">
+      <a-table
+        :columns="columns"
+        :data-source="apis"
+        :pagination="pagination"
+        :row-selection="{ selectedRowKeys: selectedIds, onChange: onSelectChange }"
+        row-key="id"
+        @change="handleTableChange"
+        :loading="loading"
+        size="middle"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'status'">
+            <a-tag :color="record.status === 'enabled' ? 'success' : 'error'">
+              {{ record.status === 'enabled' ? '启用' : '禁用' }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'method'">
+            <a-tag :color="getMethodColor(record.method)">{{ record.method || '-' }}</a-tag>
+          </template>
+          <template v-else-if="column.key === 'action'">
+            <div class="action-buttons">
+              <a-button type="primary" size="small" class="btn-edit" @click="openEditModal(record)">
+                编辑
+              </a-button>
+              <a-popconfirm
+                title="确认删除该 API 吗？"
+                @confirm="deleteApi(record.id)"
+                ok-text="确定"
+                cancel-text="取消"
+              >
+                <a-button type="primary" danger size="small" class="btn-delete">
                   删除
-                </button>
-              </td>
-            </tr>
-            <tr v-if="paginatedApis.length === 0">
-              <td :colspan="visibleColumnsCount + 1" class="empty-cell">
-                暂无数据
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                </a-button>
+              </a-popconfirm>
+            </div>
+          </template>
+        </template>
+      </a-table>
+    </a-card>
 
-      <div class="pagination">
-        <span>共 {{ totalApis }} 条数据</span>
-        <div class="page-controls">
-          <button
-            class="page-btn"
-            :disabled="currentPage === 1"
-            @click="changePage(currentPage - 1)"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <button
-            v-for="page in totalPages"
-            :key="page"
-            @click="changePage(page)"
-            :class="['page-number', currentPage === page ? 'active' : '']"
-          >
-            {{ page }}
-          </button>
-          <button
-            class="page-btn"
-            :disabled="currentPage === totalPages || totalPages === 0"
-            @click="changePage(currentPage + 1)"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-        <select
-          v-model.number="pageSize"
-          class="page-size-select"
-        >
-          <option :value="20">20 / page</option>
-          <option :value="50">50 / page</option>
-          <option :value="100">100 / page</option>
-        </select>
-      </div>
-    </div>
-
-    <div v-if="isEditModalOpen" class="modal-overlay">
-      <div class="modal-content animate-fade-in">
-        <div class="modal-header">
-          <h3>{{ modalType === 'add' ? '新增API管理' : '编辑API管理' }}</h3>
-          <div class="modal-close">
-            <button class="icon-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-              </svg>
-            </button>
-            <button @click="closeEditModal" class="icon-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div class="modal-body">
-          <div class="form-row">
-            <label class="form-label required">API路径：</label>
-            <div class="input-wrapper">
-              <Input
-                v-model="editingApi.path"
-                placeholder="请输入"
-                clearable
-                class="full-width"
-              />
-            </div>
-          </div>
-          <div class="form-row">
-            <label class="form-label required">API详情：</label>
-            <div class="input-wrapper">
-              <Input
-                v-model="editingApi.description"
-                placeholder="请输入"
-                clearable
-                class="full-width"
-              />
-            </div>
-          </div>
-          <div class="form-row">
-            <label class="form-label">API类别：</label>
-            <div class="input-wrapper">
-              <Input
-                v-model="editingApi.category"
-                placeholder="请输入"
-                clearable
-                class="full-width"
-              />
-            </div>
-          </div>
-          <div class="form-row">
-            <label class="form-label required">API方法：</label>
-            <div class="input-wrapper">
-              <select
-                v-model="editingApi.method"
-                class="form-select full-width"
-              >
-                <option value="">请选择</option>
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="DELETE">DELETE</option>
-                <option value="-">-</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-row">
-            <label class="form-label">状态：</label>
-            <div class="input-wrapper">
-              <select
-                v-model="editingApi.status"
-                class="form-select full-width"
-              >
-                <option value="enabled">启用</option>
-                <option value="disabled">禁用</option>
-              </select>
-              <div class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="closeEditModal" class="btn btn-secondary">取消</button>
-          <button @click="saveApi" class="btn btn-primary">{{ modalType === 'add' ? '新增' : '更新' }}</button>
-        </div>
-      </div>
-    </div>
+    <!-- 编辑/新增 模态框 -->
+    <a-modal
+      v-model:open="isEditModalOpen"
+      :title="modalType === 'add' ? '新增API' : '编辑API'"
+      @ok="saveApi"
+      :confirmLoading="modalLoading"
+      :maskClosable="false"
+    >
+      <a-form :model="editingApi" layout="vertical">
+        <a-form-item label="API路径" required name="path">
+          <a-input v-model:value="editingApi.path" placeholder="请输入 API 路径 (如: /system/user)" />
+        </a-form-item>
+        <a-form-item label="API详情" required name="description">
+          <a-input v-model:value="editingApi.description" placeholder="请输入 API 描述" />
+        </a-form-item>
+        <a-form-item label="API类别" name="category">
+          <a-input v-model:value="editingApi.category" placeholder="请输入 API 类别" />
+        </a-form-item>
+        <a-form-item label="API方法" required name="method">
+          <a-select v-model:value="editingApi.method" placeholder="请选择请求方法">
+            <a-select-option value="GET">GET</a-select-option>
+            <a-select-option value="POST">POST</a-select-option>
+            <a-select-option value="PUT">PUT</a-select-option>
+            <a-select-option value="DELETE">DELETE</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="状态" name="status">
+          <a-radio-group v-model:value="editingApi.status">
+            <a-radio value="enabled">启用</a-radio>
+            <a-radio value="disabled">禁用</a-radio>
+          </a-radio-group>
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { message, Confirm, Input } from '@/components/common'
+import { message, Modal } from 'ant-design-vue'
+import { 
+  SearchOutlined, 
+  ReloadOutlined, 
+  PlusOutlined, 
+  DeleteOutlined, 
+  EditOutlined 
+} from '@ant-design/icons-vue'
 import { getApiList, createApi, updateApi, deleteApi as deleteApiService } from '@/services/permission.service'
 
-const searchQuery = ref({
+const searchQuery = reactive({
   path: '',
-  status: ''
+  status: undefined as string | undefined
 })
 
-const columns = ref([
-  { key: 'path', label: 'API 路径', visible: true },
-  { key: 'description', label: 'API 详情', visible: true },
-  { key: 'method', label: 'API 方法', visible: true },
-  { key: 'status', label: '状态', visible: true },
-  { key: 'action', label: '操作', visible: true }
-])
+const columns = [
+  { title: 'API 路径', dataIndex: 'path', key: 'path', width: 250 },
+  { title: 'API 详情', dataIndex: 'description', key: 'description', ellipsis: true },
+  { title: 'API 方法', dataIndex: 'method', key: 'method', width: 100 },
+  { title: '类别', dataIndex: 'category', key: 'category', width: 150 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
+  { title: '操作', key: 'action', width: 180, align: 'center', fixed: 'right' as const }
+]
 
-const isColumnFilterOpen = ref(false)
-const tempColumns = ref<any[]>([])
-
-const toggleColumnFilter = () => {
-  if (!isColumnFilterOpen.value) {
-    tempColumns.value = JSON.parse(JSON.stringify(columns.value))
-  }
-  isColumnFilterOpen.value = !isColumnFilterOpen.value
-}
-
-const closeColumnFilter = () => {
-  isColumnFilterOpen.value = false
-}
-
-const isAllSelected = computed({
-  get: () => tempColumns.value.every(c => c.visible),
-  set: (val) => tempColumns.value.forEach(c => c.visible = val)
+const apis = ref<any[]>([])
+const loading = ref(false)
+const pagination = reactive({
+  current: 1,
+  pageSize: 10,
+  total: 0,
+  showSizeChanger: true,
+  showQuickJumper: false,
+  showTotal: (total: number) => `共 ${total} 条`
 })
-
-const applyColumnFilter = () => {
-  columns.value = JSON.parse(JSON.stringify(tempColumns.value))
-  closeColumnFilter()
-}
-
-const getColumnVisible = (key: string) => {
-  const col = columns.value.find(c => c.key === key)
-  return col ? col.visible : true
-}
-
-const visibleColumnsCount = computed(() => columns.value.filter(c => c.visible).length)
-
-type ApiStatus = 'enabled' | 'disabled'
-interface ApiRow {
-  id: number
-  path: string
-  description: string
-  category?: string
-  method: string
-  status: ApiStatus
-}
-
-const apis = ref<ApiRow[]>([])
-const totalApis = ref(0)
-const currentPage = ref(1)
-const pageSize = ref(20)
 
 const fetchApis = async () => {
+  loading.value = true
   try {
     const params = {
-      page: currentPage.value,
-      page_size: pageSize.value,
-      keyword: searchQuery.value.path || undefined,
-      status: searchQuery.value.status === 'enabled' ? 1 : (searchQuery.value.status === 'disabled' ? 0 : undefined)
+      page: pagination.current,
+      page_size: pagination.pageSize,
+      keyword: searchQuery.path || undefined,
+      status: searchQuery.status === 'enabled' ? 1 : (searchQuery.status === 'disabled' ? 0 : undefined)
     }
     
     const data = await getApiList(params, { skipSuccTip: true })
-    console.log(data)
     if (data) {
-      apis.value = data.list.map(item => ({
+      apis.value = data.list.map((item: any) => ({
         id: item.id,
         path: item.path,
         description: item.detail || '',
@@ -348,112 +199,88 @@ const fetchApis = async () => {
         method: item.method,
         status: item.status === 1 ? 'enabled' : 'disabled'
       }))
-      totalApis.value = data.total
+      pagination.total = data.total
     }
   } catch (error) {
     console.error('Failed to fetch APIs:', error)
+  } finally {
+    loading.value = false
   }
 }
 
-const paginatedApis = computed(() => apis.value)
-
-const totalPages = computed(() => Math.ceil(totalApis.value / pageSize.value))
+const handleTableChange = (pag: any) => {
+  pagination.current = pag.current
+  pagination.pageSize = pag.pageSize
+  fetchApis()
+}
 
 const search = () => {
-  currentPage.value = 1
+  pagination.current = 1
   fetchApis()
 }
 
 const resetSearch = () => {
-  searchQuery.value.path = ''
-  searchQuery.value.status = ''
-  currentPage.value = 1
-  selectedIds.value = []
-  fetchApis()
+  searchQuery.path = ''
+  searchQuery.status = undefined
+  search()
 }
 
 const refresh = () => {
-  selectedIds.value = []
   fetchApis()
   message.success('已刷新 API 数据')
 }
 
+// Selection
 const selectedIds = ref<number[]>([])
-
-const isAllSelectedRows = computed({
-  get: () => paginatedApis.value.length > 0 && paginatedApis.value.every(api => selectedIds.value.includes(api.id)),
-  set: (val) => {
-    const currentIds = paginatedApis.value.map(api => api.id)
-    if (val) {
-      selectedIds.value = Array.from(new Set([...selectedIds.value, ...currentIds]))
-    } else {
-      selectedIds.value = selectedIds.value.filter(id => !currentIds.includes(id))
-    }
-  }
-})
-
-const toggleSelection = (id: number) => {
-  const idx = selectedIds.value.indexOf(id)
-  if (idx === -1) selectedIds.value.push(id)
-  else selectedIds.value.splice(idx, 1)
+const hasSelected = computed(() => selectedIds.value.length > 0)
+const onSelectChange = (selectedRowKeys: number[]) => {
+  selectedIds.value = selectedRowKeys
 }
 
-const batchDelete = async () => {
-  if (selectedIds.value.length === 0) {
-    message.warning('请选择要删除的 API')
-    return
-  }
-  try {
-    await Confirm({
-      title: '确认删除',
-      content: '确认删除选中的 API 吗？',
-      type: 'warning',
-      okText: '删除',
-      cancelText: '取消'
-    })
-    
-    await Promise.all(selectedIds.value.map(id => deleteApiService(id, { skipSuccTip: true })))
-    
-    message.success('批量删除成功')
-    fetchApis()
-    selectedIds.value = []
-  } catch (error) {
-    if (error) console.error(error)
-  }
+const batchDelete = () => {
+  Modal.confirm({
+    title: '确认删除',
+    content: `确认删除选中的 ${selectedIds.value.length} 个 API 吗？此操作不可恢复。`,
+    okText: '确认',
+    cancelText: '取消',
+    okType: 'danger',
+    onOk: async () => {
+      try {
+        await Promise.all(selectedIds.value.map(id => deleteApiService(id, { skipSuccTip: true })))
+        message.success('批量删除成功')
+        selectedIds.value = []
+        fetchApis()
+      } catch (error) {
+        console.error(error)
+      }
+    }
+  })
 }
 
 const deleteApi = async (id: number) => {
   try {
-    await Confirm({
-      title: '确认删除',
-      content: '确认删除该 API 吗？',
-      type: 'warning',
-      okText: '删除',
-      cancelText: '取消'
-    })
-    
     await deleteApiService(id, { skipSuccTip: true })
     message.success('API 已删除')
-    
     fetchApis()
-    selectedIds.value = selectedIds.value.filter(item => item !== id)
   } catch (error) {
-    if (error) console.error(error)
+    console.error(error)
   }
 }
 
+// Edit Modal
 const isEditModalOpen = ref(false)
 const modalType = ref<'add' | 'edit'>('add')
+const modalLoading = ref(false)
 const editingApi = reactive({
   id: 0,
   path: '',
   description: '',
   category: '',
-  method: '',
-  status: 'enabled' as ApiStatus
+  method: undefined as string | undefined,
+  status: 'enabled'
 })
 
-const openEditModal = (api?: ApiRow) => {
+const openEditModal = (api?: any) => {
   if (api) {
     modalType.value = 'edit'
     Object.assign(editingApi, {
@@ -462,57 +289,50 @@ const openEditModal = (api?: ApiRow) => {
     })
   } else {
     modalType.value = 'add'
-    Object.assign(editingApi, { id: 0, path: '', description: '', category: '', method: '', status: 'enabled' as ApiStatus })
+    Object.assign(editingApi, { id: 0, path: '', description: '', category: '', method: undefined, status: 'enabled' })
   }
   isEditModalOpen.value = true
 }
 
-const closeEditModal = () => {
-  isEditModalOpen.value = false
-}
-
 const saveApi = async () => {
-  const path = editingApi.path.trim()
-  const description = editingApi.description.trim()
-  const method = editingApi.method.trim()
-  const category = editingApi.category?.trim()
-
-  if (!path || !description || !method) {
+  if (!editingApi.path || !editingApi.description || !editingApi.method) {
     message.warning('请填写完整的 API 信息')
     return
   }
   
+  modalLoading.value = true
   try {
+    const payload = {
+      path: editingApi.path,
+      method: editingApi.method || 'GET',
+      detail: editingApi.description,
+      category: editingApi.category,
+      status: editingApi.status === 'enabled' ? 1 : 0
+    }
+
     if (modalType.value === 'add') {
-      await createApi({
-        path,
-        method,
-        detail: description,
-        category,
-        status: editingApi.status === 'enabled' ? 1 : 0
-      }, { skipSuccTip: true })
+      await createApi(payload, { skipSuccTip: true })
     } else {
-      await updateApi(editingApi.id, {
-        path,
-        method,
-        detail: description,
-        category,
-        status: editingApi.status === 'enabled' ? 1 : 0
-      }, { skipSuccTip: true })
+      await updateApi(editingApi.id, payload, { skipSuccTip: true })
     }
     
-    message.success(modalType.value === 'add' ? 'API 新增成功' : 'API 更新成功')
+    message.success(modalType.value === 'add' ? '新增成功' : '更新成功')
+    isEditModalOpen.value = false
     fetchApis()
-    closeEditModal()
   } catch (error) {
     console.error(error)
+  } finally {
+    modalLoading.value = false
   }
 }
 
-const changePage = (page: number) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page
-    fetchApis()
+const getMethodColor = (method: string) => {
+  switch (method?.toUpperCase()) {
+    case 'GET': return 'blue'
+    case 'POST': return 'green'
+    case 'PUT': return 'orange'
+    case 'DELETE': return 'red'
+    default: return 'default'
   }
 }
 
@@ -523,150 +343,17 @@ onMounted(() => {
 
 <style scoped>
 .page-container {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: 24px;
+  background-color: #f0f2f5;
+  min-height: 100%;
 }
 
 .search-card {
-  background-color: white;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.form-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.form-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-}
-
-.form-input, .form-select {
-  padding: 6px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 14px;
-  outline: none;
-  transition: box-shadow 0.2s;
-  height: 36px; /* 统一高度 */
-}
-
-/* 覆盖 Input 组件样式以匹配页面风格 */
-:deep(.input-wrapper) {
-  border-radius: 4px;
-  border-color: #d1d5db;
-  transition: box-shadow 0.2s;
-}
-
-:deep(.input-focused) {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-  border-color: transparent;
-}
-
-:deep(.input-medium) {
-  height: 36px;
-}
-
-:deep(.input-field) {
-  font-size: 14px;
-}
-
-.form-input:focus, .form-select:focus {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-  border-color: transparent;
-}
-
-.search-input {
-  width: 192px;
-}
-
-.status-select {
-  width: 128px;
-  color: #4b5563;
-}
-
-.btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 16px;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: background-color 0.2s;
-}
-
-.btn-primary {
-  background-color: #2563eb;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #1d4ed8;
-}
-
-.btn-secondary {
-  background-color: white;
-  border-color: #d1d5db;
-  color: #374151;
-}
-
-.btn-secondary:hover {
-  background-color: #f9fafb;
-}
-
-.btn-danger-light {
-  background-color: #fef2f2;
-  color: #dc2626;
-  border-color: #fecaca;
-}
-
-.btn-danger-light:hover {
-  background-color: #fee2e2;
-}
-
-.btn-disabled {
-  background-color: #f3f4f6;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.icon {
-  height: 16px;
-  width: 16px;
-}
-
-.icon-lg {
-  height: 24px;
-  width: 24px;
-}
-
-.icon-sm {
-  height: 16px;
-  width: 16px;
+  margin-bottom: 24px;
 }
 
 .content-card {
-  background-color: white;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  min-height: 500px;
 }
 
 .toolbar {
@@ -674,349 +361,78 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
-  padding: 8px 8px 0 8px;
 }
 
-.toolbar-actions {
+/* 调整搜索表单样式 */
+.search-form :deep(.ant-form-item) {
+  margin-bottom: 24px; /* 统一底部间距 */
+}
+
+/* 搜索按钮颜色 - 接近截图中的蓝色 */
+.btn-search {
+  background-color: #1677ff;
+  border-color: #1677ff;
+}
+
+.btn-search:hover {
+  background-color: #4096ff;
+  border-color: #4096ff;
+}
+
+/* 调整操作按钮样式 */
+.action-buttons {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding-right: 8px;
+  justify-content: center;
+  gap: 12px;
 }
 
-.dropdown-container {
-  position: relative;
-}
-
-.dropdown-menu {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  margin-top: 8px;
-  width: 192px;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #f3f4f6;
-  z-index: 10;
-}
-
-.dropdown-header, .dropdown-footer {
-  padding: 8px;
-}
-
-.dropdown-header {
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.dropdown-footer {
-  border-top: 1px solid #f3f4f6;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.dropdown-body {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.checkbox-label {
-  display: flex;
+:deep(.ant-btn) {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  justify-content: center;
+}
+
+:deep(.ant-btn > span) {
+  display: inline-flex;
+  align-items: center;
+}
+
+:deep(.ant-btn .anticon) {
+  margin-right: 4px;
+}
+
+.btn-edit,
+.btn-delete {
   border-radius: 4px;
-  cursor: pointer;
-}
-
-.checkbox-label:hover {
-  background-color: #f9fafb;
-}
-
-.checkbox-input {
-  border-radius: 4px;
-  border-color: #d1d5db;
-  color: #2563eb;
-}
-
-.btn-xs {
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-
-.btn-default {
-  border-color: #e5e7eb;
-  color: #4b5563;
-  background-color: white;
-}
-
-.btn-default:hover {
-  background-color: #f9fafb;
-}
-
-.btn-danger {
-  background-color: #ef4444;
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: #dc2626;
-}
-
-.table-container {
-  flex: 1;
-  overflow: auto;
-}
-
-.data-table {
-  width: 100%;
-  text-align: left;
-  border-collapse: collapse;
-}
-
-.data-table th {
-  padding: 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #111827;
-  background-color: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.data-table td {
-  padding: 16px;
-  font-size: 14px;
-  color: #374151;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.data-table tr:hover {
-  background-color: #f9fafb;
-}
-
-.col-checkbox {
-  width: 48px;
-}
-
-.status-enabled {
-  color: #22c55e;
-}
-
-.status-disabled {
-  color: #9ca3af;
-}
-
-.action-cell {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  color: #3b82f6;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  margin-right: 8px;
-}
-
-.btn-link:hover {
-  color: #1d4ed8;
-}
-
-.empty-cell {
-  padding: 32px;
-  text-align: center;
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 16px;
-  margin-top: 16px;
-  font-size: 14px;
-  color: #4b5563;
-}
-
-.page-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.page-btn, .page-number {
-  border: 1px solid #e5e7eb;
-  background-color: white;
-  border-radius: 4px;
-  padding: 4px 8px;
-  cursor: pointer;
-  min-width: 32px;
-  text-align: center;
-}
-
-.page-btn:hover, .page-number:hover {
-  background-color: #f9fafb;
-}
-
-.page-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.page-number.active {
-  background-color: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.page-size-select {
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  padding: 4px 8px;
-  outline: none;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 50;
+  padding: 0 12px;
+  height: 28px;
+  font-size: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.modal-content {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  width: 500px;
+/* 覆盖 Ant Design 默认的按钮阴影，使其看起来更扁平，接近截图风格 */
+.btn-edit {
+  background-color: #3b82f6; /* 接近截图的蓝色 */
+  border-color: #3b82f6;
+  box-shadow: none;
 }
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid #f3f4f6;
+.btn-edit:hover {
+  background-color: #2563eb;
+  border-color: #2563eb;
 }
 
-.modal-header h3 {
-  font-size: 18px;
-  font-weight: 500;
-  color: #1f2937;
-  margin: 0;
+.btn-delete {
+  background-color: #ef4444; /* 接近截图的红色 */
+  border-color: #ef4444;
+  box-shadow: none;
 }
 
-.modal-close {
-  display: flex;
-  gap: 8px;
-  color: #9ca3af;
-}
-
-.icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #9ca3af;
-}
-
-.icon-btn:hover {
-  color: #4b5563;
-}
-
-.modal-body {
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.form-row {
-  display: flex;
-  align-items: center;
-}
-
-.required::before {
-  content: "*";
-  color: #ef4444;
-  margin-right: 4px;
-}
-
-.modal-body .form-label {
-  width: 96px;
-  text-align: right;
-  margin-right: 16px;
-  color: #4b5563;
-}
-
-.input-wrapper {
-  flex: 1;
-  position: relative;
-}
-
-.full-width {
-  width: 100%;
-}
-
-.relative-wrapper {
-  position: relative;
-}
-
-.select-arrow {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  color: #9ca3af;
-  display: flex;
-  align-items: center;
-}
-
-.clear-btn {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: #d1d5db;
-  cursor: pointer;
-}
-
-.clear-btn:hover {
-  color: #6b7280;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 16px;
-  gap: 12px;
-  border-top: 1px solid #f3f4f6;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
+.btn-delete:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
 }
 </style>
