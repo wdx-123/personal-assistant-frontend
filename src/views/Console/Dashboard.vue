@@ -29,7 +29,7 @@ const formatDate = (dateStr?: string) => {
           <div class="user-details-text">
             <div class="welcome-text">欢迎来到控制台</div>
             <div class="username-text">{{ user?.username || '用户' }}</div>
-            <div class="join-time">加入时间：{{ formatDate(user?.createdAt) }}</div>
+            <div class="join-time">加入时间：{{ formatDate(user?.created_at) }}</div>
           </div>
         </div>
       </div>

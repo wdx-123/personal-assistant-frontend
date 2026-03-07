@@ -34,14 +34,12 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       open: true,
-      // 配置代理 - 代理所有 /api 开头的请求到后端
+      // 配置代理 - 代理业务接口请求到后端（不再使用 /api 前缀）
       proxy: {
-        [env.VITE_API_PREFIX || "/api"]: {
+        "^/(base|user|system|refreshToken|org|oj)(/|$)": {
           target: env.VITE_API_BASE_URL,
           changeOrigin: true,
-          // 移除 /api 前缀转发到后端
-          rewrite: (path) =>
-            path.replace(new RegExp(`^${env.VITE_API_PREFIX || "/api"}`), ""),
+          rewrite: (path) => path,
         },
       },
     },

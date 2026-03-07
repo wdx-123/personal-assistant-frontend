@@ -187,10 +187,10 @@ const isActive = (path: string) => {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 收起时 Header：Logo 图标完全居中 */
+/* 收起时 Header：Logo 图标保持位置 */
 .collapsed .sidebar-header {
-  padding: 0;
-  justify-content: center;
+  padding: 0 16px;
+  justify-content: flex-start;
   gap: 0;
 }
 
@@ -248,19 +248,6 @@ const isActive = (path: string) => {
 }
 
 /* 激活指示器 - 左边蓝条（收起时也能看到） */
-.menu-item.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 24px;
-  background: #1890ff;
-  border-radius: 0 3px 3px 0;
-  box-shadow: 0 0 8px rgba(24, 144, 255, 0.4);
-}
-
 .menu-title {
   margin: 0 8px;
   padding: 0 12px;
@@ -273,13 +260,14 @@ const isActive = (path: string) => {
   justify-content: space-between;
   border-radius: 8px;
   transition: all 0.2s ease;
+  position: relative;
 }
 
-/* 收起时菜单项居中 */
+/* 收起时菜单项保持位置 */
 .collapsed .menu-title {
   margin: 0 8px;
-  padding: 0;
-  justify-content: center;
+  padding: 0 12px;
+  justify-content: flex-start;
 }
 
 .menu-title:hover {
@@ -291,6 +279,19 @@ const isActive = (path: string) => {
   background: rgba(24, 144, 255, 0.1);
   color: #1890ff;
   font-weight: 500;
+}
+
+.menu-item.active > .menu-title::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background: #1890ff;
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 8px rgba(24, 144, 255, 0.4);
 }
 
 .title-content {
@@ -410,17 +411,6 @@ const isActive = (path: string) => {
 }
 
 /* 子菜单激活指示器 */
-.submenu-item.active::before {
-  content: '';
-  position: absolute;
-  left: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 6px;
-  height: 6px;
-  background: #1890ff;
-  border-radius: 50%;
-}
 
 /* ============================================
    底部收缩按钮
@@ -441,10 +431,10 @@ const isActive = (path: string) => {
   transition: all 0.2s ease;
 }
 
-/* 收起时底部居中 */
+/* 收起时底部保持位置 */
 .collapsed .sidebar-footer {
-  justify-content: center;
-  padding: 0;
+  justify-content: flex-start;
+  padding: 0 16px;
 }
 
 .sidebar-footer:hover {

@@ -22,7 +22,8 @@
       <div v-for="team in teams" :key="team.id" class="team-card" :class="{ 'active': team.isCurrent }">
         <div class="card-header">
           <div class="team-avatar" :style="{ backgroundColor: getAvatarColor(team.name) }">
-            {{ team.name.charAt(0).toUpperCase() }}
+            <img v-if="team.avatar" :src="team.avatar" alt="avatar" class="team-avatar-image" />
+            <span v-else>{{ team.name.charAt(0).toUpperCase() }}</span>
           </div>
           <div class="team-info">
             <h3 class="team-name">{{ team.name }}</h3>
@@ -78,13 +79,48 @@
       </div>
     </div>
 
-    <!-- 模态框占位 -->
     <div v-if="showModal" class="modal-overlay">
       <div class="modal-content">
         <h3>{{ modalTitle }}</h3>
-        <p class="modal-body-text">功能开发中...</p>
+        <template v-if="modalMode === 'create' || modalMode === 'edit'">
+          <div class="form-item">
+            <div class="form-label">组织名称</div>
+            <input v-model="orgForm.name" class="form-input" type="text" placeholder="请输入组织名称" maxlength="50" />
+          </div>
+          <div class="form-item">
+            <div class="form-label">组织描述</div>
+            <textarea
+              v-model="orgForm.description"
+              class="form-textarea"
+              rows="3"
+              placeholder="请输入组织描述"
+              maxlength="200"
+            />
+          </div>
+          <div class="form-item">
+            <div class="form-label">组织邀请码</div>
+            <input v-model="orgForm.code" class="form-input" type="text" placeholder="请输入邀请码" maxlength="30" />
+          </div>
+          <div class="form-item">
+            <div class="form-label">头像地址</div>
+            <input v-model="orgForm.avatar" class="form-input" type="text" placeholder="请输入头像地址" />
+          </div>
+          <div class="form-item">
+            <div class="form-label">头像ID</div>
+            <input v-model.number="orgForm.avatar_id" class="form-input" type="number" placeholder="请输入头像ID" />
+          </div>
+        </template>
+        <p v-else class="modal-body-text">{{ modalBodyText }}</p>
         <div class="modal-footer">
-          <button @click="showModal = false" class="btn btn-secondary">关闭</button>
+          <button @click="showModal = false" class="btn btn-secondary">取消</button>
+          <button
+            v-if="modalMode === 'create' || modalMode === 'edit'"
+            @click="submitOrgForm"
+            class="btn btn-primary"
+            :disabled="modalSubmitting"
+          >
+            {{ modalSubmitting ? '提交中...' : '确认' }}
+          </button>
         </div>
       </div>
     </div>
@@ -92,8 +128,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { message, Confirm } from '@/components/common'
+import { useAuthStore } from '@/stores/auth'
+import { createOrg, deleteOrg, getOrgList, setCurrentOrg, updateOrg } from '@/services/permission.service'
+import type { CreateOrgRequest, OrgItem, UpdateOrgRequest } from '@/types'
 
 interface Team {
   id: number
@@ -104,64 +143,62 @@ interface Team {
   createdAt: string
   isCurrent: boolean
   inviteCode: string
+  avatar?: string
+  avatarId?: number
+  ownerId?: number
 }
 
-// Mock Data
-const teams = ref<Team[]>([
-  {
-    id: 1,
-    name: '前端开发组',
-    description: '负责公司所有前端项目的开发与维护，包括官网、管理后台等。',
-    role: 'owner',
-    memberCount: 12,
-    createdAt: '2023-01-15',
-    isCurrent: true,
-    inviteCode: 'FE-2023-001'
-  },
-  {
-    id: 2,
-    name: '产品设计部',
-    description: '负责产品原型设计、UI设计以及用户体验优化。',
-    role: 'member',
-    memberCount: 8,
-    createdAt: '2023-02-20',
-    isCurrent: false,
-    inviteCode: 'PD-2023-X9Y'
-  },
-  {
-    id: 3,
-    name: '后端架构组',
-    description: '核心业务逻辑实现，微服务架构设计与维护。',
-    role: 'member',
-    memberCount: 15,
-    createdAt: '2023-01-10',
-    isCurrent: false,
-    inviteCode: 'BE-ARCH-888'
-  },
-  {
-    id: 4,
-    name: '测试运维组',
-    description: '自动化测试流程建设，服务器运维与部署。',
-    role: 'owner',
-    memberCount: 6,
-    createdAt: '2023-03-05',
-    isCurrent: false,
-    inviteCode: 'QA-OPS-777'
-  },
-  {
-    id: 5,
-    name: 'AI 实验室',
-    description: '探索人工智能技术在业务场景中的落地应用。',
-    role: 'owner',
-    memberCount: 4,
-    createdAt: '2023-06-12',
-    isCurrent: false,
-    inviteCode: 'AI-LAB-999'
-  }
-])
+const authStore = useAuthStore()
+const teams = ref<Team[]>([])
+const modalMode = ref<'create' | 'edit' | 'detail' | 'join' | ''>('')
+const modalBodyText = ref('')
+const modalSubmitting = ref(false)
+const editingOrgId = ref<number | null>(null)
 
 const showModal = ref(false)
 const modalTitle = ref('')
+const orgForm = reactive({
+  name: '',
+  description: '',
+  code: '',
+  avatar: '',
+  avatar_id: undefined as number | undefined
+})
+
+const resetOrgForm = () => {
+  orgForm.name = ''
+  orgForm.description = ''
+  orgForm.code = ''
+  orgForm.avatar = ''
+  orgForm.avatar_id = undefined
+}
+
+const mapOrgToTeam = (org: OrgItem): Team => {
+  const currentOrgId = authStore.user?.current_org_id || 0
+  const isOwner = org.owner_id ? org.owner_id === authStore.user?.id : true
+  return {
+    id: org.id,
+    name: org.name || '-',
+    description: org.description || '',
+    role: isOwner ? 'owner' : 'member',
+    memberCount: org.member_count || 0,
+    createdAt: org.created_at ? String(org.created_at).slice(0, 10) : '-',
+    isCurrent: org.id === currentOrgId,
+    inviteCode: org.code || '-',
+    avatar: org.avatar || '',
+    avatarId: org.avatar_id,
+    ownerId: org.owner_id
+  }
+}
+
+const fetchTeams = async () => {
+  try {
+    const data = await getOrgList({ page: 0, page_size: 0 }, { skipSuccTip: true })
+    teams.value = (data?.list || []).map(mapOrgToTeam)
+  } catch (error) {
+    teams.value = []
+  }
+}
 
 const getAvatarColor = (name: string) => {
   const colors = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2']
@@ -173,12 +210,17 @@ const getAvatarColor = (name: string) => {
 }
 
 const handleJoinTeam = () => {
+  modalMode.value = 'join'
   modalTitle.value = '加入团队'
+  modalBodyText.value = '请联系团队管理员获取邀请码，在后续版本中可直接加入。'
   showModal.value = true
 }
 
 const handleCreateTeam = () => {
+  modalMode.value = 'create'
   modalTitle.value = '创建团队'
+  resetOrgForm()
+  editingOrgId.value = null
   showModal.value = true
 }
 
@@ -192,21 +234,38 @@ const handleSwitchTeam = async (team: Team) => {
       cancelText: '取消'
     })
     
-    teams.value.forEach(t => t.isCurrent = false)
-    team.isCurrent = true
+    await setCurrentOrg({ org_id: team.id }, { skipSuccTip: true })
+    if (authStore.user) {
+      authStore.setUser({
+        ...authStore.user,
+        current_org_id: team.id
+      })
+    }
+    await authStore.fetchMyMenus(team.id, { skipSuccTip: true, skipErrTip: true })
+    teams.value.forEach((t) => {
+      t.isCurrent = t.id === team.id
+    })
     message.success(`已切换到 ${team.name}`)
   } catch (e) {
-    // Cancelled
   }
 }
 
 const handleViewDetails = (team: Team) => {
+  modalMode.value = 'detail'
   modalTitle.value = `团队详情 - ${team.name}`
+  modalBodyText.value = `组织名称：${team.name}\n邀请码：${team.inviteCode}\n组织描述：${team.description || '暂无描述'}`
   showModal.value = true
 }
 
 const handleEditTeam = (team: Team) => {
+  modalMode.value = 'edit'
   modalTitle.value = `编辑团队 - ${team.name}`
+  editingOrgId.value = team.id
+  orgForm.name = team.name
+  orgForm.description = team.description || ''
+  orgForm.code = team.inviteCode === '-' ? '' : team.inviteCode
+  orgForm.avatar = team.avatar || ''
+  orgForm.avatar_id = team.avatarId
   showModal.value = true
 }
 
@@ -220,14 +279,32 @@ const handleDeleteTeam = async (team: Team) => {
       cancelText: '取消'
     })
     
+    await deleteOrg(team.id, { skipSuccTip: true })
     teams.value = teams.value.filter(t => t.id !== team.id)
+    if (team.isCurrent && teams.value.length) {
+      const fallbackTeam = teams.value[0]
+      await setCurrentOrg({ org_id: fallbackTeam.id }, { skipSuccTip: true })
+      if (authStore.user) {
+        authStore.setUser({
+          ...authStore.user,
+          current_org_id: fallbackTeam.id
+        })
+      }
+      await authStore.fetchMyMenus(fallbackTeam.id, { skipSuccTip: true, skipErrTip: true })
+      teams.value.forEach((t) => {
+        t.isCurrent = t.id === fallbackTeam.id
+      })
+    }
     message.success('团队已解散')
   } catch (e) {
-    // Cancelled
   }
 }
 
 const copyInviteCode = async (code: string) => {
+  if (!code || code === '-') {
+    message.warning('该组织暂无邀请码')
+    return
+  }
   try {
     await navigator.clipboard.writeText(code)
     message.success('邀请码已复制')
@@ -235,6 +312,42 @@ const copyInviteCode = async (code: string) => {
     message.error('复制失败，请手动复制')
   }
 }
+
+const submitOrgForm = async () => {
+  const name = orgForm.name.trim()
+  if (!name) {
+    message.warning('请输入组织名称')
+    return
+  }
+
+  const payload: CreateOrgRequest | UpdateOrgRequest = {
+    name,
+    description: orgForm.description.trim() || undefined,
+    code: orgForm.code.trim() || undefined,
+    avatar: orgForm.avatar.trim() || undefined,
+    avatar_id: orgForm.avatar_id && orgForm.avatar_id > 0 ? orgForm.avatar_id : undefined
+  }
+
+  modalSubmitting.value = true
+  try {
+    if (modalMode.value === 'edit' && editingOrgId.value) {
+      await updateOrg(editingOrgId.value, payload as UpdateOrgRequest, { skipSuccTip: true })
+      message.success('组织信息已更新')
+    } else {
+      await createOrg(payload as CreateOrgRequest, { skipSuccTip: true })
+      message.success('组织创建成功')
+    }
+    showModal.value = false
+    await fetchTeams()
+  } catch (error) {
+  } finally {
+    modalSubmitting.value = false
+  }
+}
+
+onMounted(() => {
+  fetchTeams()
+})
 </script>
 
 <style scoped>
@@ -310,6 +423,13 @@ const copyInviteCode = async (code: string) => {
   font-size: 20px;
   font-weight: 600;
   flex-shrink: 0;
+}
+
+.team-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
 .team-info {
@@ -506,6 +626,35 @@ const copyInviteCode = async (code: string) => {
 .modal-body-text {
   color: #4b5563;
   margin-bottom: 24px;
+  white-space: pre-line;
+}
+
+.form-item {
+  margin-bottom: 14px;
+}
+
+.form-label {
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #1f2937;
+  box-sizing: border-box;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15);
 }
 
 .modal-footer {

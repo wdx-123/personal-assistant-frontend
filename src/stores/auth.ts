@@ -1,14 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { User } from '@/types'
+import type { User, MenuItem } from '@/types'
 import type { RequestOptions } from '@/utils/request'
 import { login as loginApi, logout as logoutApi } from '@/services/auth.service'
+import { getMyMenus } from '@/services/permission.service'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const accessToken = ref<string>('')
   const accessTokenExpiresAt = ref<number>(0)
   const refreshToken = ref<string>('')
+  const myMenus = ref<MenuItem[]>([])
 
   const isLoggedIn = computed(() => !!user.value && !!accessToken.value)
   const isTokenExpired = computed(() => {
@@ -33,6 +35,17 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('refresh_token', token)
   }
 
+  const setMyMenus = (menus: MenuItem[]) => {
+    myMenus.value = menus
+    localStorage.setItem('my_menus', JSON.stringify(menus))
+  }
+
+  const fetchMyMenus = async (orgId?: number, config?: RequestOptions) => {
+    const menus = await getMyMenus(orgId, config)
+    setMyMenus(Array.isArray(menus) ? menus : [])
+    return myMenus.value
+  }
+
   const login = async (
     phone: string,
     password: string,
@@ -50,6 +63,15 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (refresh_token) {
       setRefreshToken(refresh_token)
+    }
+
+    try {
+      await fetchMyMenus(userData.current_org_id, {
+        skipSuccTip: true,
+        skipErrTip: true
+      })
+    } catch (error) {
+      setMyMenus([])
     }
 
     return { success: true }
@@ -73,11 +95,13 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = ''
     accessTokenExpiresAt.value = 0
     refreshToken.value = ''
+    myMenus.value = []
 
     localStorage.removeItem('user')
     localStorage.removeItem('access_token')
     localStorage.removeItem('access_token_expires_at')
     localStorage.removeItem('refresh_token')
+    localStorage.removeItem('my_menus')
   }
 
   const restoreAuth = () => {
@@ -86,12 +110,14 @@ export const useAuthStore = defineStore('auth', () => {
       const token = localStorage.getItem('access_token')
       const expiresAt = localStorage.getItem('access_token_expires_at')
       const refreshTkn = localStorage.getItem('refresh_token')
+      const myMenusStr = localStorage.getItem('my_menus')
 
       if (userStr && token && expiresAt) {
         user.value = JSON.parse(userStr)
         accessToken.value = token
         accessTokenExpiresAt.value = Number(expiresAt)
         refreshToken.value = refreshTkn || ''
+        myMenus.value = myMenusStr ? JSON.parse(myMenusStr) : []
       }
     } catch (error) {
       clearAuth()
@@ -109,6 +135,7 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken,
     accessTokenExpiresAt,
     refreshToken,
+    myMenus,
 
     isLoggedIn,
     isTokenExpired,
@@ -116,6 +143,8 @@ export const useAuthStore = defineStore('auth', () => {
     setUser,
     setToken,
     setRefreshToken,
+    setMyMenus,
+    fetchMyMenus,
     login,
     logout,
     clearAuth,

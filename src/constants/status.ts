@@ -162,8 +162,9 @@ export function getStatusMessage(
 /**
  * 判断是否为成功状态码
  */
-export function isSuccessStatusCode(code: number): boolean {
-  return code === StatusCode.SUCCESS || code === 200
+export function isSuccessStatusCode(code: number | string | undefined | null): boolean {
+  const normalizedCode = typeof code === 'string' ? Number(code) : code
+  return normalizedCode === StatusCode.SUCCESS || normalizedCode === 200 || normalizedCode === 0
 }
 
 /**

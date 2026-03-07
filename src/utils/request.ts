@@ -22,8 +22,8 @@ export type RequestOptions = Partial<Pick<RequestConfig, 'skipTip' | 'skipErrTip
 }
 
 const apiBaseURL =
-  import.meta.env.DEV && import.meta.env.VITE_API_PREFIX
-    ? import.meta.env.VITE_API_PREFIX
+  import.meta.env.DEV
+    ? ''
     : import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 const apiClientRaw: AxiosInstance = axios.create({
@@ -139,20 +139,25 @@ const handleTokenExpired = async (_response: AxiosResponse, config: RequestConfi
 const responseInterceptor = (
   response: AxiosResponse
 ): unknown => {
-  const res = response.data as ApiResponse
+  const res = response.data as ApiResponse & {
+    success?: boolean
+    msg?: string
+    code?: number | string
+  }
   const config = response.config as RequestConfig
 
   const { skipTip, skipSuccTip, skipErrTip, customSuccTip, customErrTip } = config
+  const normalizedCode = typeof res.code === 'string' ? Number(res.code) : res.code
 
-  if (isSuccessStatusCode(res.code)) {
+  if (isSuccessStatusCode(normalizedCode) || res.success === true) {
     if (!skipTip && !skipSuccTip) {
-      const succText = customSuccTip || res.tip || res.message || res.messages || '操作成功'
+      const succText = customSuccTip || res.tip || res.message || res.messages || res.msg || '操作成功'
       message.success(succText)
     }
     return res.data
   }
 
-  if (res.code === StatusCode.UNAUTHORIZED) {
+  if (normalizedCode === StatusCode.UNAUTHORIZED) {
     const shouldRefreshToken =
       !config.url?.includes('/user/login') &&
       !config.url?.includes('/user/register') &&
@@ -169,10 +174,14 @@ const responseInterceptor = (
     }
   }
 
-  const errText = customErrTip || getFriendlyErrorMessage(res.code, res.error, res.message || res.messages)
+  const errText = customErrTip || getFriendlyErrorMessage(
+    Number.isNaN(normalizedCode) ? StatusCode.SERVER_ERROR : Number(normalizedCode),
+    res.error,
+    res.message || res.messages || res.msg
+  )
 
   if (!skipTip && !skipErrTip) {
-    if (res.code === StatusCode.FORBIDDEN) {
+    if (normalizedCode === StatusCode.FORBIDDEN) {
       message.warning(errText)
     } else {
       message.error(errText)

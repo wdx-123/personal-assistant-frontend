@@ -25,6 +25,18 @@
             <a-select-option value="disabled">禁用</a-select-option>
           </a-select>
         </a-form-item>
+        <a-form-item label="API类别" name="menu_id">
+          <a-select
+            v-model:value="searchQuery.menu_id"
+            placeholder="请选择类别"
+            style="width: 180px"
+            allow-clear
+          >
+            <a-select-option v-for="item in menuCategoryOptions" :key="item.value" :value="item.value">
+              {{ item.label }}
+            </a-select-option>
+          </a-select>
+        </a-form-item>
         <a-form-item>
           <a-space>
             <a-button type="primary" @click="search" class="btn-search">
@@ -57,6 +69,9 @@
           </a-button>
         </a-space>
         <a-space>
+          <a-button type="primary" @click="syncRoutes">
+            同步路由
+          </a-button>
           <a-tooltip title="刷新">
             <a-button type="text" shape="circle" @click="refresh">
               <template #icon><ReloadOutlined /></template>
@@ -66,7 +81,7 @@
       </div>
 
       <a-table
-        :columns="columns"
+        :columns="columns as any"
         :data-source="apis"
         :pagination="pagination"
         :row-selection="{ selectedRowKeys: selectedIds, onChange: onSelectChange }"
@@ -83,6 +98,9 @@
           </template>
           <template v-else-if="column.key === 'method'">
             <a-tag :color="getMethodColor(record.method)">{{ record.method || '-' }}</a-tag>
+          </template>
+          <template v-else-if="column.key === 'menu_name'">
+            {{ getMenuLabel(record) }}
           </template>
           <template v-else-if="column.key === 'action'">
             <div class="action-buttons">
@@ -120,8 +138,16 @@
         <a-form-item label="API详情" required name="description">
           <a-input v-model:value="editingApi.description" placeholder="请输入 API 描述" />
         </a-form-item>
-        <a-form-item label="API类别" name="category">
-          <a-input v-model:value="editingApi.category" placeholder="请输入 API 类别" />
+        <a-form-item label="API类别" required name="menu_id">
+          <a-select
+            v-model:value="editingApi.menu_id"
+            placeholder="请选择 API 类别"
+            allow-clear
+          >
+            <a-select-option v-for="item in menuCategoryOptions" :key="item.value" :value="item.value">
+              {{ item.label }}
+            </a-select-option>
+          </a-select>
         </a-form-item>
         <a-form-item label="API方法" required name="method">
           <a-select v-model:value="editingApi.method" placeholder="请选择请求方法">
@@ -149,26 +175,28 @@ import {
   SearchOutlined, 
   ReloadOutlined, 
   PlusOutlined, 
-  DeleteOutlined, 
-  EditOutlined 
+  DeleteOutlined
 } from '@ant-design/icons-vue'
-import { getApiList, createApi, updateApi, deleteApi as deleteApiService } from '@/services/permission.service'
+import { getApiList, getMenuList, syncApi, createApi, updateApi, deleteApi as deleteApiService } from '@/services/permission.service'
 
 const searchQuery = reactive({
   path: '',
-  status: undefined as string | undefined
+  status: undefined as string | undefined,
+  menu_id: undefined as number | undefined
 })
 
 const columns = [
   { title: 'API 路径', dataIndex: 'path', key: 'path', width: 250 },
   { title: 'API 详情', dataIndex: 'description', key: 'description', ellipsis: true },
   { title: 'API 方法', dataIndex: 'method', key: 'method', width: 100 },
-  { title: '类别', dataIndex: 'category', key: 'category', width: 150 },
+  { title: '类别', dataIndex: 'menu_name', key: 'menu_name', width: 150 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '操作', key: 'action', width: 180, align: 'center', fixed: 'right' as const }
 ]
 
+type TableKey = string | number
 const apis = ref<any[]>([])
+const menuCategoryOptions = ref<{ label: string; value: number }[]>([])
 const loading = ref(false)
 const pagination = reactive({
   current: 1,
@@ -179,6 +207,17 @@ const pagination = reactive({
   showTotal: (total: number) => `共 ${total} 条`
 })
 
+const getMenuLabel = (record: any) => {
+  const hit = menuCategoryOptions.value.find((item) => item.value === record.menu_id)
+  return hit?.label || record.menu_name || '-'
+}
+
+const getMenuIdByName = (name?: string) => {
+  if (!name) return undefined
+  const hit = menuCategoryOptions.value.find((item) => item.label === name)
+  return hit?.value
+}
+
 const fetchApis = async () => {
   loading.value = true
   try {
@@ -186,7 +225,8 @@ const fetchApis = async () => {
       page: pagination.current,
       page_size: pagination.pageSize,
       keyword: searchQuery.path || undefined,
-      status: searchQuery.status === 'enabled' ? 1 : (searchQuery.status === 'disabled' ? 0 : undefined)
+      status: searchQuery.status === 'enabled' ? 1 : (searchQuery.status === 'disabled' ? 0 : undefined),
+      menu_id: searchQuery.menu_id || undefined
     }
     
     const data = await getApiList(params, { skipSuccTip: true })
@@ -195,16 +235,32 @@ const fetchApis = async () => {
         id: item.id,
         path: item.path,
         description: item.detail || '',
-        category: item.category || '',
+        menu_id: item.menu_id || item.group_id || undefined,
+        menu_name: item.menu_name || item.category || '',
         method: item.method,
         status: item.status === 1 ? 'enabled' : 'disabled'
       }))
       pagination.total = data.total
     }
+    console.log(data)
   } catch (error) {
     console.error('Failed to fetch APIs:', error)
   } finally {
     loading.value = false
+  }
+}
+
+const fetchMenuCategories = async () => {
+  try {
+    const data = await getMenuList({ page: 1, page_size: 1000, parent_id: 0 }, { skipSuccTip: true })
+    const list = data?.list || []
+    menuCategoryOptions.value = list.map((item: any) => ({
+      label: item.name || '',
+      value: item.id
+    })).filter((item: any) => item.value)
+  } catch (error) {
+    console.error(error)
+    menuCategoryOptions.value = []
   }
 }
 
@@ -222,6 +278,7 @@ const search = () => {
 const resetSearch = () => {
   searchQuery.path = ''
   searchQuery.status = undefined
+  searchQuery.menu_id = undefined
   search()
 }
 
@@ -230,10 +287,20 @@ const refresh = () => {
   message.success('已刷新 API 数据')
 }
 
+const syncRoutes = async () => {
+  try {
+    const result = await syncApi({}, { skipSuccTip: true })
+    message.success(`同步完成：新增 ${result.added}，更新 ${result.updated}，禁用 ${result.disabled}，总计 ${result.total}`)
+    fetchApis()
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 // Selection
-const selectedIds = ref<number[]>([])
+const selectedIds = ref<TableKey[]>([])
 const hasSelected = computed(() => selectedIds.value.length > 0)
-const onSelectChange = (selectedRowKeys: number[]) => {
+const onSelectChange = (selectedRowKeys: TableKey[], _selectedRows: any[]) => {
   selectedIds.value = selectedRowKeys
 }
 
@@ -246,7 +313,7 @@ const batchDelete = () => {
     okType: 'danger',
     onOk: async () => {
       try {
-        await Promise.all(selectedIds.value.map(id => deleteApiService(id, { skipSuccTip: true })))
+        await Promise.all(selectedIds.value.map(id => deleteApiService(Number(id), { skipSuccTip: true })))
         message.success('批量删除成功')
         selectedIds.value = []
         fetchApis()
@@ -275,7 +342,7 @@ const editingApi = reactive({
   id: 0,
   path: '',
   description: '',
-  category: '',
+  menu_id: undefined as number | undefined,
   method: undefined as string | undefined,
   status: 'enabled'
 })
@@ -285,17 +352,18 @@ const openEditModal = (api?: any) => {
     modalType.value = 'edit'
     Object.assign(editingApi, {
       ...api,
-      category: api.category || ''
+      menu_id: api.menu_id || getMenuIdByName(api.menu_name) || undefined
     })
   } else {
     modalType.value = 'add'
-    Object.assign(editingApi, { id: 0, path: '', description: '', category: '', method: undefined, status: 'enabled' })
+    Object.assign(editingApi, { id: 0, path: '', description: '', menu_id: undefined, method: undefined, status: 'enabled' })
   }
+  fetchMenuCategories()
   isEditModalOpen.value = true
 }
 
 const saveApi = async () => {
-  if (!editingApi.path || !editingApi.description || !editingApi.method) {
+  if (!editingApi.path || !editingApi.description || !editingApi.method || !editingApi.menu_id) {
     message.warning('请填写完整的 API 信息')
     return
   }
@@ -306,7 +374,7 @@ const saveApi = async () => {
       path: editingApi.path,
       method: editingApi.method || 'GET',
       detail: editingApi.description,
-      category: editingApi.category,
+      menu_id: editingApi.menu_id,
       status: editingApi.status === 'enabled' ? 1 : 0
     }
 
@@ -338,6 +406,7 @@ const getMethodColor = (method: string) => {
 
 onMounted(() => {
   fetchApis()
+  fetchMenuCategories()
 })
 </script>
 

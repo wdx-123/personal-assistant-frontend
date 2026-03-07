@@ -3,22 +3,24 @@
     <!-- 团队概览头部 -->
     <div class="team-header-card">
       <div class="team-summary">
-        <div class="team-avatar-lg">前</div>
+        <div class="team-avatar-lg" :style="{ backgroundColor: getAvatarColor(currentOrg?.name || '') }">
+          {{ (currentOrg?.name || '组').charAt(0).toUpperCase() }}
+        </div>
         <div class="team-details">
           <div class="team-title-row">
-            <h2 class="team-title">前端开发组</h2>
+            <h2 class="team-title">{{ currentOrg?.name || '未选择组织' }}</h2>
             <span class="role-badge">所有者</span>
           </div>
-          <p class="team-description">负责公司所有前端项目的开发与维护，包括官网、管理后台等。</p>
+          <p class="team-description">{{ currentOrg?.description || '暂无组织描述' }}</p>
           <div class="team-stats">
             <div class="stat-item">
               <span class="stat-label">成员数</span>
-              <span class="stat-value">12</span>
+              <span class="stat-value">{{ members.length }}</span>
             </div>
             <div class="stat-divider"></div>
             <div class="stat-item">
               <span class="stat-label">创建时间</span>
-              <span class="stat-value">2023-01-15</span>
+              <span class="stat-value">{{ currentOrg?.createdAt || '-' }}</span>
             </div>
             <div class="stat-divider"></div>
             <div class="stat-item">
@@ -29,6 +31,9 @@
         </div>
       </div>
       <div class="header-search">
+        <select v-model.number="targetOrgId" class="org-select" @change="handleOrgSelect">
+          <option v-for="org in orgs" :key="org.id" :value="org.id">{{ org.name }}</option>
+        </select>
         <div class="search-input-wrapper">
           <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -38,8 +43,11 @@
             type="text" 
             placeholder="搜索用户名、邮箱..." 
             class="search-input"
+            @keydown.enter="searchMembers"
           />
         </div>
+        <button class="btn btn-primary" @click="searchMembers">搜索</button>
+        <button class="btn btn-secondary" @click="resetSearch">重置</button>
         <button class="btn btn-primary" @click="handleInviteMember">
           <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -90,11 +98,27 @@
               </div>
             </td>
           </tr>
+          <tr v-if="membersLoading">
+            <td colspan="7" class="empty-cell">成员加载中...</td>
+          </tr>
           <tr v-if="filteredMembers.length === 0">
             <td colspan="7" class="empty-cell">暂无成员数据</td>
           </tr>
         </tbody>
       </table>
+      <div class="pagination-wrapper">
+        <a-pagination
+          :current="pagination.current"
+          :page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-size-changer="true"
+          :show-quick-jumper="false"
+          :page-size-options="['5', '10', '20', '50']"
+          :show-total="(total:number) => `共 ${total} 条数据`"
+          @change="handlePageChange"
+          @showSizeChange="handlePageSizeChange"
+        />
+      </div>
     </div>
 
     <!-- 模态框占位 -->
@@ -111,8 +135,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { message, Confirm } from '@/components/common'
+import { getOrgList, getUserList } from '@/services/permission.service'
+import { useAuthStore } from '@/stores/auth'
+import type { OrgItem } from '@/types'
 
 interface Member {
   id: number
@@ -123,26 +150,100 @@ interface Member {
   status: 'enabled' | 'disabled'
 }
 
-// Mock Data
-const members = ref<Member[]>([
-  { id: 1001, username: 'Admin', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin', role: '管理员', email: 'admin@example.com', status: 'enabled' },
-  { id: 1002, username: 'User1', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=User1', role: '普通成员', email: 'user1@example.com', status: 'enabled' },
-  { id: 1003, username: 'User2', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=User2', role: '普通成员', email: 'user2@example.com', status: 'disabled' },
-  { id: 1004, username: 'DevLead', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=DevLead', role: '技术负责人', email: 'dev@example.com', status: 'enabled' },
-  { id: 1005, username: 'Designer', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Designer', role: '设计师', email: 'design@example.com', status: 'enabled' },
-])
+interface OrgOption {
+  id: number
+  name: string
+  description: string
+  createdAt: string
+}
+
+const authStore = useAuthStore()
+const members = ref<Member[]>([])
+const membersLoading = ref(false)
+const orgs = ref<OrgOption[]>([])
+const targetOrgId = ref<number>(0)
 
 const searchQuery = ref('')
 const showModal = ref(false)
 const modalTitle = ref('')
+const currentOrgId = computed(() => authStore.user?.current_org_id || 0)
+const currentOrg = computed(() => orgs.value.find((item) => item.id === targetOrgId.value))
+const pagination = ref({
+  current: 1,
+  pageSize: 10,
+  total: 0
+})
+
+const mapOrg = (item: OrgItem): OrgOption => ({
+  id: item.id,
+  name: item.name || '-',
+  description: item.description || '',
+  createdAt: item.created_at ? String(item.created_at).slice(0, 10) : '-'
+})
+
+const getAvatarColor = (name: string) => {
+  const colors = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2']
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
+}
+
+const fetchOrgs = async () => {
+  try {
+    const data = await getOrgList({ page: 0, page_size: 0 }, { skipSuccTip: true })
+    orgs.value = (data?.list || []).map(mapOrg)
+    if (!targetOrgId.value) {
+      targetOrgId.value = currentOrgId.value || orgs.value[0]?.id || 0
+    }
+  } catch (error) {
+    orgs.value = []
+  }
+}
+
+const fetchMembers = async () => {
+  const orgId = targetOrgId.value || currentOrgId.value
+  if (!orgId) {
+    members.value = []
+    return
+  }
+
+  membersLoading.value = true
+  try {
+    const data = await getUserList(
+      {
+        page: pagination.value.current,
+        page_size: pagination.value.pageSize,
+        org_id: orgId,
+        keyword: searchQuery.value.trim() || undefined
+      },
+      { skipSuccTip: true }
+    )
+    members.value = (data?.list || []).map((item: any) => ({
+      id: item.id,
+      username: item.username || '-',
+      avatar: item.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(item.username || String(item.id))}`,
+      role: item.roles?.[0]?.name || '普通成员',
+      email: item.email || '-',
+      status: item.freeze ? 'disabled' : 'enabled'
+    }))
+    pagination.value.total = data?.total || 0
+  } catch (error) {
+    members.value = []
+    pagination.value.total = 0
+  } finally {
+    membersLoading.value = false
+  }
+}
+
+const handleOrgSelect = () => {
+  pagination.value.current = 1
+  fetchMembers()
+}
 
 const filteredMembers = computed(() => {
-  if (!searchQuery.value) return members.value
-  const query = searchQuery.value.toLowerCase()
-  return members.value.filter(m => 
-    m.username.toLowerCase().includes(query) || 
-    m.email.toLowerCase().includes(query)
-  )
+  return members.value
 })
 
 const getRoleClass = (role: string) => {
@@ -176,6 +277,43 @@ const handleDeleteMember = async (member: Member) => {
     // Cancelled
   }
 }
+
+const searchMembers = () => {
+  pagination.value.current = 1
+  fetchMembers()
+}
+
+const resetSearch = () => {
+  searchQuery.value = ''
+  pagination.value.current = 1
+  fetchMembers()
+}
+
+const handlePageChange = (page: number) => {
+  pagination.value.current = page
+  fetchMembers()
+}
+
+const handlePageSizeChange = (page: number, pageSize: number) => {
+  pagination.value.current = page
+  pagination.value.pageSize = pageSize
+  fetchMembers()
+}
+
+onMounted(async () => {
+  await fetchOrgs()
+  await fetchMembers()
+})
+
+watch(
+  () => currentOrgId.value,
+  (id) => {
+    if (id) {
+      targetOrgId.value = id
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
@@ -294,6 +432,23 @@ const handleDeleteMember = async (member: Member) => {
   align-items: center;
 }
 
+.org-select {
+  height: 36px;
+  min-width: 180px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0 10px;
+  font-size: 14px;
+  color: #374151;
+  background: #fff;
+}
+
+.org-select:focus {
+  outline: none;
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
 .search-input-wrapper {
   position: relative;
   width: 240px;
@@ -332,6 +487,13 @@ const handleDeleteMember = async (member: Member) => {
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   flex: 1;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 20px;
+  border-top: 1px solid #f3f4f6;
 }
 
 .data-table {

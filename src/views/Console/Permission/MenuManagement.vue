@@ -66,12 +66,12 @@
       </div>
 
       <a-table
-        :columns="columns"
+        :columns="columns as any"
         :data-source="displayRows"
         :row-selection="{ selectedRowKeys: selectedIds, onChange: onSelectChange }"
         row-key="id"
         :loading="loading"
-        :pagination="pagination"
+        :pagination="false"
         size="small"
         childrenColumnName="children"
         :indent-size="30"
@@ -94,7 +94,10 @@
           </template>
           <template v-else-if="column.key === 'icon'">
             <a-tooltip placement="topLeft" :title="record.icon">
-              <span class="text-ellipsis">{{ record.icon || '-' }}</span>
+              <span v-if="isImageUrl(record.icon)" class="icon-cell">
+                <img :src="record.icon" alt="" class="icon-image" />
+              </span>
+              <span v-else class="text-ellipsis">{{ record.icon || '-' }}</span>
             </a-tooltip>
           </template>
           <template v-else-if="column.key === 'permission'">
@@ -131,111 +134,95 @@
     <!-- 编辑/新增 模态框 -->
     <a-modal
       v-model:open="isEditModalOpen"
-      :title="modalType === 'add' ? '新增菜单' : '编辑菜单'"
-      @ok="saveMenu"
-      :confirmLoading="modalLoading"
-      width="700px"
+      :title="modalType === 'add' ? '新增菜单管理' : '编辑菜单管理'"
+      width="560px"
       :maskClosable="false"
+      :footer="null"
+      :style="{ top: '12px' }"
+      :bodyStyle="{ maxHeight: '62vh', overflowY: 'auto', padding: '12px 14px 6px' }"
+      wrap-class-name="menu-edit-modal-wrap"
     >
-      <a-form :model="editingForm" layout="vertical" :label-col="{ style: { width: '100px' } }">
-        <a-row :gutter="16">
-          <a-col :span="24" v-if="editingForm.type !== 'directory'">
-            <a-form-item label="父级菜单">
-              <a-tree-select
-                v-model:value="selectedParentId"
-                :tree-data="tree"
-                :fieldNames="{ children: 'children', label: 'name', value: 'id' }"
-                placeholder="请选择父级菜单"
-                allow-clear
-                tree-default-expand-all
-                style="width: 100%"
-              />
-            </a-form-item>
-          </a-col>
-          
-          <a-col :span="12">
-            <a-form-item label="菜单名称" required>
-              <a-input v-model:value="editingForm.name" placeholder="请输入菜单名称" />
-            </a-form-item>
-          </a-col>
-          
-          <a-col :span="12">
-            <a-form-item label="菜单类型" required>
-              <a-radio-group v-model:value="editingForm.type" :disabled="modalType === 'edit'">
-                <a-radio value="directory">目录</a-radio>
-                <a-radio value="menu">菜单</a-radio>
-                <a-radio value="button">按钮</a-radio>
-              </a-radio-group>
-            </a-form-item>
-          </a-col>
+      <a-form :model="editingForm" layout="horizontal" class="menu-edit-form">
+        <a-form-item v-if="editingForm.type !== 'directory'" label="父级菜单">
+          <a-tree-select
+            v-model:value="selectedParentId"
+            :tree-data="tree"
+            :fieldNames="{ children: 'children', label: 'name', value: 'id' }"
+            placeholder="请选择父级菜单"
+            allow-clear
+            tree-default-expand-all
+          />
+        </a-form-item>
 
-          <template v-if="editingForm.type === 'directory' || editingForm.type === 'menu'">
-            <a-col :span="12">
-              <a-form-item :label="editingForm.type === 'directory' ? '目录标识' : '菜单标识'" required>
-                <a-input v-model:value="editingForm.code" placeholder="请输入标识" />
-              </a-form-item>
-            </a-col>
-          </template>
+        <a-form-item label="菜单名称" required>
+          <a-input v-model:value="editingForm.name" placeholder="请输入" />
+        </a-form-item>
 
-          <template v-if="editingForm.type === 'menu'">
-            <a-col :span="12">
-              <a-form-item label="路由名称" required>
-                <a-input v-model:value="editingForm.routeName" placeholder="请输入路由名称" />
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item label="路由路径" required>
-                <a-input v-model:value="editingForm.routePath" placeholder="请输入路由路径" />
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item label="组件路径">
-                <a-input v-model:value="editingForm.componentPath" placeholder="请输入组件路径" />
-              </a-form-item>
-            </a-col>
-            <a-col :span="24">
-              <a-form-item label="路由参数">
-                <a-input v-model:value="editingForm.routeParam" placeholder='JSON格式，例如：{"id": 1}' />
-              </a-form-item>
-            </a-col>
-          </template>
+        <a-form-item label="菜单类型" required>
+          <a-radio-group v-model:value="editingForm.type" :disabled="modalType === 'edit'">
+            <a-radio value="directory">目录</a-radio>
+            <a-radio value="menu">菜单</a-radio>
+            <a-radio value="button">按钮</a-radio>
+          </a-radio-group>
+        </a-form-item>
 
-          <template v-if="editingForm.type === 'button'">
-            <a-col :span="24">
-              <a-form-item label="按钮标识">
-                <a-input v-model:value="editingForm.permission" placeholder="如: system:user:add" />
-              </a-form-item>
-            </a-col>
-          </template>
+        <a-form-item v-if="editingForm.type !== 'button'" label="路由名称" :required="editingForm.type === 'menu'">
+          <a-input
+            v-model:value="editingForm.routeName"
+            placeholder="请输入"
+          />
+        </a-form-item>
 
-          <a-col :span="12">
-            <a-form-item label="图标">
-              <a-input v-model:value="editingForm.icon" placeholder="请输入图标名称" />
-            </a-form-item>
-          </a-col>
+        <a-form-item v-if="editingForm.type !== 'button'" label="路由路径" :required="editingForm.type === 'menu'">
+          <a-input
+            v-model:value="editingForm.routePath"
+            placeholder="请输入"
+          />
+        </a-form-item>
 
-          <a-col :span="12">
-            <a-form-item label="排序">
-              <a-input-number v-model:value="editingForm.sort" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
+        <a-form-item v-if="editingForm.type !== 'button'" label="图标">
+          <a-input
+            v-model:value="editingForm.icon"
+            placeholder="请输入"
+          />
+        </a-form-item>
 
-          <a-col :span="12">
-            <a-form-item label="状态" required>
-              <a-radio-group v-model:value="editingForm.status">
-                <a-radio value="enabled">启用</a-radio>
-                <a-radio value="disabled">禁用</a-radio>
-              </a-radio-group>
-            </a-form-item>
-          </a-col>
+        <a-form-item v-if="editingForm.type === 'menu'" label="组件路径" :required="editingForm.type === 'menu'">
+          <a-input
+            v-model:value="editingForm.componentPath"
+            placeholder="请输入"
+          />
+        </a-form-item>
 
-          <a-col :span="24">
-            <a-form-item label="描述">
-              <a-textarea v-model:value="editingForm.description" placeholder="请输入描述" :rows="3" />
-            </a-form-item>
-          </a-col>
-        </a-row>
+        <a-form-item v-if="editingForm.type === 'button'" label="权限标识" :required="editingForm.type === 'button'">
+          <a-input
+            v-model:value="editingForm.permission"
+            placeholder="请输入"
+          />
+        </a-form-item>
+
+        <a-form-item label="状态" required>
+          <a-select v-model:value="editingForm.status" placeholder="请选择状态">
+            <a-select-option value="enabled">启用</a-select-option>
+            <a-select-option value="disabled">禁用</a-select-option>
+          </a-select>
+        </a-form-item>
+
+        <a-form-item label="排序">
+          <a-input-number v-model:value="editingForm.sort" :min="0" />
+        </a-form-item>
+
+        <a-form-item label="描述">
+          <a-textarea v-model:value="editingForm.description" placeholder="请输入" :rows="3" />
+        </a-form-item>
       </a-form>
+
+      <div class="menu-modal-footer">
+        <a-button @click="isEditModalOpen = false">取消</a-button>
+        <a-button type="primary" :loading="modalLoading" @click="saveMenu">
+          {{ modalType === 'add' ? '新增' : '保存' }}
+        </a-button>
+      </div>
     </a-modal>
   </div>
 </template>
@@ -247,17 +234,11 @@ import {
   SearchOutlined, 
   ReloadOutlined, 
   PlusOutlined, 
-  DeleteOutlined, 
-  EditOutlined 
+  DeleteOutlined
 } from '@ant-design/icons-vue'
-import { getMenuTree, createMenu, updateMenu, deleteMenu } from '@/services/permission.service'
+import { getMenuList, createMenu, updateMenu, deleteMenu } from '@/services/permission.service'
 
 const searchForm = reactive({
-  name: '',
-  status: undefined as string | undefined
-})
-
-const activeSearchQuery = reactive({
   name: '',
   status: undefined as string | undefined
 })
@@ -273,40 +254,37 @@ const columns = [
   { title: '操作', key: 'actions', width: 180, align: 'center', fixed: 'right' as const }
 ]
 
+type TableKey = string | number
 const tree = ref<any[]>([])
 const loading = ref(false)
-const selectedIds = ref<number[]>([])
+const selectedIds = ref<TableKey[]>([])
 const hasSelected = computed(() => selectedIds.value.length > 0)
-
-const totalItems = computed(() => {
-  const count = (nodes: any[]): number => {
-    return nodes.reduce((acc, node) => {
-      return acc + 1 + (node.children ? count(node.children) : 0)
-    }, 0)
-  }
-  return count(displayRows.value)
-})
-
-const pagination = reactive({
-  current: 1,
-  pageSize: 10,
-  showSizeChanger: true,
-  showQuickJumper: false,
-  showTotal: () => `共 ${totalItems.value} 条`
-})
 
 const fetchMenus = async () => {
   loading.value = true
   try {
-    const data = await getMenuTree({ skipSuccTip: true })
+    const params = {
+      page: 1,
+      page_size: 2000,
+      keyword: searchForm.name || undefined,
+      status: searchForm.status === 'enabled' ? 1 : (searchForm.status === 'disabled' ? 0 : undefined)
+    }
+    const data = await getMenuList(params, { skipSuccTip: true })
     if (data) {
-      tree.value = data.map(mapToNode)
+      const list = data.list || []
+      const hasChildren = list.some((item: any) => Array.isArray(item.children) && item.children.length > 0)
+      tree.value = hasChildren ? list.map(mapToNode) : buildTreeFromList(list)
     }
   } catch (error) {
     console.error('Failed to fetch menus:', error)
   } finally {
     loading.value = false
   }
+}
+
+const isImageUrl = (value?: string) => {
+  if (!value) return false
+  return /^https?:\/\//.test(value) || /^data:image\//.test(value)
 }
 
 const mapToNode = (item: any): any => {
@@ -329,42 +307,45 @@ const mapToNode = (item: any): any => {
   }
 }
 
-// Filter logic for search
-const displayRows = computed(() => {
-  const keyword = activeSearchQuery.name.trim().toLowerCase()
-  const status = activeSearchQuery.status
-
-  if (!keyword && !status) return tree.value
-
-  const filterTree = (nodes: any[]): any[] => {
-    const out: any[] = []
-    for (const n of nodes) {
-      const nameMatch = !keyword || n.name.toLowerCase().includes(keyword)
-      const statusMatch = !status || n.status === status
-      
-      let children = undefined
-      if (n.children) {
-        children = filterTree(n.children)
-      }
-      
-      if ((nameMatch && statusMatch) || (children && children.length)) {
-        out.push({ ...n, children })
-      }
+const buildTreeFromList = (list: any[]) => {
+  const nodeMap = new Map<number, any>()
+  const roots: any[] = []
+  list.forEach((item: any) => {
+    nodeMap.set(item.id, { ...mapToNode(item), children: [] })
+  })
+  list.forEach((item: any) => {
+    const parentId = item.parent_id
+    const node = nodeMap.get(item.id)
+    if (parentId && nodeMap.has(parentId)) {
+      const parent = nodeMap.get(parentId)
+      parent.children.push(node)
+    } else {
+      roots.push(node)
     }
-    return out
+  })
+  const cleanChildren = (nodes: any[]) => {
+    nodes.forEach((node) => {
+      if (node.children && node.children.length) {
+        cleanChildren(node.children)
+      } else {
+        delete node.children
+      }
+    })
   }
-  return filterTree(tree.value)
-})
+  cleanChildren(roots)
+  return roots
+}
+
+const displayRows = computed(() => tree.value)
 
 const search = () => {
-  activeSearchQuery.name = searchForm.name
-  activeSearchQuery.status = searchForm.status
+  fetchMenus()
 }
 
 const resetSearch = () => {
   searchForm.name = ''
   searchForm.status = undefined
-  search()
+  fetchMenus()
 }
 
 const refresh = async () => {
@@ -373,7 +354,7 @@ const refresh = async () => {
   message.success('已刷新菜单数据')
 }
 
-const onSelectChange = (selectedRowKeys: number[]) => {
+const onSelectChange = (selectedRowKeys: TableKey[], _selectedRows: any[]) => {
   selectedIds.value = selectedRowKeys
 }
 
@@ -386,7 +367,7 @@ const batchDelete = () => {
     okType: 'danger',
     onOk: async () => {
       try {
-        await Promise.all(selectedIds.value.map(id => deleteMenu(id, { skipSuccTip: true })))
+        await Promise.all(selectedIds.value.map(id => deleteMenu(Number(id), { skipSuccTip: true })))
         message.success('批量删除成功')
         selectedIds.value = []
         fetchMenus()
@@ -414,7 +395,15 @@ const modalLoading = ref(false)
 const editingForm = reactive<any>({
   id: 0,
   name: '',
+  code: '',
   type: 'menu',
+  routeName: '',
+  routePath: '',
+  routeParam: '',
+  componentPath: '',
+  permission: '',
+  icon: '',
+  description: '',
   status: 'enabled',
   sort: 1
 })
@@ -423,12 +412,40 @@ const selectedParentId = ref<number | undefined>(undefined)
 const openEditModal = (row?: any) => {
   if (row) {
     modalType.value = 'edit'
-    Object.assign(editingForm, row)
+    Object.assign(editingForm, {
+      id: row.id,
+      name: row.name || '',
+      code: row.code || '',
+      type: row.type || 'menu',
+      routeName: row.routeName || '',
+      routePath: row.routePath || '',
+      routeParam: row.routeParam || '',
+      componentPath: row.componentPath || '',
+      permission: row.type === 'button' ? (row.code || row.permission || '') : (row.permission || ''),
+      icon: row.icon || '',
+      description: row.description || '',
+      status: row.status || 'enabled',
+      sort: row.sort ?? 1
+    })
     // Find parent logic simplified
     selectedParentId.value = findParentId(row.id, tree.value)
   } else {
     modalType.value = 'add'
-    Object.assign(editingForm, { id: 0, name: '', code: '', type: 'menu', status: 'enabled', sort: 1, routeName: '', routePath: '', routePath: '', componentPath: '', permission: '', icon: '', description: '' })
+    Object.assign(editingForm, {
+      id: 0,
+      name: '',
+      code: '',
+      type: 'menu',
+      routeName: '',
+      routePath: '',
+      routeParam: '',
+      componentPath: '',
+      permission: '',
+      icon: '',
+      description: '',
+      status: 'enabled',
+      sort: 1
+    })
     selectedParentId.value = undefined
   }
   isEditModalOpen.value = true
@@ -452,28 +469,45 @@ const saveMenu = async () => {
     message.warning('请填写菜单名称')
     return
   }
+  if (editingForm.type === 'menu' && (!editingForm.routeName || !editingForm.routePath || !editingForm.componentPath)) {
+    message.warning('菜单类型需填写路由名称、路由路径和组件路径')
+    return
+  }
+  if (editingForm.type === 'button' && !editingForm.permission) {
+    message.warning('按钮类型需填写权限标识')
+    return
+  }
 
   modalLoading.value = true
   
-  let code = ''
-  if (editingForm.type === 'directory') {
-    code = editingForm.code || ''
-  } else if (editingForm.type === 'menu') {
-    code = editingForm.code || ''
-  } else if (editingForm.type === 'button') {
-    code = editingForm.permission || ''
+  const isMenuType = editingForm.type === 'menu'
+  const isButtonType = editingForm.type === 'button'
+  const code = isButtonType
+    ? String(editingForm.permission || '').trim()
+    : String(
+      editingForm.routePath ||
+      editingForm.routeName ||
+      editingForm.name ||
+      editingForm.code ||
+      ''
+    ).trim()
+
+  if (!code) {
+    message.warning('无法生成菜单标识，请补充必要信息')
+    modalLoading.value = false
+    return
   }
 
   const payload = {
-    parent_id: selectedParentId.value || 0,
+    parent_id: editingForm.type === 'directory' ? 0 : (selectedParentId.value || 0),
     name: editingForm.name,
     code,
     type: editingForm.type === 'directory' ? 1 : (editingForm.type === 'menu' ? 2 : 3),
-    icon: editingForm.icon,
-    route_name: editingForm.routeName,
-    route_path: editingForm.routePath,
-    route_param: editingForm.routeParam,
-    component_path: editingForm.componentPath,
+    icon: isButtonType ? '' : editingForm.icon,
+    route_name: isMenuType ? editingForm.routeName : '',
+    route_path: isMenuType ? editingForm.routePath : '',
+    route_param: isMenuType ? editingForm.routeParam : '',
+    component_path: isMenuType ? editingForm.componentPath : '',
     status: editingForm.status === 'enabled' ? 1 : 0,
     sort: editingForm.sort || 0,
     desc: editingForm.description
@@ -613,6 +647,123 @@ onMounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: middle;
+}
+
+.icon-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+}
+
+.icon-image {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+:deep(.menu-edit-modal-wrap .ant-modal-content) {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+:deep(.menu-edit-modal-wrap .ant-modal-header) {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+:deep(.menu-edit-modal-wrap .ant-modal-title) {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+:deep(.menu-edit-modal-wrap .ant-modal-close) {
+  width: 34px;
+  height: 34px;
+}
+
+:deep(.menu-edit-modal-wrap .ant-modal-body) {
+  padding: 12px 14px 6px;
+}
+
+.menu-edit-form :deep(.ant-form-item) {
+  margin-bottom: 8px;
+}
+
+.menu-edit-form :deep(.ant-form-item-label) {
+  width: 84px;
+  text-align: right;
+  padding-right: 6px;
+}
+
+.menu-edit-form :deep(.ant-form-item-label > label) {
+  height: 32px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.menu-edit-form :deep(.ant-form-item-control-input) {
+  min-height: 32px;
+}
+
+.menu-edit-form :deep(.ant-form-item-control) {
+  max-width: 360px;
+}
+
+.menu-edit-form :deep(.ant-input),
+.menu-edit-form :deep(.ant-input-number),
+.menu-edit-form :deep(.ant-select-selector),
+.menu-edit-form :deep(.ant-select-selection-search-input),
+.menu-edit-form :deep(.ant-tree-select .ant-select-selector) {
+  height: 32px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.menu-edit-form :deep(.ant-input),
+.menu-edit-form :deep(.ant-input-number-input),
+.menu-edit-form :deep(.ant-select-selection-item),
+.menu-edit-form :deep(.ant-select-selection-placeholder),
+.menu-edit-form :deep(.ant-tree-select .ant-select-selection-item),
+.menu-edit-form :deep(.ant-tree-select .ant-select-selection-placeholder) {
+  line-height: 30px;
+}
+
+.menu-edit-form :deep(.ant-radio-wrapper) {
+  font-size: 12px;
+  margin-right: 10px;
+}
+
+.menu-edit-form :deep(.ant-radio) {
+  transform: scale(1);
+}
+
+.menu-edit-form :deep(.ant-input-number) {
+  width: 100%;
+}
+
+.menu-edit-form :deep(.ant-input-textarea textarea.ant-input) {
+  min-height: 64px;
+  padding-top: 6px;
+  line-height: 1.5;
+}
+
+.menu-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.menu-modal-footer :deep(.ant-btn) {
+  height: 30px;
+  min-width: 68px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* 优化表格紧凑度 */

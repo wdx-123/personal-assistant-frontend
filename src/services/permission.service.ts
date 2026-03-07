@@ -10,13 +10,13 @@ import type {
   CreateRoleRequest,
   UpdateRoleRequest,
   AssignRoleMenuRequest,
+  AssignRoleApiRequest,
   ApiItem,
   PageDataApi,
   CreateApiRequest,
   UpdateApiRequest,
   SyncApiRequest,
   SyncApiResponse,
-  UserListItem,
   PageDataUser,
   UserDetailItem,
   AssignUserRoleRequest,
@@ -30,6 +30,13 @@ import type {
 
 export function getMenuTree(config?: RequestOptions): Promise<MenuItem[]> {
   return apiClient.get('/system/menu/tree', config)
+}
+
+export function getMyMenus(orgId?: number, config?: RequestOptions): Promise<MenuItem[]> {
+  return apiClient.get('/system/menu/my', {
+    ...config,
+    params: orgId ? { org_id: orgId } : undefined
+  } as any)
 }
 
 export function getMenuList(
@@ -95,12 +102,20 @@ export function getRoleMenuIds(id: number, config?: RequestOptions): Promise<num
   return apiClient.get(`/system/role/${id}/menus`, config)
 }
 
+export function getRoleMenuApiMap(id: number, config?: RequestOptions): Promise<any[]> {
+  return apiClient.get(`/system/role/${id}/menu_api_map`, config)
+}
+
 export function assignRoleMenu(data: AssignRoleMenuRequest, config?: RequestOptions): Promise<null> {
   return apiClient.post('/system/role/assign_menu', data, config)
 }
 
+export function assignRoleApi(data: AssignRoleApiRequest, config?: RequestOptions): Promise<null> {
+  return apiClient.post('/system/role/assign_api', data, config)
+}
+
 export function getApiList(
-  params: { page?: number; page_size?: number; status?: number; group_id?: number; method?: string; keyword?: string },
+  params: { page?: number; page_size?: number; status?: number; group_id?: number; method?: string; keyword?: string; menu_id?: number },
   config?: RequestOptions
 ): Promise<PageDataApi> {
   return apiClient.get('/system/api/list', {
@@ -174,6 +189,10 @@ export function createOrg(data: CreateOrgRequest, config?: RequestOptions): Prom
 
 export function updateOrg(id: number, data: UpdateOrgRequest, config?: RequestOptions): Promise<null> {
   return apiClient.put(`/system/org/${id}`, data, config)
+}
+
+export function deleteOrg(id: number, config?: RequestOptions): Promise<null> {
+  return apiClient.delete(`/system/org/${id}`, config)
 }
 
 export function setCurrentOrg(data: SetCurrentOrgRequest, config?: RequestOptions): Promise<null> {

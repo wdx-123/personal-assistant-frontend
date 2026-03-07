@@ -1,0 +1,1716 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "默认模块",
+    "description": "",
+    "version": "1.0.0"
+  },
+  "tags": [
+    {
+      "name": "System: Menu"
+    }
+  ],
+  "paths": {
+    "/system/menu/tree": {
+      "get": {
+        "summary": "获取完整菜单树",
+        "deprecated": false,
+        "description": "获取系统所有菜单的树形结构（包含目录、菜单、按钮），用于菜单配置页面展示。\n\n**用途**：管理后台的\"菜单管理\"页面\n**返回**：所有菜单的树形结构（包括禁用的菜单）\n**使用者**：管理员配置菜单时使用",
+        "tags": [
+          "System: Menu"
+        ],
+        "parameters": [
+          {
+            "name": "x-access-token",
+            "in": "header",
+            "description": "",
+            "required": false,
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s",
+            "schema": {
+              "type": "string",
+              "default": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "获取成功"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "parent_id": {
+                            "type": "integer",
+                            "example": 0
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "系统管理"
+                          },
+                          "code": {
+                            "type": "string",
+                            "example": "sys_manage"
+                          },
+                          "type": {
+                            "type": "integer",
+                            "description": "1:目录 2:菜单 3:按钮",
+                            "minimum": 1,
+                            "maximum": 3
+                          },
+                          "icon": {
+                            "type": "string",
+                            "example": "setting"
+                          },
+                          "route_path": {
+                            "type": "string",
+                            "example": "/system"
+                          },
+                          "component_path": {
+                            "type": "string",
+                            "example": "Layout"
+                          },
+                          "status": {
+                            "type": "integer",
+                            "description": "1:显示 0:隐藏",
+                            "example": 1
+                          },
+                          "sort": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "desc": {
+                            "type": "string",
+                            "example": "系统设置相关"
+                          },
+                          "children": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/MenuItem"
+                            }
+                          },
+                          "apis": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/APIItemSimple"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "timestamp": {
+                      "type": "integer",
+                      "format": "int64",
+                      "example": 1706789012345
+                    }
+                  }
+                },
+                "example": {
+                  "code": 0,
+                  "success": true,
+                  "message": "操作成功",
+                  "data": [
+                    {
+                      "id": 1,
+                      "parent_id": 0,
+                      "name": "系统管理",
+                      "code": "system",
+                      "type": 1,
+                      "icon": "setting",
+                      "route_name": "",
+                      "route_path": "",
+                      "route_param": "",
+                      "component_path": "",
+                      "status": 1,
+                      "sort": 1,
+                      "desc": "系统管理模块",
+                      "created_at": "2026-02-09T22:02:28.801+08:00",
+                      "updated_at": "2026-02-09T22:02:28.801+08:00",
+                      "children": [
+                        {
+                          "id": 2,
+                          "parent_id": 1,
+                          "name": "用户管理",
+                          "code": "system:user",
+                          "type": 2,
+                          "icon": "user",
+                          "route_name": "UserManage",
+                          "route_path": "/system/user",
+                          "route_param": "",
+                          "component_path": "views/system/user/index",
+                          "status": 1,
+                          "sort": 1,
+                          "desc": "用户管理页面",
+                          "created_at": "2026-02-09T22:03:04.347+08:00",
+                          "updated_at": "2026-02-09T22:03:04.347+08:00",
+                          "children": [
+                            {
+                              "id": 3,
+                              "parent_id": 2,
+                              "name": "新增用户",
+                              "code": "system:user:add",
+                              "type": 3,
+                              "icon": "",
+                              "route_name": "",
+                              "route_path": "",
+                              "route_param": "",
+                              "component_path": "",
+                              "status": 1,
+                              "sort": 1,
+                              "desc": "新增用户操作按钮",
+                              "created_at": "2026-02-09T22:03:29.26+08:00",
+                              "updated_at": "2026-02-09T22:03:29.26+08:00"
+                            }
+                          ]
+                        },
+                        {
+                          "id": 4,
+                          "parent_id": 1,
+                          "name": "角色管理",
+                          "code": "system:role",
+                          "type": 2,
+                          "icon": "peoples",
+                          "route_name": "RoleManage",
+                          "route_path": "/system/role",
+                          "route_param": "",
+                          "component_path": "views/system/role/index",
+                          "status": 1,
+                          "sort": 2,
+                          "desc": "",
+                          "created_at": "2026-02-09T22:03:38.794+08:00",
+                          "updated_at": "2026-02-09T22:03:38.794+08:00"
+                        }
+                      ]
+                    }
+                  ],
+                  "timestamp": 1770645830641
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseUnauthorized"
+                }
+              }
+            },
+            "headers": {}
+          },
+          "403": {
+            "description": "无权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponsePermissionDenied"
+                }
+              }
+            },
+            "headers": {}
+          },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseInternalError"
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/system/menu/my": {
+      "get": {
+        "summary": "获取当前用户路由",
+        "deprecated": false,
+        "description": "**用途**：前端侧边栏渲染\n**返回**：当前登录用户有权限访问的菜单树（已过滤无权限菜单）\n**使用者**：所有登录用户\n**场景**：用户登录后，前端调用此接口获取该用户能看到的菜单，然后渲染左侧导航栏。不同角色看到的菜单不同（如普通用户看不到\"用户管理\"）。",
+        "tags": [
+          "System: Menu"
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "query",
+            "description": "可选：指定组织上下文，默认使用用户当前组织",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "x-access-token",
+            "in": "header",
+            "description": "",
+            "required": false,
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s",
+            "schema": {
+              "type": "string",
+              "default": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "获取成功"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MenuItem"
+                      }
+                    },
+                    "timestamp": {
+                      "type": "integer",
+                      "format": "int64",
+                      "example": 1706789012345
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseUnauthorized"
+                }
+              }
+            },
+            "headers": {}
+          },
+          "403": {
+            "description": "无权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponsePermissionDenied"
+                }
+              }
+            },
+            "headers": {}
+          },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseInternalError"
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/system/menu/list": {
+      "get": {
+        "summary": "获取菜单列表",
+        "deprecated": false,
+        "description": "**用途**：菜单管理页的表格视图（扁平结构，非树形）\n**参数**：page, page_size, keyword（搜索）\n**返回**：分页的菜单列表\n**场景**：当菜单很多时，用表格分页展示比树形更方便搜索和筛选。\n",
+        "tags": [
+          "System: Menu"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "1:目录 2:菜单 3:按钮",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1,
+                2,
+                3
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "1:显示 0:隐藏",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            }
+          },
+          {
+            "name": "parent_id",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "description": "按名称或code模糊搜索",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-access-token",
+            "in": "header",
+            "description": "",
+            "required": false,
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s",
+            "schema": {
+              "type": "string",
+              "default": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "获取成功"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "list": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "example": 1
+                              },
+                              "parent_id": {
+                                "type": "integer",
+                                "example": 0
+                              },
+                              "name": {
+                                "type": "string",
+                                "example": "系统管理"
+                              },
+                              "code": {
+                                "type": "string",
+                                "example": "sys_manage"
+                              },
+                              "type": {
+                                "type": "integer",
+                                "description": "1:目录 2:菜单 3:按钮",
+                                "example": 1
+                              },
+                              "icon": {
+                                "type": "string",
+                                "example": "setting"
+                              },
+                              "route_path": {
+                                "type": "string",
+                                "example": "/system"
+                              },
+                              "component_path": {
+                                "type": "string",
+                                "example": "Layout"
+                              },
+                              "status": {
+                                "type": "integer",
+                                "description": "1:显示 0:隐藏",
+                                "example": 1
+                              },
+                              "sort": {
+                                "type": "integer",
+                                "example": 1
+                              },
+                              "desc": {
+                                "type": "string",
+                                "example": "系统设置相关"
+                              },
+                              "children": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/MenuItem"
+                                }
+                              },
+                              "apis": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/APIItemSimple"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "total": {
+                          "type": "integer",
+                          "description": "总数",
+                          "example": 100
+                        },
+                        "page": {
+                          "type": "integer",
+                          "description": "当前页码",
+                          "example": 1
+                        },
+                        "page_size": {
+                          "type": "integer",
+                          "description": "每页大小",
+                          "example": 10
+                        }
+                      }
+                    },
+                    "timestamp": {
+                      "type": "integer",
+                      "format": "int64",
+                      "example": 1706789012345
+                    }
+                  }
+                },
+                "example": {
+                  "code": 0,
+                  "success": true,
+                  "message": "获取成功",
+                  "data": {
+                    "list": [
+                      {
+                        "id": 1,
+                        "parent_id": 0,
+                        "name": "系统管理",
+                        "code": "system",
+                        "type": 1,
+                        "icon": "setting",
+                        "route_name": "",
+                        "route_path": "",
+                        "route_param": "",
+                        "component_path": "",
+                        "status": 1,
+                        "sort": 1,
+                        "desc": "系统管理模块",
+                        "created_at": "2026-02-09T22:02:28.801+08:00",
+                        "updated_at": "2026-02-09T22:02:28.801+08:00"
+                      },
+                      {
+                        "id": 2,
+                        "parent_id": 1,
+                        "name": "用户管理",
+                        "code": "system:user",
+                        "type": 2,
+                        "icon": "user",
+                        "route_name": "UserManage",
+                        "route_path": "/system/user",
+                        "route_param": "",
+                        "component_path": "views/system/user/index",
+                        "status": 1,
+                        "sort": 1,
+                        "desc": "用户管理页面",
+                        "created_at": "2026-02-09T22:03:04.347+08:00",
+                        "updated_at": "2026-02-09T22:03:04.347+08:00"
+                      },
+                      {
+                        "id": 3,
+                        "parent_id": 2,
+                        "name": "新增用户",
+                        "code": "system:user:add",
+                        "type": 3,
+                        "icon": "",
+                        "route_name": "",
+                        "route_path": "",
+                        "route_param": "",
+                        "component_path": "",
+                        "status": 1,
+                        "sort": 1,
+                        "desc": "新增用户操作按钮",
+                        "created_at": "2026-02-09T22:03:29.26+08:00",
+                        "updated_at": "2026-02-09T22:03:29.26+08:00"
+                      },
+                      {
+                        "id": 4,
+                        "parent_id": 1,
+                        "name": "角色管理",
+                        "code": "system:role",
+                        "type": 2,
+                        "icon": "peoples",
+                        "route_name": "RoleManage",
+                        "route_path": "/system/role",
+                        "route_param": "",
+                        "component_path": "views/system/role/index",
+                        "status": 1,
+                        "sort": 2,
+                        "desc": "",
+                        "created_at": "2026-02-09T22:03:38.794+08:00",
+                        "updated_at": "2026-02-09T22:03:38.794+08:00"
+                      }
+                    ],
+                    "total": 4,
+                    "page": 1,
+                    "page_size": 10
+                  },
+                  "timestamp": 1770645872717
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/system/menu": {
+      "post": {
+        "summary": "创建菜单/目录/按钮",
+        "deprecated": false,
+        "description": "## 功能说明\n\n创建一个新的菜单项，支持三种类型：目录、菜单、按钮。\n\n## 注意事项\n\n1. `code` 必须全局唯一，建议使用 `模块:资源:操作` 格式\n2. `parent_id` 为 0 表示顶级菜单\n3. 创建子菜单时，请确保父菜单已存在\n4. `status` 不传时默认为 1（启用）\n\n## 调用示例\n\n### 创建顶级目录\n```json\n{\n  \"parent_id\": 0,\n  \"name\": \"系统管理\",\n  \"code\": \"system\",\n  \"type\": 1,\n  \"icon\": \"setting\",\n  \"sort\": 1\n}\n```\n\n### 创建二级菜单\n```json\n{\n  \"parent_id\": 1,\n  \"name\": \"用户管理\",\n  \"code\": \"system:user\",\n  \"type\": 2,\n  \"icon\": \"user\",\n  \"route_name\": \"SystemUser\",\n  \"route_path\": \"/system/user\",\n  \"component_path\": \"system/user/index\",\n  \"sort\": 1\n}\n```\n\n### 创建按钮权限\n```json\n{\n  \"parent_id\": 2,\n  \"name\": \"新增用户\",\n  \"code\": \"system:user:create\",\n  \"type\": 3,\n  \"sort\": 1\n}\n```",
+        "tags": [
+          "System: Menu"
+        ],
+        "parameters": [
+          {
+            "name": "x-access-token",
+            "in": "header",
+            "description": "",
+            "required": false,
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s",
+            "schema": {
+              "type": "string",
+              "default": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parent_id": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "父菜单ID\n\n- **0**：表示顶级菜单/目录\n- **>0**：表示该菜单的父级ID，父菜单必须已存在\n\n💡 可通过 `GET /api/system/menu/tree` 获取现有菜单树",
+                    "default": 0,
+                    "example": 0
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "description": "【必填】菜单名称，显示在侧边栏或按钮上\n\n- 目录/菜单：如「系统管理」「用户管理」\n- 按钮：如「新增」「编辑」「删除」",
+                    "example": "用户管理"
+                  },
+                  "code": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "pattern": "^[a-z][a-z0-9:_]*$",
+                    "description": "【必填】权限标识，全局唯一\n\n## 命名规范\n\n格式：`模块:资源:操作`（小写字母、数字、冒号、下划线）\n\n## 示例\n\n| 类型 | code 示例 |\n|------|----------|\n| 目录 | `system` |\n| 菜单 | `system:user` |\n| 按钮 | `system:user:create` |\n\n## 前端使用\n\n```vue\n<el-button v-permission=\"'system:user:create'\">新增</el-button>\n```",
+                    "example": "system:user"
+                  },
+                  "type": {
+                    "type": "integer",
+                    "enum": [
+                      1,
+                      2,
+                      3
+                    ],
+                    "description": "【必填】菜单类型\n\n| 值 | 类型 | 说明 | 前端渲染 |\n|----|------|------|----------|\n| **1** | 目录 | 侧边栏折叠菜单，不可跳转 | 显示箭头，点击展开子菜单 |\n| **2** | 菜单 | 可跳转的页面菜单 | 点击跳转到对应路由 |\n| **3** | 按钮 | 页面内的操作权限点 | 不在侧边栏显示，用于按钮级权限控制 |",
+                    "example": 2
+                  },
+                  "icon": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "description": "菜单图标（仅 type=1 或 type=2 时有效）\n\n使用项目中引入的图标库名称，如：\n- Element Plus Icons: `Setting`, `User`, `Document`\n- 自定义 SVG: `svg-icon-xxx`\n\n💡 type=3（按钮）无需设置图标",
+                    "example": "User"
+                  },
+                  "route_name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "description": "路由名称（仅 type=2 菜单时需要）\n\n对应 Vue Router 的 `name` 属性，用于编程式导航\n\n命名规范：大驼峰，如 `SystemUser`、`SystemMenu`",
+                    "example": "SystemUser"
+                  },
+                  "route_path": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "路由路径（仅 type=2 菜单时需要）\n\n对应 Vue Router 的 `path` 属性\n\n## 示例\n\n| 场景 | route_path |\n|------|------------|\n| 一级路由 | `/dashboard` |\n| 二级路由 | `/system/user` |\n| 动态路由 | `/system/user/:id` |",
+                    "example": "/system/user"
+                  },
+                  "route_param": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "路由参数（可选，JSON 格式）\n\n用于传递默认的 query 参数\n\n示例：`{\"status\":\"1\"}`",
+                    "example": ""
+                  },
+                  "component_path": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "组件路径（仅 type=2 菜单时需要）\n\n相对于 `src/views/` 的路径，**不需要** `.vue` 后缀\n\n## 示例\n\n| 文件位置 | component_path |\n|----------|----------------|\n| `src/views/system/user/index.vue` | `system/user/index` |\n| `src/views/dashboard/index.vue` | `dashboard/index` |",
+                    "example": "system/user/index"
+                  },
+                  "status": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ],
+                    "default": 1,
+                    "description": "菜单状态\n\n| 值 | 状态 | 说明 |\n|----|------|------|\n| **1** | 启用 | 正常显示（默认值） |\n| **0** | 禁用 | 不在侧边栏显示，但权限仍可分配 |\n\n💡 不传时默认为 1（启用）",
+                    "example": 1
+                  },
+                  "sort": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0,
+                    "description": "排序值，数值越小越靠前\n\n建议按 10 的倍数设置，方便后续插入：10, 20, 30...",
+                    "example": 10
+                  },
+                  "desc": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "菜单描述（可选）\n\n用于备注该菜单/按钮的用途，便于管理",
+                    "example": "用户管理页面，包含用户的增删改查"
+                  }
+                },
+                "required": [
+                  "name",
+                  "code",
+                  "type"
+                ]
+              },
+              "examples": {
+                "创建顶级目录": {
+                  "value": {
+                    "parent_id": 0,
+                    "name": "系统管理",
+                    "code": "system",
+                    "type": 1,
+                    "icon": "setting",
+                    "status": 1,
+                    "sort": 1,
+                    "desc": "系统管理模块"
+                  },
+                  "summary": "type=1 目录示例",
+                  "description": "创建侧边栏一级折叠目录，无需路由配置"
+                },
+                "创建二级菜单": {
+                  "value": {
+                    "parent_id": 1,
+                    "name": "用户管理",
+                    "code": "system:user",
+                    "type": 2,
+                    "icon": "user",
+                    "route_name": "SystemUser",
+                    "route_path": "/system/user",
+                    "route_param": "",
+                    "component_path": "system/user/index",
+                    "status": 1,
+                    "sort": 1,
+                    "desc": "用户管理页面"
+                  },
+                  "summary": "type=2 菜单示例",
+                  "description": "创建可跳转的页面菜单，需配置路由和组件"
+                },
+                "创建按钮权限": {
+                  "value": {
+                    "parent_id": 2,
+                    "name": "新增用户",
+                    "code": "system:user:create",
+                    "type": 3,
+                    "status": 1,
+                    "sort": 1,
+                    "desc": "用户新增按钮"
+                  },
+                  "summary": "type=3 按钮示例",
+                  "description": "创建页面内的操作按钮权限点，用于前端 v-permission 指令"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "业务状态码，0 表示成功",
+                      "example": 0
+                    },
+                    "success": {
+                      "type": "boolean",
+                      "description": "操作是否成功",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "响应消息",
+                      "example": "创建成功"
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "响应数据（创建成功时为 null）",
+                      "properties": {},
+                      "nullable": true
+                    },
+                    "timestamp": {
+                      "type": "integer",
+                      "format": "int64",
+                      "description": "服务器时间戳（毫秒）",
+                      "example": 1706789012345
+                    }
+                  }
+                },
+                "examples": {
+                  "1": {
+                    "summary": "成功示例",
+                    "value": {
+                      "code": 0,
+                      "success": true,
+                      "message": "创建成功",
+                      "data": null,
+                      "timestamp": 1706789012345
+                    }
+                  },
+                  "2": {
+                    "summary": "必填字段缺失",
+                    "value": {
+                      "code": 10001,
+                      "success": false,
+                      "message": "参数错误",
+                      "data": null,
+                      "timestamp": 1706789012345
+                    }
+                  },
+                  "3": {
+                    "summary": "权限标识已存在",
+                    "value": {
+                      "code": 30201,
+                      "success": false,
+                      "message": "菜单标识已存在",
+                      "data": null,
+                      "timestamp": 1706789012345
+                    }
+                  },
+                  "4": {
+                    "summary": "指定的父菜单ID不存在",
+                    "value": {
+                      "code": 10001,
+                      "success": false,
+                      "message": "父菜单不存在",
+                      "data": null,
+                      "timestamp": 1706789012345
+                    }
+                  },
+                  "5": {
+                    "summary": "成功示例",
+                    "value": {
+                      "code": 20001,
+                      "success": false,
+                      "message": "请先登录",
+                      "data": null,
+                      "timestamp": 1706789012345
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "未授权 - Token无效或已过期",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseError"
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/system/menu/{id}": {
+      "get": {
+        "summary": "获取菜单详情",
+        "deprecated": false,
+        "description": "**用途**：编辑菜单时回显数据\n**返回**：菜单的完整信息 + 已绑定的 API 列表",
+        "tags": [
+          "System: Menu"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 1,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "x-access-token",
+            "in": "header",
+            "description": "",
+            "required": false,
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s",
+            "schema": {
+              "type": "string",
+              "default": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "获取成功"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "parent_id": {
+                          "type": "integer",
+                          "example": 0
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "系统管理"
+                        },
+                        "code": {
+                          "type": "string",
+                          "example": "sys_manage"
+                        },
+                        "type": {
+                          "type": "integer",
+                          "description": "1:目录 2:菜单 3:按钮",
+                          "example": 1
+                        },
+                        "icon": {
+                          "type": "string",
+                          "example": "setting"
+                        },
+                        "route_path": {
+                          "type": "string",
+                          "example": "/system"
+                        },
+                        "component_path": {
+                          "type": "string",
+                          "example": "Layout"
+                        },
+                        "status": {
+                          "type": "integer",
+                          "description": "1:显示 0:隐藏",
+                          "example": 1
+                        },
+                        "sort": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "desc": {
+                          "type": "string",
+                          "example": "系统设置相关"
+                        },
+                        "children": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "example": 1
+                              },
+                              "parent_id": {
+                                "type": "integer",
+                                "example": 0
+                              },
+                              "name": {
+                                "type": "string",
+                                "example": "系统管理"
+                              },
+                              "code": {
+                                "type": "string",
+                                "example": "sys_manage"
+                              },
+                              "type": {
+                                "type": "integer",
+                                "description": "1:目录 2:菜单 3:按钮",
+                                "example": 1
+                              },
+                              "icon": {
+                                "type": "string",
+                                "example": "setting"
+                              },
+                              "route_path": {
+                                "type": "string",
+                                "example": "/system"
+                              },
+                              "component_path": {
+                                "type": "string",
+                                "example": "Layout"
+                              },
+                              "status": {
+                                "type": "integer",
+                                "description": "1:显示 0:隐藏",
+                                "example": 1
+                              },
+                              "sort": {
+                                "type": "integer",
+                                "example": 1
+                              },
+                              "desc": {
+                                "type": "string",
+                                "example": "系统设置相关"
+                              },
+                              "children": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/MenuItem"
+                                }
+                              },
+                              "apis": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/APIItemSimple"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "apis": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/APIItemSimple"
+                          }
+                        }
+                      }
+                    },
+                    "timestamp": {
+                      "type": "integer",
+                      "format": "int64",
+                      "example": 1706789012345
+                    }
+                  }
+                },
+                "example": {
+                  "code": 0,
+                  "success": true,
+                  "message": "操作成功",
+                  "data": {
+                    "id": 1,
+                    "parent_id": 0,
+                    "name": "系统管理",
+                    "code": "system",
+                    "type": 1,
+                    "icon": "setting",
+                    "route_name": "",
+                    "route_path": "",
+                    "route_param": "",
+                    "component_path": "",
+                    "status": 1,
+                    "sort": 1,
+                    "desc": "系统管理模块",
+                    "created_at": "2026-02-09T22:02:28.801+08:00",
+                    "updated_at": "2026-02-09T22:02:28.801+08:00"
+                  },
+                  "timestamp": 1770646054898
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "summary": "更新菜单",
+        "deprecated": false,
+        "description": "用途：修改菜单属性\n支持：部分更新（只传需要改的字段）",
+        "tags": [
+          "System: Menu"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 2,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "x-access-token",
+            "in": "header",
+            "description": "",
+            "required": false,
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s",
+            "schema": {
+              "type": "string",
+              "default": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parent_id": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "integer",
+                    "enum": [
+                      1,
+                      2,
+                      3
+                    ]
+                  },
+                  "icon": {
+                    "type": "string"
+                  },
+                  "route_path": {
+                    "type": "string"
+                  },
+                  "component_path": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  },
+                  "sort": {
+                    "type": "integer"
+                  },
+                  "desc": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "name": "用户中心",
+                "icon": "user-filled",
+                "sort": 99
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "业务状态码，0 表示成功",
+                      "example": 0
+                    },
+                    "success": {
+                      "type": "boolean",
+                      "description": "操作是否成功",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "响应消息",
+                      "example": "创建成功"
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "响应数据（创建成功时为 null）",
+                      "properties": {},
+                      "nullable": true
+                    },
+                    "timestamp": {
+                      "type": "integer",
+                      "format": "int64",
+                      "description": "服务器时间戳（毫秒）",
+                      "example": 1706789012345
+                    }
+                  }
+                },
+                "example": {
+                  "code": 0,
+                  "success": true,
+                  "message": "更新成功",
+                  "data": null,
+                  "timestamp": 1770685745138
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "删除菜单",
+        "deprecated": false,
+        "description": "**用途**：删除菜单\n**限制**：如果有子菜单，禁止删除（防止孤儿数据）",
+        "tags": [
+          "System: Menu"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 0,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "x-access-token",
+            "in": "header",
+            "description": "",
+            "required": false,
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s",
+            "schema": {
+              "type": "string",
+              "default": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "业务状态码，0 表示成功",
+                      "example": 0
+                    },
+                    "success": {
+                      "type": "boolean",
+                      "description": "操作是否成功",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "响应消息",
+                      "example": "创建成功"
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "响应数据（创建成功时为 null）",
+                      "properties": {},
+                      "nullable": true
+                    },
+                    "timestamp": {
+                      "type": "integer",
+                      "format": "int64",
+                      "description": "服务器时间戳（毫秒）",
+                      "example": 1706789012345
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/system/menu/bind_api": {
+      "post": {
+        "summary": "绑定 API 到菜单",
+        "deprecated": false,
+        "description": "**用途**：权限控制的核心接口\n**作用**：将后端 API 路由与菜单绑定，实现\"拥有某菜单权限 = 可调用其绑定的 API\"\n**场景**：\n**菜单**\"用户管理\"绑定了 GET `/users`, POST `/users`, DELETE `/users/:id`，当用户拥有\"用户管理\"菜单权限时，他就能调用这些 API\n**覆盖式**：每次绑定会清空旧绑定，全量替换",
+        "tags": [
+          "System: Menu"
+        ],
+        "parameters": [
+          {
+            "name": "x-access-token",
+            "in": "header",
+            "description": "",
+            "required": false,
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s",
+            "schema": {
+              "type": "string",
+              "default": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOjM5LCJVVUlEIjoiNTAxZjE5NGQtNDQ5OC00ZTc1LWExOTEtYjA0ZjA2MDU1ODU4IiwiaXNzIjoiZ29fYmxvZyBzeXN0ZW0iLCJhdWQiOlsiR09fQkxPRyJdLCJleHAiOjE3NzA3MTkwMjd9.rShPygtwA2eFOzyITGq1pP1woaTLJRPmVwg4q0L_c3s"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestBindMenuAPI"
+              },
+              "example": {
+                "menu_id": 9,
+                "api_ids": [
+                  10,
+                  11,
+                  12
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseSuccess"
+                },
+                "example": {
+                  "code": 0,
+                  "success": true,
+                  "message": "绑定成功",
+                  "data": null,
+                  "timestamp": 1770688493723
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ResponseSuccess": {
+        "type": "object",
+        "description": "成功响应",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "业务状态码，0 表示成功",
+            "example": 0
+          },
+          "success": {
+            "type": "boolean",
+            "description": "操作是否成功",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "description": "响应消息",
+            "example": "创建成功"
+          },
+          "data": {
+            "type": "object",
+            "description": "响应数据（创建成功时为 null）",
+            "properties": {},
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "description": "服务器时间戳（毫秒）",
+            "example": 1706789012345
+          }
+        }
+      },
+      "ResponseError": {
+        "type": "object",
+        "description": "错误响应",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "业务错误码，非0表示失败。常见错误码：\n- 10001: 参数错误\n- 20001: 未授权\n- 30201: 菜单标识已存在\n- 30202: 菜单不存在",
+            "example": 10001
+          },
+          "success": {
+            "type": "boolean",
+            "description": "操作是否成功",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "description": "错误消息，可直接展示给用户",
+            "example": "参数错误"
+          },
+          "data": {
+            "type": "object",
+            "properties": {},
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1706789012345
+          }
+        }
+      },
+      "ResponseUnauthorized": {
+        "type": "object",
+        "description": "未授权响应（code: 11000）",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "未授权",
+            "example": 11000
+          },
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "用户未登录"
+          },
+          "data": {
+            "type": "object",
+            "description": "可能包含AuthResponse结构",
+            "properties": {},
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1706789012345
+          }
+        }
+      },
+      "ResponsePermissionDenied": {
+        "type": "object",
+        "description": "权限不足响应（code: 11006）",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "权限不足",
+            "example": 11006
+          },
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "权限不足"
+          },
+          "data": {
+            "type": "object",
+            "properties": {},
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1706789012345
+          }
+        }
+      },
+      "ResponseInternalError": {
+        "type": "object",
+        "description": "服务器内部错误响应（code: 10004）",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "服务器内部错误",
+            "example": 10004
+          },
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "服务器内部错误"
+          },
+          "data": {
+            "type": "object",
+            "properties": {},
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1706789012345
+          }
+        }
+      },
+      "MenuItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "parent_id": {
+            "type": "integer",
+            "example": 0
+          },
+          "name": {
+            "type": "string",
+            "example": "系统管理"
+          },
+          "code": {
+            "type": "string",
+            "example": "sys_manage"
+          },
+          "type": {
+            "type": "integer",
+            "description": "1:目录 2:菜单 3:按钮",
+            "example": 1
+          },
+          "icon": {
+            "type": "string",
+            "example": "setting"
+          },
+          "route_path": {
+            "type": "string",
+            "example": "/system"
+          },
+          "component_path": {
+            "type": "string",
+            "example": "Layout"
+          },
+          "status": {
+            "type": "integer",
+            "description": "1:显示 0:隐藏",
+            "example": 1
+          },
+          "sort": {
+            "type": "integer",
+            "example": 1
+          },
+          "desc": {
+            "type": "string",
+            "example": "系统设置相关"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MenuItem"
+            }
+          },
+          "apis": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/APIItemSimple"
+            }
+          }
+        }
+      },
+      "APIItemSimple": {
+        "type": "object",
+        "description": "API简要信息（用于菜单关联展示）",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 101
+          },
+          "path": {
+            "type": "string",
+            "example": "/api/system/user/list"
+          },
+          "method": {
+            "type": "string",
+            "example": "GET"
+          }
+        }
+      },
+      "RequestBindMenuAPI": {
+        "type": "object",
+        "required": [
+          "menu_id",
+          "api_ids"
+        ],
+        "properties": {
+          "menu_id": {
+            "type": "integer",
+            "example": 2
+          },
+          "api_ids": {
+            "type": "array",
+            "description": "API ID列表（全量替换）",
+            "items": {
+              "type": "integer"
+            },
+            "example": [
+              101,
+              102
+            ]
+          }
+        }
+      }
+    },
+    "responses": {},
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "在请求头携带：Authorization: Bearer <token>"
+      }
+    }
+  },
+  "servers": [],
+  "security": []
+}

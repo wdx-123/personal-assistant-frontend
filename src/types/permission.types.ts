@@ -103,6 +103,11 @@ export interface AssignRoleMenuRequest {
   menu_ids: number[]
 }
 
+export interface AssignRoleApiRequest {
+  role_id: number
+  api_ids: number[]
+}
+
 export interface UserListItem {
   id: number
   username: string
@@ -155,6 +160,11 @@ export interface OrgItem {
   description?: string
   code?: string
   owner_id?: number
+  avatar?: string
+  avatar_id?: number
+  member_count?: number
+  created_at?: string
+  updated_at?: string
 }
 
 export interface PageDataOrg {
@@ -168,12 +178,16 @@ export interface CreateOrgRequest {
   name: string
   description?: string
   code?: string
+  avatar?: string
+  avatar_id?: number
 }
 
 export interface UpdateOrgRequest {
   name?: string
   description?: string
   code?: string
+  avatar?: string
+  avatar_id?: number
 }
 
 export interface SetCurrentOrgRequest {
@@ -191,7 +205,8 @@ export interface ApiItem {
   path: string
   method: string
   detail?: string
-  category?: string
+  menu_id?: number
+  menu_name?: string
   status: number
   created_at?: string
   updated_at?: string
@@ -208,7 +223,7 @@ export interface CreateApiRequest {
   path: string
   method: string
   detail?: string
-  category?: string
+  menu_id?: number
   status?: number
 }
 
@@ -216,7 +231,7 @@ export interface UpdateApiRequest {
   path?: string
   method?: string
   detail?: string
-  category?: string
+  menu_id?: number
   status?: number
 }
 

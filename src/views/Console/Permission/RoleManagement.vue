@@ -66,7 +66,7 @@
       </div>
 
       <a-table
-        :columns="columns"
+        :columns="columns as any"
         :data-source="roles"
         :pagination="pagination"
         :row-selection="{ selectedRowKeys: selectedIds, onChange: onSelectChange }"
@@ -139,6 +139,7 @@
       :title="`修改权限 - ${permissionRole.name}`"
       width="800px"
       @ok="savePermission"
+      :confirmLoading="permissionSaving"
       :maskClosable="false"
     >
       <div class="permission-container">
@@ -146,24 +147,26 @@
           <a-col :span="12">
             <a-card title="功能权限" size="small" :bordered="true">
               <a-tree
-                v-model:checkedKeys="selectedMenuIds"
+                :checkedKeys="selectedMenuIds"
                 checkable
                 defaultExpandAll
-                :tree-data="functionalPermissions"
+                :tree-data="functionalPermissions as any"
                 :fieldNames="{ children: 'children', title: 'label', key: 'id' }"
                 :height="400"
+                @check="onMenuTreeCheck"
               />
             </a-card>
           </a-col>
           <a-col :span="12">
             <a-card title="数据权限" size="small" :bordered="true">
               <a-tree
-                v-model:checkedKeys="selectedApiIds"
+                :checkedKeys="selectedApiIds"
                 checkable
                 defaultExpandAll
-                :tree-data="dataPermissions"
+                :tree-data="dataPermissions as any"
                 :fieldNames="{ children: 'children', title: 'label', key: 'id' }"
                 :height="400"
+                @check="onApiTreeCheck"
               />
             </a-card>
           </a-col>
@@ -183,7 +186,15 @@ import {
   DeleteOutlined, 
   SettingOutlined 
 } from '@ant-design/icons-vue'
-import { getRoleList, createRole, updateRole, deleteRole as deleteRoleApi } from '@/services/permission.service'
+import {
+  getRoleList,
+  createRole,
+  updateRole,
+  deleteRole as deleteRoleApi,
+  getRoleMenuApiMap,
+  assignRoleMenu,
+  assignRoleApi
+} from '@/services/permission.service'
 
 const searchQuery = reactive({
   roleName: '',
@@ -261,9 +272,10 @@ const refresh = () => {
 }
 
 // Selection
-const selectedIds = ref<number[]>([])
+type TableKey = string | number
+const selectedIds = ref<TableKey[]>([])
 const hasSelected = computed(() => selectedIds.value.length > 0)
-const onSelectChange = (selectedRowKeys: number[]) => {
+const onSelectChange = (selectedRowKeys: TableKey[], _selectedRows: any[]) => {
   selectedIds.value = selectedRowKeys
 }
 
@@ -276,7 +288,7 @@ const batchDelete = () => {
     okType: 'danger',
     onOk: async () => {
       try {
-        await Promise.all(selectedIds.value.map(id => deleteRoleApi(id)))
+        await Promise.all(selectedIds.value.map(id => deleteRoleApi(Number(id), { skipSuccTip: true })))
         message.success('批量删除成功')
         selectedIds.value = []
         fetchRoles()
@@ -301,7 +313,6 @@ const deleteRole = async (id: number) => {
 const isEditModalOpen = ref(false)
 const modalType = ref<'add' | 'edit'>('add')
 const modalLoading = ref(false)
-const roleFormRef = ref()
 const editingRole = reactive({
   id: 0,
   name: '',
@@ -353,102 +364,226 @@ const saveRole = async () => {
   }
 }
 
-// Permission Modal
+type PermissionNode = {
+  id: string | number
+  label: string
+  children?: PermissionNode[]
+  isLeaf?: boolean
+}
+
 const isPermissionModalOpen = ref(false)
 const permissionRole = reactive({ id: 0, name: '' })
 const selectedMenuIds = ref<number[]>([])
-const selectedApiIds = ref<number[]>([])
+const selectedApiIds = ref<(string | number)[]>([])
+const availableApiIds = ref<number[]>([])
+const permissionSaving = ref(false)
+const functionalPermissions = ref<PermissionNode[]>([])
+const dataPermissions = ref<PermissionNode[]>([])
 
-// Mock Data for Tree - 实际项目中应从后端获取
-const functionalPermissions = [
-  { 
-    id: 1000, 
-    label: '权限管理', 
-    children: [
-      { 
-        id: 1100, 
-        label: '角色管理', 
-        children: [
-          { id: 1101, label: '新增角色管理' },
-          { id: 1102, label: '编辑角色信息' },
-          { id: 1103, label: '修改角色权限' },
-          { id: 1104, label: '删除角色' }
-        ]
-      },
-      { 
-        id: 1200, 
-        label: 'API管理', 
-        children: [
-          { id: 1201, label: '新增API管理' },
-          { id: 1202, label: '编辑API信息' },
-          { id: 1203, label: '删除API' }
-        ]
-      },
-      { 
-        id: 1300, 
-        label: '菜单管理', 
-        children: [
-          { id: 1301, label: '新增菜单管理' },
-          { id: 1302, label: '编辑菜单信息' },
-          { id: 1303, label: '删除菜单' }
-        ]
-      }
-    ]
-  },
-  { id: 2000, label: '人员管理' },
-  { id: 3000, label: '组织管理' },
-  { id: 4000, label: '我的团队' }
-]
-
-const dataPermissions = [
-  {
-    id: 5000,
-    label: '权限管理',
-    children: [
-      {
-        id: 5100,
-        label: '角色管理',
-        children: [
-          { id: 5101, label: 'POST /system/role' },
-          { id: 5102, label: 'PUT /system/role/{id}' },
-          { id: 5103, label: 'DELETE /system/role/{id}' }
-        ]
-      },
-      {
-        id: 5200,
-        label: 'API管理',
-        children: [
-          { id: 5201, label: 'POST /system/api' },
-          { id: 5202, label: 'PUT /system/api/{id}' },
-          { id: 5203, label: 'DELETE /system/api/{id}' }
-        ]
-      },
-      {
-        id: 5300,
-        label: '菜单管理',
-        children: [
-          { id: 5301, label: 'POST /system/menu' },
-          { id: 5302, label: 'PUT /system/menu/{id}' },
-          { id: 5303, label: 'DELETE /system/menu/{id}' }
-        ]
-      }
-    ]
-  }
-]
-
-const openPermissionModal = (role: any) => {
-  permissionRole.id = role.id
-  permissionRole.name = role.name
-  // Initialize checked keys - 实际应从后端获取当前角色的权限
-  selectedMenuIds.value = []
-  selectedApiIds.value = []
-  isPermissionModalOpen.value = true
+const getMenuChildren = (item: any) => {
+  return item?.children || item?.menus || item?.menu_list || item?.menuList || []
 }
 
-const savePermission = () => {
-  // 实际应调用保存接口
-  isPermissionModalOpen.value = false
-  message.success('权限配置已保存')
+const buildFunctionalPermissions = (items: any[]): PermissionNode[] => {
+  const mapItem = (item: any): PermissionNode => {
+    const id = typeof item.id === 'number' ? item.id : (typeof item.menu_id === 'number' ? item.menu_id : 0)
+    const label = item.label || item.name || item.title || item.code || ''
+    const childrenSource = getMenuChildren(item)
+    const children = Array.isArray(childrenSource) ? childrenSource.map(mapItem) : []
+    return children.length ? { id, label, children } : { id, label }
+  }
+
+  return Array.isArray(items) ? items.map(mapItem) : []
+}
+
+const buildDataPermissions = (items: any[]) => {
+  const allApiIds = new Set<number>()
+
+  const mapItem = (item: any): PermissionNode | null => {
+    const menuId = typeof item.id === 'number' ? item.id : (typeof item.menu_id === 'number' ? item.menu_id : 0)
+    if (!menuId) return null
+
+    const children: PermissionNode[] = []
+
+    // 1. Sub-menus
+    const subMenusSource = getMenuChildren(item)
+    if (Array.isArray(subMenusSource)) {
+      subMenusSource.forEach((sub) => {
+        const node = mapItem(sub)
+        if (node) children.push(node)
+      })
+    }
+
+    // 2. APIs
+    const apisSource = item?.apis || item?.api_list || item?.apiList || item?.api_map || item?.apiMap || []
+    if (Array.isArray(apisSource)) {
+      apisSource.forEach((api) => {
+        const apiId = typeof api?.id === 'number' ? api.id : 0
+        if (apiId) {
+          allApiIds.add(apiId)
+          const method = api?.method || api?.api_method || api?.http_method || ''
+          const path = api?.path || api?.api_path || api?.url || ''
+          const name = api?.name || ''
+          const label = name ? `${name} (${method} ${path})` : `${method} ${path}`
+          
+          children.push({
+            id: `api-${apiId}`,
+            label: label.trim(),
+            isLeaf: true
+          })
+        }
+      })
+    }
+
+    // Only return the menu node if it has children (sub-menus or APIs)
+    // This cleans up the tree to show only relevant paths
+    if (children.length === 0) {
+      return null
+    }
+
+    return {
+      id: `menu-${menuId}`,
+      label: item.label || item.name || item.title || '',
+      children
+    }
+  }
+
+  const tree = items.map(mapItem).filter(Boolean) as PermissionNode[]
+  return { tree, apiIds: Array.from(allApiIds) }
+}
+
+const normalizeMenuApiMap = (raw: any) => {
+  if (Array.isArray(raw)) {
+    return { items: raw, assignedMenuIds: [], assignedApiIds: [] }
+  }
+  const items =
+    raw?.menu_api_map ||
+    raw?.menuApiMap ||
+    raw?.menu_tree ||
+    raw?.menuTree ||
+    raw?.list ||
+    raw?.menus ||
+    raw?.data ||
+    []
+  const assignedMenuIds =
+    raw?.assigned_menu_ids ||
+    raw?.assignedMenuIds ||
+    raw?.menu_ids ||
+    raw?.menuIds ||
+    raw?.checked_menu_ids ||
+    raw?.checkedMenuIds ||
+    []
+  const assignedApiIds =
+    raw?.assigned_api_ids ||
+    raw?.assignedApiIds ||
+    raw?.api_ids ||
+    raw?.apiIds ||
+    raw?.checked_api_ids ||
+    raw?.checkedApiIds ||
+    []
+  return { items, assignedMenuIds, assignedApiIds }
+}
+
+const normalizeCheckedIds = (checkedKeys: any): number[] => {
+  const keys = Array.isArray(checkedKeys)
+    ? checkedKeys
+    : Array.isArray(checkedKeys?.checked)
+      ? checkedKeys.checked
+      : []
+  return Array.from(
+    new Set(
+      keys
+        .map((key: unknown) => Number(key))
+        .filter((id: number) => Number.isFinite(id) && id > 0)
+    )
+  )
+}
+
+const normalizeApiTreeCheckedKeys = (checkedKeys: any): (string | number)[] => {
+  const keys = Array.isArray(checkedKeys)
+    ? checkedKeys
+    : Array.isArray(checkedKeys?.checked)
+      ? checkedKeys.checked
+      : []
+  return Array.from(new Set(keys))
+}
+
+const onMenuTreeCheck = (checkedKeys: any) => {
+  selectedMenuIds.value = normalizeCheckedIds(checkedKeys)
+}
+
+const onApiTreeCheck = (checkedKeys: any) => {
+  selectedApiIds.value = normalizeApiTreeCheckedKeys(checkedKeys)
+}
+
+const loadPermissionData = async (roleId: number) => {
+  try {
+    const menuApiMap = await getRoleMenuApiMap(roleId, { skipSuccTip: true })
+    const { items, assignedMenuIds, assignedApiIds } = normalizeMenuApiMap(menuApiMap)
+    functionalPermissions.value = buildFunctionalPermissions(items || [])
+    const { tree, apiIds } = buildDataPermissions(items || [])
+    dataPermissions.value = tree
+    availableApiIds.value = apiIds
+    selectedMenuIds.value = normalizeCheckedIds(assignedMenuIds)
+    selectedApiIds.value = normalizeCheckedIds(assignedApiIds).map((id) => `api-${id}`)
+  } catch (error) {
+    console.error(error)
+    functionalPermissions.value = []
+    dataPermissions.value = []
+    selectedMenuIds.value = []
+    selectedApiIds.value = []
+    availableApiIds.value = []
+  }
+}
+
+const openPermissionModal = async (role: any) => {
+  permissionRole.id = role.id
+  permissionRole.name = role.name
+  isPermissionModalOpen.value = true
+  await loadPermissionData(role.id)
+}
+
+const savePermission = async () => {
+  const menuIds = Array.from(new Set(selectedMenuIds.value.filter((id) => Number.isInteger(id) && id > 0)))
+  const apiIdPool = new Set(availableApiIds.value)
+  const apiIds = Array.from(
+    new Set(
+      selectedApiIds.value
+        .map((key) => {
+          if (typeof key === 'string' && key.startsWith('api-')) {
+            return Number(key.replace('api-', ''))
+          }
+          return 0
+        })
+        .filter((id) => Number.isInteger(id) && id > 0 && apiIdPool.has(id))
+    )
+  )
+
+  permissionSaving.value = true
+  try {
+    await Promise.all([
+      assignRoleMenu(
+        {
+          role_id: permissionRole.id,
+          menu_ids: menuIds
+        },
+        { skipSuccTip: true }
+      ),
+      assignRoleApi(
+        {
+          role_id: permissionRole.id,
+          api_ids: apiIds
+        },
+        { skipSuccTip: true }
+      )
+    ])
+    isPermissionModalOpen.value = false
+    message.success('权限配置已保存')
+  } catch (error) {
+    console.error(error)
+  } finally {
+    permissionSaving.value = false
+  }
 }
 
 onMounted(() => {
