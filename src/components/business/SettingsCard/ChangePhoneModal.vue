@@ -124,7 +124,7 @@ const handleOk = async () => {
       new_phone: form.newPhone,
       captcha: form.captcha,
       captcha_id: captchaId.value,
-    })
+    }, { skipSuccTip: true })
     message.success('手机号换绑成功')
     emit('changed', form.newPhone)
     emit('update:visible', false)

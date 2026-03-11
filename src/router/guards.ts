@@ -49,7 +49,16 @@ router.beforeEach(async (to: RouteLocationNormalized, from: RouteLocationNormali
           })
 
           // Hack to ensure addRoutes is complete
-          next({ ...to, replace: true })
+          // replace: true is important, it ensures the navigation history is correct
+          // However, if we are already at the target route, we might need to handle it.
+          // For dynamic routing, "to" might be a route that didn't exist when we started navigation (hence 404 potentially)
+          // But since we caught it in beforeEach, the router hasn't decided it's 404 yet (unless it matched the catch-all).
+          
+          // If the user refreshed on /console/settings, "to" matched NotFound (catch-all) because /console/settings wasn't added yet.
+          // Now we added it.
+          
+          // We need to redirect to "to.fullPath" to force a new match against the newly added routes.
+          next({ path: to.path, query: to.query, hash: to.hash, replace: true })
         } catch (error) {
           console.error('Error generating routes:', error)
           // Failed to generate routes (e.g. token expired or api error)

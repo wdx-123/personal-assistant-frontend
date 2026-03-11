@@ -30,4 +30,4 @@ export interface PageResponse<T> {
 export type DifficultyLevel = 'easy' | 'medium' | 'hard'
 
 // OJ 平台类型
-export type OJPlatform = 'luogu' | 'leetcode'
+export type OJPlatform = 'luogu' | 'leetcode' | 'lanqiao'

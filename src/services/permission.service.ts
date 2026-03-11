@@ -10,7 +10,7 @@ import type {
   CreateRoleRequest,
   UpdateRoleRequest,
   AssignRoleMenuRequest,
-  AssignRoleApiRequest,
+  AssignRolePermissionRequest,
   ApiItem,
   PageDataApi,
   CreateApiRequest,
@@ -110,8 +110,8 @@ export function assignRoleMenu(data: AssignRoleMenuRequest, config?: RequestOpti
   return apiClient.post('/system/role/assign_menu', data, config)
 }
 
-export function assignRoleApi(data: AssignRoleApiRequest, config?: RequestOptions): Promise<null> {
-  return apiClient.post('/system/role/assign_api', data, config)
+export function assignRolePermission(data: AssignRolePermissionRequest, config?: RequestOptions): Promise<null> {
+  return apiClient.post('/system/role/assign_permission', data, config)
 }
 
 export function getApiList(
@@ -197,6 +197,10 @@ export function deleteOrg(id: number, config?: RequestOptions): Promise<null> {
 
 export function setCurrentOrg(data: SetCurrentOrgRequest, config?: RequestOptions): Promise<null> {
   return apiClient.put('/system/org/current', data, config)
+}
+
+export function joinOrg(data: { invite_code: string }, config?: RequestOptions): Promise<null> {
+  return apiClient.post('/system/org/join', data, config)
 }
 
 export function getMyOrgs(config?: RequestOptions): Promise<MyOrgItem[]> {

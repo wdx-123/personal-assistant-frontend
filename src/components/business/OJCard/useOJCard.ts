@@ -48,6 +48,11 @@ export function useOJCard(options: UseOJCardOptions) {
       description: '绑定您的力扣账号，即可参与排名(*^▽^*)',
       placeholder: '请输入力扣用户ID',
     },
+    lanqiao: {
+      name: '蓝桥杯',
+      description: '绑定您的蓝桥杯账号，即可参与排名(*^▽^*)',
+      placeholder: '请输入蓝桥杯用户ID',
+    },
   }
 
   const platformConfig = computed(() => platformConfigs[platform])

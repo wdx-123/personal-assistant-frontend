@@ -110,6 +110,13 @@
             <input v-model.number="orgForm.avatar_id" class="form-input" type="number" placeholder="请输入头像ID" />
           </div>
         </template>
+        <template v-else-if="modalMode === 'join'">
+          <div class="form-item">
+            <div class="form-label">组织邀请码</div>
+            <input v-model="orgForm.code" class="form-input" type="text" placeholder="请输入组织邀请码" maxlength="30" />
+          </div>
+          <p class="modal-tip">请输入团队管理员提供的邀请码加入团队</p>
+        </template>
         <p v-else class="modal-body-text">{{ modalBodyText }}</p>
         <div class="modal-footer">
           <button @click="showModal = false" class="btn btn-secondary">取消</button>
@@ -121,6 +128,14 @@
           >
             {{ modalSubmitting ? '提交中...' : '确认' }}
           </button>
+          <button
+            v-if="modalMode === 'join'"
+            @click="handleJoinSubmit"
+            class="btn btn-primary"
+            :disabled="modalSubmitting"
+          >
+            {{ modalSubmitting ? '加入中...' : '加入' }}
+          </button>
         </div>
       </div>
     </div>
@@ -131,7 +146,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { message, Confirm } from '@/components/common'
 import { useAuthStore } from '@/stores/auth'
-import { createOrg, deleteOrg, getOrgList, setCurrentOrg, updateOrg } from '@/services/permission.service'
+import { createOrg, deleteOrg, getOrgList, setCurrentOrg, updateOrg, joinOrg } from '@/services/permission.service'
 import type { CreateOrgRequest, OrgItem, UpdateOrgRequest } from '@/types'
 
 interface Team {
@@ -212,7 +227,7 @@ const getAvatarColor = (name: string) => {
 const handleJoinTeam = () => {
   modalMode.value = 'join'
   modalTitle.value = '加入团队'
-  modalBodyText.value = '请联系团队管理员获取邀请码，在后续版本中可直接加入。'
+  resetOrgForm()
   showModal.value = true
 }
 
@@ -337,6 +352,25 @@ const submitOrgForm = async () => {
       await createOrg(payload as CreateOrgRequest, { skipSuccTip: true })
       message.success('组织创建成功')
     }
+    showModal.value = false
+    await fetchTeams()
+  } catch (error) {
+  } finally {
+    modalSubmitting.value = false
+  }
+}
+
+const handleJoinSubmit = async () => {
+  const code = orgForm.code.trim()
+  if (!code) {
+    message.warning('请输入邀请码')
+    return
+  }
+
+  modalSubmitting.value = true
+  try {
+    await joinOrg({ invite_code: code }, { skipSuccTip: true })
+    message.success('加入团队成功')
     showModal.value = false
     await fetchTeams()
   } catch (error) {
@@ -627,6 +661,13 @@ onMounted(() => {
   color: #4b5563;
   margin-bottom: 24px;
   white-space: pre-line;
+}
+
+.modal-tip {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: -8px;
+  margin-bottom: 20px;
 }
 
 .form-item {

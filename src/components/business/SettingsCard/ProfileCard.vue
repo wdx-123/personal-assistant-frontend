@@ -69,7 +69,7 @@ const handleSave = async () => {
     const updatedUser = await updateProfile({
       username: form.username,
       signature: form.signature,
-    })
+    }, { skipSuccTip: true })
     authStore.setUser(updatedUser)
     message.success('个人资料已更新')
   } catch (error) {

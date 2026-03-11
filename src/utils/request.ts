@@ -5,6 +5,7 @@ import {
   isSuccessStatusCode,
   getFriendlyErrorMessage
 } from '@/constants/status'
+import { BizCode, BizCodeMessages } from '@/constants/biz-code'
 import { message } from '@/components/common'
 import { useAuthStore } from '@/stores/auth'
 
@@ -28,7 +29,7 @@ const apiBaseURL =
 
 const apiClientRaw: AxiosInstance = axios.create({
   baseURL: apiBaseURL,  
-  timeout: 10000,
+  timeout: 30000,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
@@ -157,7 +158,9 @@ const responseInterceptor = (
     return res.data
   }
 
-  if (normalizedCode === StatusCode.UNAUTHORIZED) {
+  if (normalizedCode === StatusCode.UNAUTHORIZED ||
+    normalizedCode === BizCode.CodeUnauthorized ||
+    normalizedCode === BizCode.CodeTokenExpired) {
     const shouldRefreshToken =
       !config.url?.includes('/user/login') &&
       !config.url?.includes('/user/register') &&
@@ -174,17 +177,26 @@ const responseInterceptor = (
     }
   }
 
-  const errText = customErrTip || getFriendlyErrorMessage(
-    Number.isNaN(normalizedCode) ? StatusCode.SERVER_ERROR : Number(normalizedCode),
-    res.error,
-    res.message || res.messages || res.msg
-  )
+  let errText = customErrTip
+  if (!errText) {
+    // 优先使用 BizCode 定义的错误消息
+    // 这里使用 any 强制转换，因为 keyof number 索引签名问题
+    if (Object.prototype.hasOwnProperty.call(BizCodeMessages, normalizedCode)) {
+      errText = BizCodeMessages[normalizedCode as number]
+    } else {
+      errText = getFriendlyErrorMessage(
+        Number.isNaN(normalizedCode) ? StatusCode.SERVER_ERROR : Number(normalizedCode),
+        res.error,
+        res.message || res.messages || res.msg
+      )
+    }
+  }
 
   if (!skipTip && !skipErrTip) {
-    if (normalizedCode === StatusCode.FORBIDDEN) {
-      message.warning(errText)
+    if (normalizedCode === StatusCode.FORBIDDEN || normalizedCode === BizCode.CodePermissionDenied) {
+      message.warning('您没有权限执行此操作')
     } else {
-      message.error(errText)
+      message.error(errText || '操作失败')
     }
   }
 

@@ -67,6 +67,18 @@ const formatDate = (dateStr?: string) => {
         </div>
       </div>
 
+      <!-- Lanqiao Cup Chart Card -->
+      <div class="dashboard-card chart-card no-blur">
+        <div class="card-title">蓝桥杯近30天刷题数量曲线</div>
+        <div class="chart-placeholder">
+          <svg viewBox="0 0 400 150" class="placeholder-chart">
+            <path d="M0,150 C40,120 80,140 120,90 C160,110 200,60 240,80 C280,40 320,100 360,50 C380,30 400,150 400,150 L0,150 Z" fill="rgba(82, 196, 26, 0.1)" />
+            <path d="M0,150 C40,120 80,140 120,90 C160,110 200,60 240,80 C280,40 320,100 360,50 C380,30 400,150 400,150" fill="none" stroke="#52c41a" stroke-width="2" />
+          </svg>
+          <div class="chart-label">数据加载中...</div>
+        </div>
+      </div>
+
       <!-- LeetCode Chart Card -->
       <div class="dashboard-card chart-card">
         <div class="card-title">力扣近30天刷题数量曲线</div>
@@ -106,6 +118,12 @@ const formatDate = (dateStr?: string) => {
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* 移除毛玻璃效果的特殊类 */
+.dashboard-card.no-blur {
+  backdrop-filter: none;
+  background: rgba(255, 255, 255, 0.9); /* 不透明度稍微高一点，因为没有毛玻璃了 */
 }
 
 .dashboard-card:hover {
@@ -200,16 +218,16 @@ const formatDate = (dateStr?: string) => {
 /* Specific Card Sizes */
 .details-card {
   flex: 1; /* 占据剩余高度或固定高度 */
-  min-height: 200px;
+  min-height: 150px;
 }
 
 .team-card {
-  min-height: 150px;
+  min-height: 120px;
 }
 
 .chart-card {
   flex: 1;
-  min-height: 280px;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
 }
@@ -222,7 +240,7 @@ const formatDate = (dateStr?: string) => {
   color: #999;
   background: rgba(0, 0, 0, 0.02);
   border-radius: 8px;
-  min-height: 100px;
+  min-height: 80px;
 }
 
 .chart-placeholder {
@@ -238,7 +256,7 @@ const formatDate = (dateStr?: string) => {
 .placeholder-chart {
   width: 100%;
   height: 100%;
-  max-height: 200px;
+  max-height: 150px;
 }
 
 .chart-label {

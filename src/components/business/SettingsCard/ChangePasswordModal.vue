@@ -87,7 +87,7 @@ const handleOk = async () => {
     await changePassword({
       old_password: form.oldPassword,
       new_password: form.newPassword,
-    })
+    }, { skipSuccTip: true })
     message.success('密码修改成功')
     emit('update:visible', false)
   } catch (error) {

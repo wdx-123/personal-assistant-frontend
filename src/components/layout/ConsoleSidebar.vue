@@ -12,83 +12,51 @@
 
     <!-- 菜单列表 -->
     <div class="sidebar-menu">
-      <!-- 主页 -->
-      <div class="menu-item" :class="{ active: isActive('/console/dashboard') }" @click="navigateTo('/console/dashboard')">
-        <div class="menu-title" title="主页">
-          <div class="title-content">
-            <svg class="menu-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            <span class="menu-text">主页</span>
+      <template v-for="menu in sidebarMenus" :key="menu.path">
+        <!-- 无子菜单 -->
+        <div 
+          v-if="!menu.children || menu.children.length === 0" 
+          class="menu-item" 
+          :class="{ active: isActive(menu.path) }" 
+          @click="navigateTo(menu.path)"
+        >
+          <div class="menu-title" :title="menu.meta?.title">
+            <div class="title-content">
+              <component :is="getIcon(menu.name as string)" class="menu-icon" />
+              <span class="menu-text">{{ menu.meta?.title }}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- 权限管理（带子菜单） -->
-      <div class="menu-item" :class="{ active: isActive('/console/permission') }">
-        <div class="menu-title" title="权限管理" @click="toggleSubmenu('permission')">
-          <div class="title-content">
-            <svg class="menu-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        <!-- 有子菜单 -->
+        <div 
+          v-else 
+          class="menu-item" 
+          :class="{ active: isSubmenuActive(menu) }"
+        >
+          <div class="menu-title" :title="menu.meta?.title" @click="toggleSubmenu(menu.name as string)">
+            <div class="title-content">
+              <component :is="getIcon(menu.name as string)" class="menu-icon" />
+              <span class="menu-text">{{ menu.meta?.title }}</span>
+            </div>
+            <svg class="submenu-arrow" :class="{ rotated: isSubmenuOpen(menu.name as string) }" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
-            <span class="menu-text">权限管理</span>
           </div>
-          <svg class="submenu-arrow" :class="{ rotated: isSubmenuOpen('permission') }" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-        
-        <!-- 子菜单：使用 max-height 实现平滑展开/收起 -->
-        <div class="submenu" :class="{ open: isSubmenuOpen('permission') }">
-          <div class="submenu-item" :class="{ active: isActive('/console/permission/role') }" @click.stop="navigateTo('/console/permission/role')">
-            角色管理
-          </div>
-          <div class="submenu-item" :class="{ active: isActive('/console/permission/api') }" @click.stop="navigateTo('/console/permission/api')">
-            API管理
-          </div>
-          <div class="submenu-item" :class="{ active: isActive('/console/permission/menu') }" @click.stop="navigateTo('/console/permission/menu')">
-            菜单管理
+          
+          <div class="submenu" :class="{ open: isSubmenuOpen(menu.name as string) }">
+            <div 
+              v-for="sub in menu.children" 
+              :key="sub.path"
+              class="submenu-item" 
+              :class="{ active: isActive(sub.path) }" 
+              @click.stop="navigateTo(sub.path)"
+            >
+              {{ sub.meta?.title }}
+            </div>
           </div>
         </div>
-      </div>
-
-      <!-- 团队管理（带子菜单） -->
-      <div class="menu-item" :class="{ active: isActive('/console/team') }">
-        <div class="menu-title" title="团队管理" @click="toggleSubmenu('team')">
-          <div class="title-content">
-            <svg class="menu-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            <span class="menu-text">团队管理</span>
-          </div>
-          <svg class="submenu-arrow" :class="{ rotated: isSubmenuOpen('team') }" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-        
-        <!-- 子菜单 -->
-        <div class="submenu" :class="{ open: isSubmenuOpen('team') }">
-          <div class="submenu-item" :class="{ active: isActive('/console/team/list') }" @click.stop="navigateTo('/console/team/list')">
-            我的团队
-          </div>
-          <div class="submenu-item" :class="{ active: isActive('/console/team/members') }" @click.stop="navigateTo('/console/team/members')">
-            团队成员
-          </div>
-        </div>
-      </div>
-
-      <!-- 设置 -->
-      <div class="menu-item" :class="{ active: isActive('/console/settings') }" @click="navigateTo('/console/settings')">
-        <div class="menu-title" title="设置">
-          <div class="title-content">
-            <svg class="menu-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span class="menu-text">设置</span>
-          </div>
-        </div>
-      </div>
+      </template>
     </div>
 
     <!-- 底部收缩按钮 -->
@@ -102,13 +70,68 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { ref, computed, h } from 'vue';
+import { useRoute, useRouter, type RouteRecordRaw } from 'vue-router';
+import { usePermissionStore } from '@/stores/permission';
 
 const isCollapsed = ref(false);
-const openSubmenus = ref<Set<string>>(new Set(['permission'])); // 默认展开权限管理
+const openSubmenus = ref<Set<string>>(new Set()); 
 const route = useRoute();
 const router = useRouter();
+const permissionStore = usePermissionStore();
+
+// 获取动态路由并生成侧边栏菜单
+const sidebarMenus = computed(() => {
+  // 找到 Console 路由
+  const consoleRoute = permissionStore.dynamicRoutes.find(r => r.path === '/console' || r.name === 'Console');
+  if (!consoleRoute || !consoleRoute.children) return [];
+
+  // 转换子路由为菜单项
+  return consoleRoute.children.map(route => {
+    // 处理路径：将相对路径转换为绝对路径
+    const fullPath = route.path.startsWith('/') ? route.path : `/console/${route.path}`;
+    
+    // 处理子菜单路径
+    const children = route.children?.map(child => ({
+      ...child,
+      path: child.path.startsWith('/') ? child.path : `${fullPath}/${child.path}`.replace(/\/+/g, '/')
+    })) || [];
+
+    return {
+      ...route,
+      path: fullPath,
+      children
+    };
+  });
+});
+
+// 图标映射
+const Icons = {
+  Home: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
+    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" })
+  ]),
+  Permission: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
+    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" })
+  ]),
+  Team: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
+    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" })
+  ]),
+  Settings: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
+    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" }),
+    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M15 12a3 3 0 11-6 0 3 3 0 016 0z" })
+  ]),
+  Default: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
+    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M4 6h16M4 12h16M4 18h16" })
+  ])
+};
+
+const getIcon = (name: string) => {
+  if (name.includes('Dashboard')) return Icons.Home;
+  if (name.includes('Permission')) return Icons.Permission;
+  if (name.includes('Team')) return Icons.Team;
+  if (name.includes('Settings')) return Icons.Settings;
+  return Icons.Default;
+};
 
 // 切换侧边栏收起/展开
 const toggleCollapse = () => {
@@ -117,12 +140,10 @@ const toggleCollapse = () => {
 
 // 切换子菜单展开/收起
 const toggleSubmenu = (key: string) => {
-  // 如果侧边栏是收起状态，先展开侧边栏
   if (isCollapsed.value) {
     isCollapsed.value = false;
   }
   
-  // 切换子菜单状态
   if (openSubmenus.value.has(key)) {
     openSubmenus.value.delete(key);
   } else {
@@ -142,8 +163,27 @@ const navigateTo = (path: string) => {
 
 // 检查当前路由是否激活
 const isActive = (path: string) => {
-  return route.path.startsWith(path);
+  return route.path === path;
 };
+
+// 检查子菜单是否激活
+const isSubmenuActive = (menu: any) => {
+  if (!menu.children) return isActive(menu.path);
+  return menu.children.some((child: any) => isActive(child.path));
+};
+
+// 初始化：自动展开当前激活的子菜单
+const initOpenSubmenus = () => {
+  sidebarMenus.value.forEach(menu => {
+    if (menu.children && isSubmenuActive(menu)) {
+      openSubmenus.value.add(menu.name as string);
+    }
+  });
+};
+
+// 监听路由变化，更新展开状态（可选，如果需要保持展开）
+initOpenSubmenus();
+
 </script>
 
 <style scoped>
@@ -410,8 +450,6 @@ const isActive = (path: string) => {
   font-weight: 500;
 }
 
-/* 子菜单激活指示器 */
-
 /* ============================================
    底部收缩按钮
    ============================================ */
@@ -454,8 +492,8 @@ const isActive = (path: string) => {
 }
 
 .footer-text {
-  opacity: 1;
   white-space: nowrap;
+  opacity: 1;
   transition: opacity 0.15s ease 0.1s;
 }
 

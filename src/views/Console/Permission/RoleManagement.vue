@@ -137,14 +137,14 @@
     <a-modal
       v-model:open="isPermissionModalOpen"
       :title="`修改权限 - ${permissionRole.name}`"
-      width="800px"
+      width="1100px"
       @ok="savePermission"
       :confirmLoading="permissionSaving"
       :maskClosable="false"
     >
       <div class="permission-container">
         <a-row :gutter="24">
-          <a-col :span="12">
+          <a-col :span="8">
             <a-card title="功能权限" size="small" :bordered="true">
               <a-tree
                 :checkedKeys="selectedMenuIds"
@@ -157,7 +157,7 @@
               />
             </a-card>
           </a-col>
-          <a-col :span="12">
+          <a-col :span="8">
             <a-card title="数据权限" size="small" :bordered="true">
               <a-tree
                 :checkedKeys="selectedApiIds"
@@ -167,6 +167,19 @@
                 :fieldNames="{ children: 'children', title: 'label', key: 'id' }"
                 :height="400"
                 @check="onApiTreeCheck"
+              />
+            </a-card>
+          </a-col>
+          <a-col :span="8">
+            <a-card title="资源权限" size="small" :bordered="true">
+              <a-tree
+                :checkedKeys="selectedResourceCodes"
+                checkable
+                defaultExpandAll
+                :tree-data="resourcePermissions as any"
+                :fieldNames="{ children: 'children', title: 'label', key: 'id' }"
+                :height="400"
+                @check="onResourceTreeCheck"
               />
             </a-card>
           </a-col>
@@ -192,8 +205,7 @@ import {
   updateRole,
   deleteRole as deleteRoleApi,
   getRoleMenuApiMap,
-  assignRoleMenu,
-  assignRoleApi
+  assignRolePermission
 } from '@/services/permission.service'
 
 const searchQuery = reactive({
@@ -375,31 +387,47 @@ const isPermissionModalOpen = ref(false)
 const permissionRole = reactive({ id: 0, name: '' })
 const selectedMenuIds = ref<number[]>([])
 const selectedApiIds = ref<(string | number)[]>([])
+const selectedResourceCodes = ref<string[]>([])
 const availableApiIds = ref<number[]>([])
 const permissionSaving = ref(false)
 const functionalPermissions = ref<PermissionNode[]>([])
 const dataPermissions = ref<PermissionNode[]>([])
+const resourcePermissions = ref<any[]>([])
 
 const getMenuChildren = (item: any) => {
   return item?.children || item?.menus || item?.menu_list || item?.menuList || []
 }
 
 const buildFunctionalPermissions = (items: any[]): PermissionNode[] => {
-  const mapItem = (item: any): PermissionNode => {
+  const mapItem = (item: any): PermissionNode | null => {
+    // 过滤掉禁用的菜单（status === 0 或 status === '0' 或 disabled === true）
+    // 注意：后端可能返回 status: 1 (启用) / 0 (禁用)
+    const isDisabled = item.status === 0 || item.status === '0' || item.disabled === true
+    if (isDisabled) {
+      return null
+    }
+
     const id = typeof item.id === 'number' ? item.id : (typeof item.menu_id === 'number' ? item.menu_id : 0)
     const label = item.label || item.name || item.title || item.code || ''
     const childrenSource = getMenuChildren(item)
-    const children = Array.isArray(childrenSource) ? childrenSource.map(mapItem) : []
+    const children = Array.isArray(childrenSource) ? childrenSource.map(mapItem).filter(Boolean) as PermissionNode[] : []
+    
     return children.length ? { id, label, children } : { id, label }
   }
 
-  return Array.isArray(items) ? items.map(mapItem) : []
+  return Array.isArray(items) ? items.map(mapItem).filter(Boolean) as PermissionNode[] : []
 }
 
 const buildDataPermissions = (items: any[]) => {
   const allApiIds = new Set<number>()
 
   const mapItem = (item: any): PermissionNode | null => {
+    // 过滤掉禁用的菜单
+    const isDisabled = item.status === 0 || item.status === '0' || item.disabled === true
+    if (isDisabled) {
+      return null
+    }
+
     const menuId = typeof item.id === 'number' ? item.id : (typeof item.menu_id === 'number' ? item.menu_id : 0)
     if (!menuId) return null
 
@@ -481,7 +509,36 @@ const normalizeMenuApiMap = (raw: any) => {
     raw?.checked_api_ids ||
     raw?.checkedApiIds ||
     []
-  return { items, assignedMenuIds, assignedApiIds }
+  
+  const resourceManagement = raw?.resource_management || raw?.resources || raw?.capability_groups || []
+  const assignedResourceCodes = raw?.assigned_resource_codes || raw?.resource_codes || raw?.assigned_capability_codes || []
+
+  return { items, assignedMenuIds, assignedApiIds, resourceManagement, assignedResourceCodes }
+}
+
+const buildResourcePermissions = (items: any[]): PermissionNode[] => {
+  if (!items || !items.length) return []
+  
+  return items.map((group) => {
+    // 兼容后端返回字段，可能是 capabilities 或其他
+    // 如果没有 capabilities 字段，但有 children，也可以兼容
+    const caps = group.capabilities || group.children || []
+    
+    const children = caps.map((cap: any) => {
+      const code = cap.code || cap.capability_code || ''
+      return {
+        id: code,
+        label: `${code}`,
+        isLeaf: true
+      }
+    })
+    
+    return {
+      id: group.group_code,
+      label: group.group_code,
+      children
+    }
+  })
 }
 
 const normalizeCheckedIds = (checkedKeys: any): number[] => {
@@ -516,23 +573,43 @@ const onApiTreeCheck = (checkedKeys: any) => {
   selectedApiIds.value = normalizeApiTreeCheckedKeys(checkedKeys)
 }
 
+const onResourceTreeCheck = (checkedKeys: any) => {
+  // 资源权限使用的是字符串key
+  const keys = Array.isArray(checkedKeys)
+    ? checkedKeys
+    : Array.isArray(checkedKeys?.checked)
+      ? checkedKeys.checked
+      : []
+  selectedResourceCodes.value = Array.from(new Set(keys))
+}
+
 const loadPermissionData = async (roleId: number) => {
   try {
     const menuApiMap = await getRoleMenuApiMap(roleId, { skipSuccTip: true })
-    const { items, assignedMenuIds, assignedApiIds } = normalizeMenuApiMap(menuApiMap)
+    const { items, assignedMenuIds, assignedApiIds, resourceManagement, assignedResourceCodes } = normalizeMenuApiMap(menuApiMap)
+    
     functionalPermissions.value = buildFunctionalPermissions(items || [])
     const { tree, apiIds } = buildDataPermissions(items || [])
     dataPermissions.value = tree
     availableApiIds.value = apiIds
+    
+    // Resource Permissions
+    resourcePermissions.value = buildResourcePermissions(resourceManagement || [])
+    
     selectedMenuIds.value = normalizeCheckedIds(assignedMenuIds)
     selectedApiIds.value = normalizeCheckedIds(assignedApiIds).map((id) => `api-${id}`)
+    
+    // assignedResourceCodes should be string[]
+    selectedResourceCodes.value = Array.isArray(assignedResourceCodes) ? assignedResourceCodes : []
   } catch (error) {
     console.error(error)
     functionalPermissions.value = []
     dataPermissions.value = []
+    resourcePermissions.value = []
     selectedMenuIds.value = []
     selectedApiIds.value = []
     availableApiIds.value = []
+    selectedResourceCodes.value = []
   }
 }
 
@@ -544,7 +621,76 @@ const openPermissionModal = async (role: any) => {
 }
 
 const savePermission = async () => {
-  const menuIds = Array.from(new Set(selectedMenuIds.value.filter((id) => Number.isInteger(id) && id > 0)))
+  // 1. 整理勾选的菜单ID，并补充半选的父节点ID
+  // 注意：Ant Design Vue 的 Tree 组件在 check 事件中如果 checkStrictly=false（默认），
+  // 返回的 checkedKeys 只是叶子节点或者完全选中的节点，可能不包含半选的父节点。
+  // 但是后端需要完整的 menu_ids 路径才能构建树，或者我们在这里手动补全。
+  
+  // 实际上，为了保险起见，我们需要遍历权限树，找到所有被选中节点的父节点
+  const checkedMenuIdSet = new Set(selectedMenuIds.value.filter((id) => Number.isInteger(id) && id > 0))
+  
+  const findParentIds = (nodes: PermissionNode[], targetId: number, parents: number[]): number[] | null => {
+    for (const node of nodes) {
+      const nodeId = typeof node.id === 'string' && node.id.startsWith('menu-') 
+        ? Number(node.id.replace('menu-', '')) 
+        : (typeof node.id === 'number' ? node.id : 0)
+        
+      if (nodeId === targetId) {
+        return parents
+      }
+      
+      if (node.children && node.children.length > 0) {
+        const found = findParentIds(node.children, targetId, [...parents, nodeId])
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  // 遍历所有已选的菜单ID，找到它们的父级路径并添加到集合中
+  // 注意：functionalPermissions 是构建好的树结构，但 ID 是带 'menu-' 前缀的字符串或者是数字
+  // 我们需要确保 ID 格式一致
+  
+  // 简单的做法：如果前端用的是 checkStrictly=false，AntD 的 checkedKeys 应该只包含叶子节点（如果父节点全选了也包含父节点）。
+  // 如果是 checkStrictly=true，则包含所有点击过的。
+  // 截图看似乎是默认行为。
+  // 无论如何，我们在这里做一个“向上查找补全”的逻辑是比较稳妥的。
+  
+  const allMenuIds = new Set<number>()
+  
+  // 辅助函数：扁平化树，建立 id -> parentId 的映射
+  const menuParentMap = new Map<number, number>()
+  const traverseTree = (nodes: PermissionNode[], parentId: number = 0) => {
+    nodes.forEach(node => {
+      // 提取纯数字ID
+      let nodeId = 0
+      if (typeof node.id === 'number') {
+        nodeId = node.id
+      } else if (typeof node.id === 'string' && node.id.startsWith('menu-')) {
+        nodeId = Number(node.id.replace('menu-', ''))
+      }
+      
+      if (nodeId > 0) {
+        menuParentMap.set(nodeId, parentId)
+        if (node.children) {
+          traverseTree(node.children, nodeId)
+        }
+      }
+    })
+  }
+  traverseTree(functionalPermissions.value)
+  
+  // 遍历当前勾选的ID，向上递归补充父ID
+  selectedMenuIds.value.forEach(id => {
+    if (!id) return
+    let currentId = id
+    while (currentId !== 0) {
+      allMenuIds.add(currentId)
+      currentId = menuParentMap.get(currentId) || 0
+    }
+  })
+
+  const menuIds = Array.from(allMenuIds)
   const apiIdPool = new Set(availableApiIds.value)
   const apiIds = Array.from(
     new Set(
@@ -559,26 +705,42 @@ const savePermission = async () => {
     )
   )
 
+  // 过滤掉资源权限中的组节点（如果有子节点的节点ID通常是组ID）
+  // 这里简单判断：如果是叶子节点才提交
+  // 但我们 tree 数据里没有保留 flat map。
+  // 重新遍历 resourcePermissions 找到所有的叶子节点 ID Set
+  const resourceLeafIds = new Set<string>()
+  const traverseResource = (nodes: any[]) => {
+    nodes.forEach(node => {
+      if (node.children && node.children.length > 0) {
+        traverseResource(node.children)
+      } else if (node.isLeaf) {
+        // 只有标记为叶子节点（Capability）的才收集
+        resourceLeafIds.add(node.id)
+      }
+    })
+  }
+  traverseResource(resourcePermissions.value)
+  
+  const resourceCodes = selectedResourceCodes.value.filter(code => resourceLeafIds.has(code))
+
   permissionSaving.value = true
   try {
-    await Promise.all([
-      assignRoleMenu(
-        {
-          role_id: permissionRole.id,
-          menu_ids: menuIds
-        },
-        { skipSuccTip: true }
-      ),
-      assignRoleApi(
-        {
-          role_id: permissionRole.id,
-          api_ids: apiIds
-        },
-        { skipSuccTip: true }
-      )
-    ])
+    await assignRolePermission({
+      role_id: permissionRole.id,
+      menu_ids: menuIds,
+      direct_api_ids: apiIds,
+      capability_codes: resourceCodes
+    }, { skipSuccTip: true })
+    
     isPermissionModalOpen.value = false
-    message.success('权限配置已保存')
+    message.success('权限配置已保存，即将刷新页面生效')
+    
+    // 延迟刷新页面，让用户看到成功提示
+    setTimeout(() => {
+      window.location.reload()
+    }, 1000)
+    
   } catch (error) {
     console.error(error)
   } finally {

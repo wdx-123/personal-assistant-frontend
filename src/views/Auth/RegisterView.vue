@@ -22,6 +22,7 @@ const realName = ref("");
 const phone = ref("");
 const password = ref("");
 const confirmPassword = ref("");
+const inviteCode = ref("");
 const captcha = ref("");
 const captchaId = ref("");
 const orgId = ref<string | number>("0");
@@ -63,6 +64,11 @@ const validateForm = () => {
     return false;
   }
 
+  if (!inviteCode.value.trim()) {
+    message.warning("请输入团队邀请码");
+    return false;
+  }
+
   const captchaResult = validateCaptchaDetail(captcha.value);
   if (!captchaResult.valid) {
     message.warning(captchaResult.message || "验证失败");
@@ -99,7 +105,8 @@ const handleRegister = async () => {
         password: password.value,
         captcha: captcha.value,
         captcha_id: captchaId.value,
-        org_id: Number(orgId.value) || 0,
+        invite_code: inviteCode.value.trim(),
+        org_id: 0, // 强制使用邀请码，不传org_id
       },
       {
         customSuccTip: "注册成功！正在自动登录...", // 自定义成功提示
@@ -214,7 +221,17 @@ onMounted(() => {
               type="password"
               placeholder="请再次输入密码"
               show-password
-              @keydown.enter="handleRegister"
+            />
+          </div>
+
+          <!-- 团队邀请码 -->
+          <div class="form-item">
+            <div class="form-label">团队邀请码</div>
+            <Input
+              v-model="inviteCode"
+              type="text"
+              placeholder="请输入团队邀请码（必填）"
+              clearable
             />
           </div>
 
@@ -226,17 +243,6 @@ onMounted(() => {
               v-model="captcha"
               @change="handleCaptchaChange"
             />
-          </div>
-
-          <!-- 组织（可选） -->
-          <div class="form-item" v-if="orgList.length > 0">
-            <div class="form-label">所属组织（可选）</div>
-            <select v-model="orgId" class="org-select">
-              <option value="0">请选择组织</option>
-              <option v-for="org in orgList" :key="org.id" :value="org.id">
-                {{ org.name }}
-              </option>
-            </select>
           </div>
 
           <!-- 用户协议 -->

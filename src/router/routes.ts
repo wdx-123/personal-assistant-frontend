@@ -69,32 +69,32 @@ export const asyncRoutes: RouteRecordRaw[] = [
         path: 'dashboard',
         name: 'ConsoleDashboard',
         component: () => import('@/views/Console/Dashboard.vue'),
-        meta: { title: '控制台 - 主页' }
+        meta: { title: '主页' }
       },
       {
         path: 'permission',
         name: 'ConsolePermission',
         component: () => import('@/views/Console/Permission.vue'),
-        meta: { title: '控制台 - 权限管理' },
+        meta: { title: '权限管理' },
         redirect: '/console/permission/role',
         children: [
           {
             path: 'role',
             name: 'PermissionRole',
             component: () => import('@/views/Console/Permission/RoleManagement.vue'),
-            meta: { title: '权限管理 - 角色管理' }
+            meta: { title: '角色管理' }
           },
           {
             path: 'api',
             name: 'PermissionApi',
             component: () => import('@/views/Console/Permission/ApiManagement.vue'),
-            meta: { title: '权限管理 - API管理' }
+            meta: { title: 'API管理' }
           },
           {
             path: 'menu',
             name: 'PermissionMenu',
             component: () => import('@/views/Console/Permission/MenuManagement.vue'),
-            meta: { title: '权限管理 - 菜单管理' }
+            meta: { title: '菜单管理' }
           }
         ]
       },
@@ -102,7 +102,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
         path: 'team',
         name: 'ConsoleTeam',
         component: () => import('@/views/Console/Team.vue'),
-        meta: { title: '控制台 - 团队管理' },
+        meta: { title: '团队管理' },
         redirect: '/console/team/list',
         children: [
           {
@@ -123,7 +123,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
         path: 'settings',
         name: 'ConsoleSettings',
         component: () => import('@/views/Console/Settings.vue'),
-        meta: { title: '控制台 - 设置' }
+        meta: { title: '设置' },
       }
     ]
   }

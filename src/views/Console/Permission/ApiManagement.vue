@@ -363,8 +363,8 @@ const openEditModal = (api?: any) => {
 }
 
 const saveApi = async () => {
-  if (!editingApi.path || !editingApi.description || !editingApi.method || !editingApi.menu_id) {
-    message.warning('请填写完整的 API 信息')
+  if (!editingApi.path || !editingApi.description || !editingApi.method) {
+    message.warning('请填写必要的 API 信息')
     return
   }
   
@@ -374,7 +374,7 @@ const saveApi = async () => {
       path: editingApi.path,
       method: editingApi.method || 'GET',
       detail: editingApi.description,
-      menu_id: editingApi.menu_id,
+      menu_id: editingApi.menu_id || 0, // 如果未选择类别，传 0
       status: editingApi.status === 'enabled' ? 1 : 0
     }
 

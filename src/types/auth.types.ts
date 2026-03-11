@@ -48,6 +48,7 @@ export interface RegisterRequest {
   captcha: string
   captcha_id: string
   org_id?: number
+  invite_code?: string
 }
 
 // 注册响应
