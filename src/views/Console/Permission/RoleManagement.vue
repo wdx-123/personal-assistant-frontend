@@ -244,14 +244,29 @@ const fetchRoles = async () => {
     
     const data = await getRoleList(params, { skipSuccTip: true })
     if (data) {
-      roles.value = data.list.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        key: item.code,
-        status: item.status === 1 ? 'enabled' : 'disabled',
-        updateTime: item.updated_at || '-',
-        desc: item.desc || '-'
-      }))
+      roles.value = data.list.map((item: any) => {
+        let updateTime = '-'
+        if (item.updated_at) {
+          const date = new Date(item.updated_at)
+          updateTime = date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          }).replace(/\//g, '-')
+        }
+        return {
+          id: item.id,
+          name: item.name,
+          key: item.code,
+          status: item.status === 1 ? 'enabled' : 'disabled',
+          updateTime,
+          desc: item.desc || '-'
+        }
+      })
       pagination.total = data.total
     }
   } catch (error) {
@@ -393,6 +408,7 @@ const permissionSaving = ref(false)
 const functionalPermissions = ref<PermissionNode[]>([])
 const dataPermissions = ref<PermissionNode[]>([])
 const resourcePermissions = ref<any[]>([])
+const apiParentMenuMap = ref<Map<number, number>>(new Map())
 
 const getMenuChildren = (item: any) => {
   return item?.children || item?.menus || item?.menu_list || item?.menuList || []
@@ -420,6 +436,7 @@ const buildFunctionalPermissions = (items: any[]): PermissionNode[] => {
 
 const buildDataPermissions = (items: any[]) => {
   const allApiIds = new Set<number>()
+  const apiMenuMap = new Map<number, number>()
 
   const mapItem = (item: any): PermissionNode | null => {
     // 过滤掉禁用的菜单
@@ -449,6 +466,7 @@ const buildDataPermissions = (items: any[]) => {
         const apiId = typeof api?.id === 'number' ? api.id : 0
         if (apiId) {
           allApiIds.add(apiId)
+          apiMenuMap.set(apiId, menuId)
           const method = api?.method || api?.api_method || api?.http_method || ''
           const path = api?.path || api?.api_path || api?.url || ''
           const name = api?.name || ''
@@ -477,7 +495,7 @@ const buildDataPermissions = (items: any[]) => {
   }
 
   const tree = items.map(mapItem).filter(Boolean) as PermissionNode[]
-  return { tree, apiIds: Array.from(allApiIds) }
+  return { tree, apiIds: Array.from(allApiIds), apiMenuMap }
 }
 
 const normalizeMenuApiMap = (raw: any) => {
@@ -502,6 +520,8 @@ const normalizeMenuApiMap = (raw: any) => {
     raw?.checkedMenuIds ||
     []
   const assignedApiIds =
+    raw?.direct_api_ids ||
+    raw?.directApiIds ||
     raw?.assigned_api_ids ||
     raw?.assignedApiIds ||
     raw?.api_ids ||
@@ -589,9 +609,10 @@ const loadPermissionData = async (roleId: number) => {
     const { items, assignedMenuIds, assignedApiIds, resourceManagement, assignedResourceCodes } = normalizeMenuApiMap(menuApiMap)
     
     functionalPermissions.value = buildFunctionalPermissions(items || [])
-    const { tree, apiIds } = buildDataPermissions(items || [])
+    const { tree, apiIds, apiMenuMap } = buildDataPermissions(items || [])
     dataPermissions.value = tree
     availableApiIds.value = apiIds
+    apiParentMenuMap.value = apiMenuMap
     
     // Resource Permissions
     resourcePermissions.value = buildResourcePermissions(resourceManagement || [])
@@ -690,7 +711,6 @@ const savePermission = async () => {
     }
   })
 
-  const menuIds = Array.from(allMenuIds)
   const apiIdPool = new Set(availableApiIds.value)
   const apiIds = Array.from(
     new Set(
@@ -704,6 +724,20 @@ const savePermission = async () => {
         .filter((id) => Number.isInteger(id) && id > 0 && apiIdPool.has(id))
     )
   )
+
+  // 补充 API 对应的菜单 ID
+  apiIds.forEach((apiId) => {
+    const menuId = apiParentMenuMap.value.get(apiId)
+    if (menuId) {
+      let currentId = menuId
+      while (currentId !== 0) {
+        allMenuIds.add(currentId)
+        currentId = menuParentMap.get(currentId) || 0
+      }
+    }
+  })
+
+  const menuIds = Array.from(allMenuIds)
 
   // 过滤掉资源权限中的组节点（如果有子节点的节点ID通常是组ID）
   // 这里简单判断：如果是叶子节点才提交
@@ -737,9 +771,9 @@ const savePermission = async () => {
     message.success('权限配置已保存，即将刷新页面生效')
     
     // 延迟刷新页面，让用户看到成功提示
-    setTimeout(() => {
-      window.location.reload()
-    }, 1000)
+    // setTimeout(() => {
+    //   window.location.reload()
+    // }, 1000)
     
   } catch (error) {
     console.error(error)

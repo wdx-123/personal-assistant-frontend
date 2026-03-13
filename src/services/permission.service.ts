@@ -206,3 +206,11 @@ export function joinOrg(data: { invite_code: string }, config?: RequestOptions):
 export function getMyOrgs(config?: RequestOptions): Promise<MyOrgItem[]> {
   return apiClient.get('/system/org/my', config)
 }
+
+export function removeOrgMember(orgId: number, userId: number, config?: RequestOptions): Promise<null> {
+  return apiClient.delete(`/system/org/${orgId}/member/${userId}`, config)
+}
+
+export function leaveOrg(data: { org_id: number }, config?: RequestOptions): Promise<null> {
+  return apiClient.post('/system/org/leave', data, config)
+}

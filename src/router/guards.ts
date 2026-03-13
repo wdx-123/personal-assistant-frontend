@@ -2,6 +2,9 @@ import router from '@/router'
 import { useAuthStore } from '@/stores/auth'
 import { usePermissionStore } from '@/stores/permission'
 import type { RouteLocationNormalized } from 'vue-router'
+import { StatusCode } from '@/constants/status'
+import { BizCode } from '@/constants/biz-code'
+import { message } from '@/components/common'
 
 // White list (routes that don't need auth) - usually covered by meta.requiresAuth: false
 // But we can check here too if needed.
@@ -37,7 +40,29 @@ router.beforeEach(async (to: RouteLocationNormalized, from: RouteLocationNormali
           // Note: restoreAuth recovers myMenus from localStorage.
           // If you want to force fetch on refresh, you can check if myMenus is empty.
           if (authStore.myMenus.length === 0) {
-            await authStore.fetchMyMenus()
+            try {
+              await authStore.fetchMyMenus()
+            } catch (error: any) {
+              const code = error.response?.data?.code || error.code
+              const isAuthError = [
+                StatusCode.UNAUTHORIZED,
+                StatusCode.TOKEN_EXPIRED,
+                StatusCode.TOKEN_INVALID,
+                StatusCode.TOKEN_MALFORMED,
+                BizCode.CodeUnauthorized,
+                BizCode.CodeTokenExpired,
+                BizCode.CodeTokenInvalid,
+                BizCode.CodeTokenMalformed,
+                BizCode.CodeLoginRequired
+              ].includes(code)
+
+              if (isAuthError) {
+                throw error
+              }
+              // 非认证错误（如服务器错误、网络错误），仅提示并不强制退出
+              console.warn('Failed to fetch menus, proceeding with basic routes:', error)
+              message.warning('菜单加载失败，部分功能可能不可用')
+            }
           }
 
           // Generate accessible routes

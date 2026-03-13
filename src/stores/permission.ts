@@ -10,6 +10,12 @@ export const usePermissionStore = defineStore('permission', () => {
   const dynamicRoutes = ref<RouteRecordRaw[]>([])
   const isRoutesAdded = ref(false)
 
+  // 重置路由状态
+  const resetRoutes = () => {
+    dynamicRoutes.value = []
+    isRoutesAdded.value = false
+  }
+
   // 核心功能：生成你有权访问的路由
   const generateRoutes = async (): Promise<RouteRecordRaw[]> => {
     const authStore = useAuthStore()
@@ -111,6 +117,7 @@ export const usePermissionStore = defineStore('permission', () => {
   return {
     dynamicRoutes,
     isRoutesAdded,
-    generateRoutes
+    generateRoutes,
+    resetRoutes
   }
 })

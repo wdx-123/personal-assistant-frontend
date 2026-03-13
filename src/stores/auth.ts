@@ -4,6 +4,7 @@ import type { User, MenuItem } from '@/types'
 import type { RequestOptions } from '@/utils/request'
 import { login as loginApi, logout as logoutApi } from '@/services/auth.service'
 import { getMyMenus } from '@/services/permission.service'
+import { usePermissionStore } from '@/stores/permission'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -102,6 +103,10 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('access_token_expires_at')
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('my_menus')
+    
+    // 清除权限路由状态
+    const permissionStore = usePermissionStore()
+    permissionStore.resetRoutes()
   }
 
   const restoreAuth = () => {

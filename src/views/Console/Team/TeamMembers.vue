@@ -15,7 +15,7 @@
           <div class="team-stats">
             <div class="stat-item">
               <span class="stat-label">成员数</span>
-              <span class="stat-value">{{ members.length }}</span>
+              <span class="stat-value">{{ pagination.total }}</span>
             </div>
             <div class="stat-divider"></div>
             <div class="stat-item">
@@ -31,9 +31,6 @@
         </div>
       </div>
       <div class="header-search">
-        <select v-model.number="targetOrgId" class="org-select" @change="handleOrgSelect">
-          <option v-for="org in orgs" :key="org.id" :value="org.id">{{ org.name }}</option>
-        </select>
         <div class="search-input-wrapper">
           <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -48,64 +45,66 @@
         </div>
         <button class="btn btn-primary" @click="searchMembers">搜索</button>
         <button class="btn btn-secondary" @click="resetSearch">重置</button>
-        <button class="btn btn-primary" @click="handleInviteMember">
+        <button class="btn btn-danger" @click="handleLeaveTeam">
           <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
-          邀请成员
+          退出团队
         </button>
       </div>
     </div>
 
     <!-- 成员列表表格 -->
     <div class="content-card">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th class="col-index">序号</th>
-            <th class="col-avatar">头像</th>
-            <th class="col-name">用户名</th>
-            <th class="col-role">角色</th>
-            <th class="col-email">邮箱</th>
-            <th class="col-status">状态</th>
-            <th class="col-action text-center">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(member, index) in filteredMembers" :key="member.id">
-            <td class="col-index">{{ index + 1 }}</td>
-            <td class="col-avatar">
-              <img :src="member.avatar" alt="avatar" class="member-avatar" />
-            </td>
-            <td class="col-name">
-              <div class="user-info">
-                <span class="username">{{ member.username }}</span>
-                <span class="user-id">ID: {{ member.id }}</span>
-              </div>
-            </td>
-            <td class="col-role">
-              <span class="role-tag" :class="getRoleClass(member.role)">{{ member.role }}</span>
-            </td>
-            <td class="col-email">{{ member.email }}</td>
-            <td class="col-status">
-              <span class="status-dot" :class="member.status === 'enabled' ? 'bg-green' : 'bg-red'"></span>
-              {{ member.status === 'enabled' ? '启用' : '禁用' }}
-            </td>
-            <td class="col-action">
-              <div class="action-buttons">
-                <button class="btn-xs btn-primary" @click="handleEditMember(member)">编辑</button>
-                <button class="btn-xs btn-danger" @click="handleDeleteMember(member)">删除</button>
-              </div>
-            </td>
-          </tr>
-          <tr v-if="membersLoading">
-            <td colspan="7" class="empty-cell">成员加载中...</td>
-          </tr>
-          <tr v-if="filteredMembers.length === 0">
-            <td colspan="7" class="empty-cell">暂无成员数据</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="col-index">序号</th>
+              <th class="col-avatar">头像</th>
+              <th class="col-name">用户名</th>
+              <th class="col-role">角色</th>
+              <th class="col-phone">手机号</th>
+              <th class="col-status">状态</th>
+              <th class="col-action text-center">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(member, index) in filteredMembers" :key="member.id">
+              <td class="col-index">{{ (pagination.current - 1) * pagination.pageSize + index + 1 }}</td>
+              <td class="col-avatar">
+                <img :src="member.avatar" alt="avatar" class="member-avatar" />
+              </td>
+              <td class="col-name">
+                <div class="user-info">
+                  <span class="username">{{ member.username }}</span>
+                  <span class="user-id">ID: {{ member.id }}</span>
+                </div>
+              </td>
+              <td class="col-role">
+                <span class="role-tag" :class="getRoleClass(member.role)">{{ member.role }}</span>
+              </td>
+              <td class="col-phone">{{ member.phone }}</td>
+              <td class="col-status">
+                <span class="status-dot" :class="member.status === 'enabled' ? 'bg-green' : 'bg-red'"></span>
+                {{ member.status === 'enabled' ? '启用' : '禁用' }}
+              </td>
+              <td class="col-action">
+                <div class="action-buttons">
+                  <button class="btn-xs btn-primary" @click="handleEditMember(member)">编辑</button>
+                  <button class="btn-xs btn-danger" @click="handleDeleteMember(member)">移除</button>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="membersLoading">
+              <td colspan="7" class="empty-cell">成员加载中...</td>
+            </tr>
+            <tr v-if="filteredMembers.length === 0">
+              <td colspan="7" class="empty-cell">暂无成员数据</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <div class="pagination-wrapper">
         <a-pagination
           :current="pagination.current"
@@ -121,13 +120,23 @@
       </div>
     </div>
 
-    <!-- 模态框占位 -->
+    <!-- 模态框 -->
     <div v-if="showModal" class="modal-overlay">
       <div class="modal-content">
         <h3>{{ modalTitle }}</h3>
-        <p class="modal-body-text">功能开发中...</p>
+        <div class="form-group">
+          <label class="form-label">分配角色</label>
+          <select v-model="selectedRoleId" class="form-select">
+            <option v-for="role in roleOptions" :key="role.id" :value="role.id">
+              {{ role.name }}
+            </option>
+          </select>
+        </div>
         <div class="modal-footer">
-          <button @click="showModal = false" class="btn btn-secondary">关闭</button>
+          <button @click="showModal = false" class="btn btn-secondary" :disabled="modalLoading">取消</button>
+          <button @click="handleSaveMember" class="btn btn-primary" :disabled="modalLoading || !selectedRoleId">
+            {{ modalLoading ? '保存中...' : '保存' }}
+          </button>
         </div>
       </div>
     </div>
@@ -136,8 +145,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { message, Confirm } from '@/components/common'
-import { getOrgList, getUserList } from '@/services/permission.service'
+import { getOrgList, getUserList, removeOrgMember, leaveOrg, getRoleList, assignUserRole } from '@/services/permission.service'
 import { useAuthStore } from '@/stores/auth'
 import type { OrgItem } from '@/types'
 
@@ -146,7 +156,8 @@ interface Member {
   username: string
   avatar: string
   role: string
-  email: string
+  roleIds: number[]
+  phone: string
   status: 'enabled' | 'disabled'
 }
 
@@ -158,6 +169,7 @@ interface OrgOption {
 }
 
 const authStore = useAuthStore()
+const router = useRouter()
 const members = ref<Member[]>([])
 const membersLoading = ref(false)
 const orgs = ref<OrgOption[]>([])
@@ -166,6 +178,39 @@ const targetOrgId = ref<number>(0)
 const searchQuery = ref('')
 const showModal = ref(false)
 const modalTitle = ref('')
+const roleOptions = ref<{id: number, name: string}[]>([])
+const selectedRoleId = ref<number | undefined>(undefined)
+const editingMemberId = ref<number | undefined>(undefined)
+const modalLoading = ref(false)
+
+const fetchRoles = async () => {
+  try {
+    const data = await getRoleList({ page: 0, page_size: 100 }, { skipSuccTip: true })
+    roleOptions.value = (data?.list || []).map((r: any) => ({ id: r.id, name: r.name }))
+  } catch (error) {
+    console.error('Failed to fetch roles:', error)
+  }
+}
+
+const handleSaveMember = async () => {
+  if (!selectedRoleId.value || !editingMemberId.value) return
+  
+  modalLoading.value = true
+  try {
+    await assignUserRole({
+      user_id: editingMemberId.value,
+      org_id: targetOrgId.value || currentOrgId.value,
+      role_ids: [selectedRoleId.value]
+    }, { skipSuccTip: true })
+    message.success('角色分配成功')
+    showModal.value = false
+    await fetchMembers()
+  } catch (e) {
+    console.error(e)
+  } finally {
+    modalLoading.value = false
+  }
+}
 const currentOrgId = computed(() => authStore.user?.current_org_id || 0)
 const currentOrg = computed(() => orgs.value.find((item) => item.id === targetOrgId.value))
 const pagination = ref({
@@ -225,7 +270,8 @@ const fetchMembers = async () => {
       username: item.username || '-',
       avatar: item.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(item.username || String(item.id))}`,
       role: item.roles?.[0]?.name || '普通成员',
-      email: item.email || '-',
+      roleIds: item.roles?.map((r: any) => r.id) || [],
+      phone: item.phone || '-',
       status: item.freeze ? 'disabled' : 'enabled'
     }))
     pagination.value.total = data?.total || 0
@@ -237,11 +283,6 @@ const fetchMembers = async () => {
   }
 }
 
-const handleOrgSelect = () => {
-  pagination.value.current = 1
-  fetchMembers()
-}
-
 const filteredMembers = computed(() => {
   return members.value
 })
@@ -251,12 +292,33 @@ const getRoleClass = (role: string) => {
   return 'role-user'
 }
 
-const handleInviteMember = () => {
-  modalTitle.value = '邀请新成员'
-  showModal.value = true
+const handleLeaveTeam = async () => {
+  const orgId = targetOrgId.value || currentOrgId.value
+  if (!orgId) return
+
+  try {
+    await Confirm({
+      title: '退出团队',
+      content: `确定要退出 "${currentOrg.value?.name || '当前团队'}" 吗？`,
+      type: 'warning',
+      okText: '退出',
+      cancelText: '取消'
+    })
+    
+    await leaveOrg({ org_id: orgId }, { skipSuccTip: true })
+    message.success('已退出团队')
+    router.push('/console/team/my')
+  } catch (e) {
+    // Cancelled or error
+  }
 }
 
-const handleEditMember = (member: Member) => {
+const handleEditMember = async (member: Member) => {
+  if (roleOptions.value.length === 0) {
+    await fetchRoles()
+  }
+  editingMemberId.value = member.id
+  selectedRoleId.value = member.roleIds[0]
   modalTitle.value = `编辑成员 - ${member.username}`
   showModal.value = true
 }
@@ -264,12 +326,15 @@ const handleEditMember = (member: Member) => {
 const handleDeleteMember = async (member: Member) => {
   try {
     await Confirm({
-      title: '删除成员',
+      title: '移除成员',
       content: `确定要将 "${member.username}" 从团队中移除吗？`,
       type: 'warning',
       okText: '移除',
       cancelText: '取消'
     })
+    
+    // Call API to remove member
+    await removeOrgMember(targetOrgId.value || currentOrgId.value, member.id, { skipSuccTip: true })
     
     members.value = members.value.filter(m => m.id !== member.id)
     message.success('成员已移除')
@@ -432,23 +497,6 @@ watch(
   align-items: center;
 }
 
-.org-select {
-  height: 36px;
-  min-width: 180px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 0 10px;
-  font-size: 14px;
-  color: #374151;
-  background: #fff;
-}
-
-.org-select:focus {
-  outline: none;
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
-}
-
 .search-input-wrapper {
   position: relative;
   width: 240px;
@@ -487,6 +535,13 @@ watch(
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-container {
+  flex: 1;
+  overflow-y: auto;
 }
 
 .pagination-wrapper {
@@ -526,7 +581,7 @@ watch(
 .col-avatar { width: 60px; }
 .col-name { width: 200px; }
 .col-role { width: 150px; }
-.col-email { width: 250px; }
+.col-phone { width: 150px; }
 .col-status { width: 100px; }
 .col-action { width: 150px; }
 .text-right { text-align: right; }
@@ -701,5 +756,31 @@ watch(
 .modal-footer {
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
+}
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.form-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+  font-size: 14px;
+}
+
+.form-select:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
 }
 </style>

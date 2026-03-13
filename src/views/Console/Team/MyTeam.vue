@@ -146,7 +146,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { message, Confirm } from '@/components/common'
 import { useAuthStore } from '@/stores/auth'
-import { createOrg, deleteOrg, getOrgList, setCurrentOrg, updateOrg, joinOrg } from '@/services/permission.service'
+import { createOrg, deleteOrg, getOrgList, setCurrentOrg, updateOrg, joinOrg, getRoleList, assignUserRole } from '@/services/permission.service'
 import type { CreateOrgRequest, OrgItem, UpdateOrgRequest } from '@/types'
 
 interface Team {
@@ -349,8 +349,43 @@ const submitOrgForm = async () => {
       await updateOrg(editingOrgId.value, payload as UpdateOrgRequest, { skipSuccTip: true })
       message.success('组织信息已更新')
     } else {
-      await createOrg(payload as CreateOrgRequest, { skipSuccTip: true })
+      // Create org and get the result (assuming it returns the created org or null)
+      const newOrg: any = await createOrg(payload as CreateOrgRequest, { skipSuccTip: true })
       message.success('组织创建成功')
+
+      // Auto assign "Administrator" role to the creator
+      try {
+        let orgId = newOrg?.id
+        
+        // If createOrg didn't return ID, try to find it in the list
+        if (!orgId && authStore.user?.id) {
+          // Fetch the latest list to find the new org
+          const res = await getOrgList({ page: 1, page_size: 100, keyword: name }, { skipSuccTip: true })
+          // Filter by owner and exact name match
+          const myOrgs = (res?.list || []).filter((o: any) => o.owner_id === authStore.user?.id && o.name === name)
+          if (myOrgs.length > 0) {
+            // Sort by ID descending to get the latest one
+            myOrgs.sort((a: any, b: any) => b.id - a.id)
+            orgId = myOrgs[0].id
+          }
+        }
+
+        if (orgId && authStore.user?.id) {
+          // Fetch roles to find "Administrator"
+          const rolesData = await getRoleList({ page: 1, page_size: 100 }, { skipSuccTip: true })
+          const adminRole = (rolesData?.list || []).find((r: any) => r.name === '管理员' || r.name === 'Administrator')
+          
+          if (adminRole) {
+             await assignUserRole({
+               user_id: authStore.user.id,
+               org_id: orgId,
+               role_ids: [adminRole.id]
+             }, { skipSuccTip: true })
+           }
+         }
+       } catch (err) {
+        console.error('Failed to auto-assign admin role:', err)
+      }
     }
     showModal.value = false
     await fetchTeams()
