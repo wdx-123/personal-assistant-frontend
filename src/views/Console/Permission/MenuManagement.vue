@@ -166,14 +166,14 @@
           </a-radio-group>
         </a-form-item>
 
-        <a-form-item v-if="editingForm.type !== 'button'" label="路由名称" :required="editingForm.type === 'menu'">
+        <a-form-item v-if="editingForm.type !== 'button'" label="路由名称">
           <a-input
             v-model:value="editingForm.routeName"
             placeholder="请输入"
           />
         </a-form-item>
 
-        <a-form-item v-if="editingForm.type !== 'button'" label="路由路径" :required="editingForm.type === 'menu'">
+        <a-form-item v-if="editingForm.type !== 'button'" label="路由路径">
           <a-input
             v-model:value="editingForm.routePath"
             placeholder="请输入"
@@ -473,6 +473,17 @@ const saveMenu = async () => {
     message.warning('菜单类型需填写路由名称、路由路径和组件路径')
     return
   }
+  if (editingForm.type === 'directory' && (!editingForm.routeName || !editingForm.routePath)) {
+    // Optional: enforce routeName/Path for directory if needed, but usually directories might just be containers.
+    // However, user specifically asked to edit them, so we shouldn't block empty if they clear it, 
+    // BUT the form inputs are now visible. 
+    // If the user WANTS to edit them, we just let them.
+    // The previous validation blocked directories from needing them, but maybe the issue was just the form visibility.
+    // Actually, checking the form visibility above (v-if="editingForm.type !== 'button'") means directories SHOW them.
+    // The previous code had :required="editingForm.type === 'menu'", so they were optional for directory.
+    // So the validation logic below should also be loose for directories unless strict mode is required.
+    // We will keep it optional for directory to be safe, or just not validate here.
+  }
   if (editingForm.type === 'button' && !editingForm.permission) {
     message.warning('按钮类型需填写权限标识')
     return
@@ -504,8 +515,8 @@ const saveMenu = async () => {
     code,
     type: editingForm.type === 'directory' ? 1 : (editingForm.type === 'menu' ? 2 : 3),
     icon: isButtonType ? '' : editingForm.icon,
-    route_name: isMenuType ? editingForm.routeName : '',
-    route_path: isMenuType ? editingForm.routePath : '',
+    route_name: (isMenuType || editingForm.type === 'directory') ? editingForm.routeName : '',
+    route_path: (isMenuType || editingForm.type === 'directory') ? editingForm.routePath : '',
     route_param: isMenuType ? editingForm.routeParam : '',
     component_path: isMenuType ? editingForm.componentPath : '',
     status: editingForm.status === 'enabled' ? 1 : 0,

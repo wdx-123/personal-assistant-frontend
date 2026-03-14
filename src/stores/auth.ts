@@ -12,6 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   const accessTokenExpiresAt = ref<number>(0)
   const refreshToken = ref<string>('')
   const myMenus = ref<MenuItem[]>([])
+  const browsingOrgId = ref<number>(Number(localStorage.getItem('browsing_org_id')) || 0)
 
   const isLoggedIn = computed(() => !!user.value && !!accessToken.value)
   const isTokenExpired = computed(() => {
@@ -22,6 +23,10 @@ export const useAuthStore = defineStore('auth', () => {
   const setUser = (userData: User) => {
     user.value = userData
     localStorage.setItem('user', JSON.stringify(userData))
+    if (!browsingOrgId.value && userData.current_org_id) {
+      browsingOrgId.value = userData.current_org_id
+      localStorage.setItem('browsing_org_id', String(browsingOrgId.value))
+    }
   }
 
   const setToken = (token: string, expiresAt: number) => {
@@ -39,6 +44,11 @@ export const useAuthStore = defineStore('auth', () => {
   const setMyMenus = (menus: MenuItem[]) => {
     myMenus.value = menus
     localStorage.setItem('my_menus', JSON.stringify(menus))
+  }
+
+  const setBrowsingOrgId = (orgId: number) => {
+    browsingOrgId.value = orgId
+    localStorage.setItem('browsing_org_id', String(orgId))
   }
 
   const fetchMyMenus = async (orgId?: number, config?: RequestOptions) => {
@@ -97,12 +107,14 @@ export const useAuthStore = defineStore('auth', () => {
     accessTokenExpiresAt.value = 0
     refreshToken.value = ''
     myMenus.value = []
+    browsingOrgId.value = 0
 
     localStorage.removeItem('user')
     localStorage.removeItem('access_token')
     localStorage.removeItem('access_token_expires_at')
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('my_menus')
+    localStorage.removeItem('browsing_org_id')
     
     // 清除权限路由状态
     const permissionStore = usePermissionStore()
@@ -116,6 +128,7 @@ export const useAuthStore = defineStore('auth', () => {
       const expiresAt = localStorage.getItem('access_token_expires_at')
       const refreshTkn = localStorage.getItem('refresh_token')
       const myMenusStr = localStorage.getItem('my_menus')
+      const browsingOrgIdStr = localStorage.getItem('browsing_org_id')
 
       if (userStr && token && expiresAt) {
         user.value = JSON.parse(userStr)
@@ -123,6 +136,10 @@ export const useAuthStore = defineStore('auth', () => {
         accessTokenExpiresAt.value = Number(expiresAt)
         refreshToken.value = refreshTkn || ''
         myMenus.value = myMenusStr ? JSON.parse(myMenusStr) : []
+        browsingOrgId.value = browsingOrgIdStr ? Number(browsingOrgIdStr) : (user.value?.current_org_id || 0)
+        if (browsingOrgId.value) {
+          localStorage.setItem('browsing_org_id', String(browsingOrgId.value))
+        }
       }
     } catch (error) {
       clearAuth()
@@ -141,6 +158,7 @@ export const useAuthStore = defineStore('auth', () => {
     accessTokenExpiresAt,
     refreshToken,
     myMenus,
+    browsingOrgId,
 
     isLoggedIn,
     isTokenExpired,
@@ -149,6 +167,7 @@ export const useAuthStore = defineStore('auth', () => {
     setToken,
     setRefreshToken,
     setMyMenus,
+    setBrowsingOrgId,
     fetchMyMenus,
     login,
     logout,

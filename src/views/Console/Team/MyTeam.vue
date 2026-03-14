@@ -253,7 +253,17 @@ const handleSwitchTeam = async (team: Team) => {
     if (authStore.user) {
       authStore.setUser({
         ...authStore.user,
-        current_org_id: team.id
+        current_org_id: team.id,
+        current_org: {
+          ...authStore.user.current_org,
+          id: team.id,
+          name: team.name,
+          description: team.description,
+          code: team.inviteCode,
+          owner_id: team.ownerId || 0,
+          created_at: team.createdAt,
+          updated_at: '' // No need to be precise here for simple update
+        }
       })
     }
     await authStore.fetchMyMenus(team.id, { skipSuccTip: true, skipErrTip: true })
@@ -302,7 +312,17 @@ const handleDeleteTeam = async (team: Team) => {
       if (authStore.user) {
         authStore.setUser({
           ...authStore.user,
-          current_org_id: fallbackTeam.id
+          current_org_id: fallbackTeam.id,
+          current_org: {
+            ...authStore.user.current_org,
+            id: fallbackTeam.id,
+            name: fallbackTeam.name,
+            description: fallbackTeam.description,
+            code: fallbackTeam.inviteCode,
+            owner_id: fallbackTeam.ownerId || 0,
+            created_at: fallbackTeam.createdAt,
+            updated_at: ''
+          }
         })
       }
       await authStore.fetchMyMenus(fallbackTeam.id, { skipSuccTip: true, skipErrTip: true })

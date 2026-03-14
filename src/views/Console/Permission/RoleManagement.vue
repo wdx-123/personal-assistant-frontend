@@ -603,6 +603,35 @@ const onResourceTreeCheck = (checkedKeys: any) => {
   selectedResourceCodes.value = Array.from(new Set(keys))
 }
 
+const getLeafIds = (nodes: PermissionNode[], allIds: number[]): number[] => {
+  const leafIds: number[] = []
+  const idSet = new Set(allIds)
+  
+  const traverse = (list: PermissionNode[]) => {
+    list.forEach(node => {
+      // Extract numeric ID
+      let nodeId = 0
+      if (typeof node.id === 'number') {
+        nodeId = node.id
+      } else if (typeof node.id === 'string' && node.id.startsWith('menu-')) {
+        nodeId = Number(node.id.replace('menu-', ''))
+      }
+
+      if (node.children && node.children.length > 0) {
+        traverse(node.children)
+      } else {
+        // Leaf node
+        if (nodeId > 0 && idSet.has(nodeId)) {
+          leafIds.push(nodeId)
+        }
+      }
+    })
+  }
+  
+  traverse(nodes)
+  return leafIds
+}
+
 const loadPermissionData = async (roleId: number) => {
   try {
     const menuApiMap = await getRoleMenuApiMap(roleId, { skipSuccTip: true })
@@ -617,7 +646,8 @@ const loadPermissionData = async (roleId: number) => {
     // Resource Permissions
     resourcePermissions.value = buildResourcePermissions(resourceManagement || [])
     
-    selectedMenuIds.value = normalizeCheckedIds(assignedMenuIds)
+    // Fix: Only select leaf nodes to avoid auto-selecting all children of a parent
+    selectedMenuIds.value = getLeafIds(functionalPermissions.value, normalizeCheckedIds(assignedMenuIds))
     selectedApiIds.value = normalizeCheckedIds(assignedApiIds).map((id) => `api-${id}`)
     
     // assignedResourceCodes should be string[]
@@ -725,6 +755,8 @@ const savePermission = async () => {
     )
   )
 
+  // 移除根据 API 自动勾选菜单的逻辑，避免用户取消菜单后因 API 勾选导致菜单无法取消的问题
+  /*
   // 补充 API 对应的菜单 ID
   apiIds.forEach((apiId) => {
     const menuId = apiParentMenuMap.value.get(apiId)
@@ -736,6 +768,7 @@ const savePermission = async () => {
       }
     }
   })
+  */
 
   const menuIds = Array.from(allMenuIds)
 

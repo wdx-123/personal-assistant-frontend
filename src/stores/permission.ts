@@ -24,9 +24,12 @@ export const usePermissionStore = defineStore('permission', () => {
 
     // 第一步：把所有“允许访问的路径”都整理到一个白名单里
     const allowedPathList = getAllowedPaths(myMenus)
+    // 提取图标映射
+    const iconMap = getIconMap(myMenus)
+    
     console.log(allowedPathList)
     // 第二步：拿着白名单，去过滤前端写好的所有路由
-    const accessedRoutes = filterAsyncRoutes(asyncRoutes, allowedPathList)
+    const accessedRoutes = filterAsyncRoutes(asyncRoutes, allowedPathList, iconMap)
     // 保存结果
     dynamicRoutes.value = accessedRoutes
     isRoutesAdded.value = true
@@ -54,16 +57,53 @@ export const usePermissionStore = defineStore('permission', () => {
     return paths
   }
 
+  // --- 辅助函数：提取图标映射 ---
+  const getIconMap = (menus: MenuItem[]): Map<string, string> => {
+    const iconMap = new Map<string, string>()
+    const traverse = (items: MenuItem[]) => {
+      items.forEach(item => {
+        if (item.icon) {
+          if (item.route_path) iconMap.set(item.route_path, item.icon)
+          // 同时映射 code，以便通过 route.name 匹配
+          if (item.code) iconMap.set(item.code, item.icon)
+        }
+        if (item.children?.length) {
+          traverse(item.children)
+        }
+      })
+    }
+    traverse(menus)
+    return iconMap
+  }
+
   // --- 辅助函数：过滤路由 ---
-  const filterAsyncRoutes = (routes: RouteRecordRaw[], allowedPaths: Set<string>, parentPath = '/'): RouteRecordRaw[] => {
+  const filterAsyncRoutes = (routes: RouteRecordRaw[], allowedPaths: Set<string>, iconMap: Map<string, string>, parentPath = '/'): RouteRecordRaw[] => {
     const filtered: RouteRecordRaw[] = []
 
     routes.forEach(route => {
       // 1. 算出当前路由的完整路径（比如 /console/dashboard）
       const fullPath = resolveFullPath(route.path, parentPath)
       
-      // 2. 复制一份路由配置（避免修改原版）
+      // 2. 复制一份路由配置（避免修改原版），并确保 meta 是新的对象
       const tmpRoute = { ...route }
+      if (route.meta) {
+        tmpRoute.meta = { ...route.meta }
+      } else {
+        tmpRoute.meta = {}
+      }
+
+      // 注入图标：优先匹配 fullPath，其次匹配 route.name (对应菜单 code)
+      let icon = iconMap.get(fullPath)
+      if (!icon && route.name) {
+        icon = iconMap.get(route.name as string)
+      }
+      if (!icon && reverseRouteMap[fullPath]) {
+        icon = iconMap.get(reverseRouteMap[fullPath])
+      }
+      
+      if (icon) {
+        tmpRoute.meta.icon = icon
+      }
 
       // 3. 判断当前路由是否在白名单里
       // 先查直接路径
@@ -77,7 +117,7 @@ export const usePermissionStore = defineStore('permission', () => {
 
       // 4. 如果有子路由，递归去过滤子路由
       if (tmpRoute.children) {
-        tmpRoute.children = filterAsyncRoutes(tmpRoute.children, allowedPaths, fullPath)
+        tmpRoute.children = filterAsyncRoutes(tmpRoute.children, allowedPaths, iconMap, fullPath)
         
         // 关键逻辑：如果子路由里有能访问的，那父路由也得留着
         if (tmpRoute.children.length > 0) {

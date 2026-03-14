@@ -22,7 +22,7 @@
         >
           <div class="menu-title" :title="menu.meta?.title">
             <div class="title-content">
-              <component :is="getIcon(menu.name as string)" class="menu-icon" />
+              <component :is="getIcon(menu)" class="menu-icon" />
               <span class="menu-text">{{ menu.meta?.title }}</span>
             </div>
           </div>
@@ -36,7 +36,7 @@
         >
           <div class="menu-title" :title="menu.meta?.title" @click="toggleSubmenu(menu.name as string)">
             <div class="title-content">
-              <component :is="getIcon(menu.name as string)" class="menu-icon" />
+              <component :is="getIcon(menu)" class="menu-icon" />
               <span class="menu-text">{{ menu.meta?.title }}</span>
             </div>
             <svg class="submenu-arrow" :class="{ rotated: isSubmenuOpen(menu.name as string) }" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -73,6 +73,7 @@
 import { ref, computed, h } from 'vue';
 import { useRoute, useRouter, type RouteRecordRaw } from 'vue-router';
 import { usePermissionStore } from '@/stores/permission';
+import * as AntdIcons from '@ant-design/icons-vue';
 
 const isCollapsed = ref(false);
 const openSubmenus = ref<Set<string>>(new Set()); 
@@ -125,7 +126,14 @@ const Icons = {
   ])
 };
 
-const getIcon = (name: string) => {
+const getIcon = (menu: any) => {
+  // 1. 优先使用 meta.icon 配置的 Ant Design 图标
+  if (menu.meta?.icon && AntdIcons[menu.meta.icon as keyof typeof AntdIcons]) {
+    return AntdIcons[menu.meta.icon as keyof typeof AntdIcons];
+  }
+
+  // 2. 兜底逻辑：根据 name 匹配旧的 SVG 图标
+  const name = menu.name as string;
   if (name.includes('Dashboard')) return Icons.Home;
   if (name.includes('Permission')) return Icons.Permission;
   if (name.includes('Team')) return Icons.Team;
@@ -351,6 +359,15 @@ initOpenSubmenus();
   height: 20px;
   flex-shrink: 0;
   stroke-width: 1.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 覆盖 Ant Design 图标样式以确保居中 */
+.menu-icon :deep(svg) {
+  width: 100%;
+  height: 100%;
 }
 
 /* 菜单文字 */

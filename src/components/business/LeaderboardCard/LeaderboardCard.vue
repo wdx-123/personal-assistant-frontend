@@ -30,7 +30,10 @@
       <div class="flip-card-front">
         <div class="leaderboard-card">
           <div class="card-header">
-            <h2>算法排行榜 - {{ platformName }}</h2>
+            <div class="header-left">
+              <h2>算法排行榜 - {{ platformName }}</h2>
+              <span class="scope-tag" :class="scopeTagClass">{{ scopeTagText }}</span>
+            </div>
             <div class="flip-hint" @click="handleFlip">
               {{ currentScope === 'all' ? '查看我的组织排名' : '查看全部组织排名' }} →
             </div>
@@ -70,7 +73,10 @@
       <div class="flip-card-back">
         <div class="leaderboard-card">
           <div class="card-header">
-            <h2>算法排行榜 - {{ platformName }}</h2>
+            <div class="header-left">
+              <h2>算法排行榜 - {{ platformName }}</h2>
+              <span class="scope-tag" :class="scopeTagClass">{{ scopeTagText }}</span>
+            </div>
             <div class="flip-hint" @click="handleFlip">
               ← {{ currentScope === 'all' ? '查看我的组织排名' : '查看全部组织排名' }}
             </div>
@@ -125,6 +131,8 @@ import { useRankingData } from './useRankingData'
 
 interface Props {
   platform?: OJPlatform
+  orgId?: number
+  orgName?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -166,6 +174,16 @@ const platformNames: Record<OJPlatform, string> = {
 
 const platformName = computed(() => platformNames[props.platform])
 
+const scopeTagText = computed(() => {
+  if (currentScope.value === 'all') return '全部组织'
+  const name = (props.orgName || '').trim()
+  return name ? `${name}` : '我的组织'
+})
+
+const scopeTagClass = computed(() => {
+  return currentScope.value === 'all' ? 'scope-all' : 'scope-org'
+})
+
 // 根据当前平台和 scope 获取对应的数据和状态
 // 注意：目前 useRankingData 还没有支持 scope 参数，这里暂时假设数据是一样的，或者需要修改 useRankingData
 // 假设后端接口支持 scope 参数，我们需要在 useRankingData 里扩展。
@@ -200,10 +218,17 @@ const currentRankList = computed(() => {
   return []
 })
 
+const refreshCurrent = () => {
+  const apiScope = currentScope.value === 'all' ? 'all_members' : 'org'
+  refreshAll(apiScope, apiScope === 'org' ? props.orgId : undefined)
+}
+
 const loadMoreCurrent = () => {
-  if (props.platform === 'luogu') loadMoreLuogu()
-  if (props.platform === 'leetcode') loadMoreLeetcode()
-  if (props.platform === 'lanqiao') loadMoreLanqiao()
+  const apiScope = currentScope.value === 'all' ? 'all_members' : 'org'
+  const orgId = apiScope === 'org' ? props.orgId : undefined
+  if (props.platform === 'luogu') loadMoreLuogu(apiScope, orgId)
+  if (props.platform === 'leetcode') loadMoreLeetcode(apiScope, orgId)
+  if (props.platform === 'lanqiao') loadMoreLanqiao(apiScope, orgId)
 }
 
 /**
@@ -214,26 +239,27 @@ const handleFlip = () => {
   // 延迟切换 scope，等待翻转动画过半
   setTimeout(() => {
     currentScope.value = currentScope.value === 'all' ? 'org' : 'all'
-    // 这里应该触发重新加载数据，带上 scope 参数
-    // refreshCurrent(currentScope.value) 
-    // 由于后端接口暂未明确 scope 参数，这里仅做 UI 演示
+    refreshCurrent()
   }, 300)
 }
 
 // 监听平台变化，自动刷新数据
 watch(() => props.platform, () => {
-  // 切换平台时，如果不在 'all' scope，重置回 'all'？或者保持？
-  // 保持现状即可
+  refreshCurrent()
+})
+
+watch(() => props.orgId, () => {
+  refreshCurrent()
 })
 
 // 组件挂载时获取数据
 onMounted(() => {
-  refreshAll()
+  refreshCurrent()
 })
 
 // 暴露刷新方法
 defineExpose({
-  refresh: refreshAll,
+  refresh: refreshCurrent,
 })
 </script>
 
@@ -303,11 +329,44 @@ defineExpose({
   justify-content: space-between;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .card-header h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
   color: #262626;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scope-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.scope-all {
+  color: #1677ff;
+  background: rgba(22, 119, 255, 0.08);
+  border: 1px solid rgba(22, 119, 255, 0.25);
+}
+
+.scope-org {
+  color: #389e0d;
+  background: rgba(82, 196, 26, 0.08);
+  border: 1px solid rgba(82, 196, 26, 0.25);
 }
 
 .flip-hint {

@@ -110,7 +110,6 @@ const onRebind = () => {
 }
 
 .oj-card.bound {
-  border: 2px solid #52c41a;
   position: relative;
 }
 

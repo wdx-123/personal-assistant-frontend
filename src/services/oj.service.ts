@@ -8,6 +8,7 @@ import apiClient, { type RequestOptions } from '@/utils/request'
 import type {
   OJBindRequest,
   OJBindResponse,
+  OJCurveResponse,
   OJStatsResponse,
   RankingListResponse,
   OJPlatform
@@ -37,13 +38,26 @@ export function getOJStats(
   return apiClient.post('/oj/stats', data, config)
 }
 
+export function getOJCurve(
+  data: { platform: OJPlatform },
+  config?: RequestOptions
+): Promise<OJCurveResponse> {
+  return apiClient.post('/oj/curve', data, config)
+}
+
 /**
  * 获取组织内做题排行榜
- * @param data 请求数据（包含 platform, page, page_size）
+ * @param data 请求数据（包含 platform, page, page_size, scope, org_id）
  * @param config 自定义请求配置
  */
 export function getRankingList(
-  data: { platform: OJPlatform; page?: number; page_size?: number },
+  data: { 
+    platform: OJPlatform; 
+    page?: number; 
+    page_size?: number; 
+    scope?: 'current_org' | 'all_members' | 'org'; 
+    org_id?: number; 
+  },
   config?: RequestOptions
 ): Promise<RankingListResponse> {
   return apiClient.post('/oj/ranking_list', data, config)

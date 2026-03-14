@@ -14,7 +14,7 @@
     "build:test": "vue-tsc && vite build --mode test",
     "build:staging": "vue-tsc && vite build --mode staging",
     "preview": "vite preview",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
+    "lint": "eslint . --fix",
     "format": "prettier --write src/",
     "compress:images": "node scripts/compress-images.mjs"
   },

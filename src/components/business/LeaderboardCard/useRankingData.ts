@@ -58,7 +58,12 @@ export function useRankingData() {
   /**
    * 获取洛谷排行榜数据（静默请求）
    */
-  const fetchLuoguRankingList = async (page: number = 1, isLoadMore: boolean = false) => {
+  const fetchLuoguRankingList = async (
+    page: number = 1,
+    isLoadMore: boolean = false,
+    scope: 'current_org' | 'all_members' | 'org' = 'current_org',
+    orgId?: number
+  ) => {
     try {
       if (isLoadMore) {
         luoguLoadingMore.value = true
@@ -67,7 +72,7 @@ export function useRankingData() {
       }
 
       const data = await getRankingList(
-        { platform: 'luogu', page, page_size: pageSize },
+        { platform: 'luogu', page, page_size: pageSize, scope, org_id: orgId || undefined },
         { skipTip: true }
       )
 
@@ -102,7 +107,12 @@ export function useRankingData() {
   /**
    * 获取力扣排行榜数据（静默请求）
    */
-  const fetchLeetcodeRankingList = async (page: number = 1, isLoadMore: boolean = false) => {
+  const fetchLeetcodeRankingList = async (
+    page: number = 1,
+    isLoadMore: boolean = false,
+    scope: 'current_org' | 'all_members' | 'org' = 'current_org',
+    orgId?: number
+  ) => {
     try {
       if (isLoadMore) {
         leetcodeLoadingMore.value = true
@@ -111,7 +121,7 @@ export function useRankingData() {
       }
 
       const data = await getRankingList(
-        { platform: 'leetcode', page, page_size: pageSize },
+        { platform: 'leetcode', page, page_size: pageSize, scope, org_id: orgId || undefined },
         { skipTip: true }
       )
 
@@ -146,7 +156,12 @@ export function useRankingData() {
   /**
    * 获取蓝桥杯排行榜数据（静默请求）
    */
-  const fetchLanqiaoRankingList = async (page: number = 1, isLoadMore: boolean = false) => {
+  const fetchLanqiaoRankingList = async (
+    page: number = 1,
+    isLoadMore: boolean = false,
+    scope: 'current_org' | 'all_members' | 'org' = 'current_org',
+    orgId?: number
+  ) => {
     try {
       if (isLoadMore) {
         lanqiaoLoadingMore.value = true
@@ -155,7 +170,7 @@ export function useRankingData() {
       }
 
       const data = await getRankingList(
-        { platform: 'lanqiao', page, page_size: pageSize },
+        { platform: 'lanqiao', page, page_size: pageSize, scope, org_id: orgId || undefined },
         { skipTip: true }
       )
 
@@ -190,41 +205,50 @@ export function useRankingData() {
   /**
    * 加载更多洛谷数据
    */
-  const loadMoreLuogu = async () => {
+  const loadMoreLuogu = async (
+    scope: 'current_org' | 'all_members' | 'org' = 'current_org',
+    orgId?: number
+  ) => {
     if (!luoguHasMore.value || luoguLoadingMore.value) return
 
     luoguPage.value += 1
-    await fetchLuoguRankingList(luoguPage.value, true)
+    await fetchLuoguRankingList(luoguPage.value, true, scope, orgId)
   }
 
   /**
    * 加载更多力扣数据
    */
-  const loadMoreLeetcode = async () => {
+  const loadMoreLeetcode = async (
+    scope: 'current_org' | 'all_members' | 'org' = 'current_org',
+    orgId?: number
+  ) => {
     if (!leetcodeHasMore.value || leetcodeLoadingMore.value) return
 
     leetcodePage.value += 1
-    await fetchLeetcodeRankingList(leetcodePage.value, true)
+    await fetchLeetcodeRankingList(leetcodePage.value, true, scope, orgId)
   }
 
   /**
    * 加载更多蓝桥杯数据
    */
-  const loadMoreLanqiao = async () => {
+  const loadMoreLanqiao = async (
+    scope: 'current_org' | 'all_members' | 'org' = 'current_org',
+    orgId?: number
+  ) => {
     if (!lanqiaoHasMore.value || lanqiaoLoadingMore.value) return
 
     lanqiaoPage.value += 1
-    await fetchLanqiaoRankingList(lanqiaoPage.value, true)
+    await fetchLanqiaoRankingList(lanqiaoPage.value, true, scope, orgId)
   }
 
   /**
    * 刷新所有排行榜数据
    */
-  const refreshAll = async () => {
+  const refreshAll = async (scope: 'current_org' | 'all_members' | 'org' = 'current_org', orgId?: number) => {
     await Promise.all([
-      fetchLuoguRankingList(1, false),
-      fetchLeetcodeRankingList(1, false),
-      fetchLanqiaoRankingList(1, false)
+      fetchLuoguRankingList(1, false, scope, orgId),
+      fetchLeetcodeRankingList(1, false, scope, orgId),
+      fetchLanqiaoRankingList(1, false, scope, orgId)
     ])
   }
 

@@ -31,6 +31,18 @@ export interface OJStatsResponse {
   passed_number: number
 }
 
+export interface OJCurvePoint {
+  date: string
+  value: number
+}
+
+export interface OJCurveResponse {
+  bound: boolean
+  points: OJCurvePoint[]
+  current_total: number
+  last_sync_at: string
+}
+
 // 排行榜项详情
 export interface RankingItem {
   rank: number
