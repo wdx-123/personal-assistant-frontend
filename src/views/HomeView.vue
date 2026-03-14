@@ -90,19 +90,35 @@ const curveLastSyncAtFormatted = computed(() => formatSyncAt(curveLastSyncAt.val
 
 const curveTitle = computed(() => {
   const label = platformOptions.find((p) => p.value === selectedPlatform.value)?.label || "";
-  return `${label}近30天刷题数量曲线`;
+  return `${label}近30天刷题总数曲线`;
 });
 
 const getPointValue = (p: any) => {
-  const raw = p?.value ?? p?.count ?? p?.solved ?? 0;
+  const raw = p?.solved_total ?? p?.value ?? p?.count ?? p?.solved ?? 0;
   const num = Number(raw);
   return Number.isFinite(num) ? num : 0;
 };
 
 const chartValues = computed(() => curvePoints.value.map(getPointValue));
 const chartMax = computed(() => Math.max(0, ...chartValues.value));
+const chartMin = computed(() => {
+  if (!chartValues.value.length) return 0;
+  return Math.min(...chartValues.value);
+});
+const chartLatest = computed(() => {
+  if (!chartValues.value.length) return 0;
+  return chartValues.value[chartValues.value.length - 1];
+});
 const chartHasData = computed(() => chartValues.value.length > 0);
 const chartHasNonZero = computed(() => chartValues.value.some((v) => v > 0));
+const chartHasIncrease = computed(() => {
+  const values = chartValues.value;
+  if (values.length <= 1) return false;
+  for (let i = 1; i < values.length; i += 1) {
+    if (values[i] > values[i - 1]) return true;
+  }
+  return false;
+});
 
 const chartStartDate = computed(() => (curvePoints.value[0] as any)?.date || "");
 const chartEndDate = computed(() => (curvePoints.value[curvePoints.value.length - 1] as any)?.date || "");
@@ -112,11 +128,16 @@ const buildLinePath = (values: number[]) => {
   const h = 120;
   const pad = 10;
   if (!values.length) return "";
-  const max = Math.max(1, ...values);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = Math.max(0, max - min);
+  const amplitude = (h - pad * 2) * 0.7;
+  const midY = h / 2;
   const step = values.length === 1 ? 0 : (w - pad * 2) / (values.length - 1);
   const points = values.map((v, i) => {
     const x = pad + i * step;
-    const y = h - pad - (v / max) * (h - pad * 2);
+    const t = range === 0 ? 0.5 : (v - min) / range;
+    const y = midY + (0.5 - t) * amplitude;
     return { x, y };
   });
   return points
@@ -129,22 +150,83 @@ const buildAreaPath = (values: number[]) => {
   const h = 120;
   const pad = 10;
   if (!values.length) return "";
-  const max = Math.max(1, ...values);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = Math.max(0, max - min);
+  const amplitude = (h - pad * 2) * 0.7;
+  const midY = h / 2;
   const step = values.length === 1 ? 0 : (w - pad * 2) / (values.length - 1);
   const top = values.map((v, i) => {
     const x = pad + i * step;
-    const y = h - pad - (v / max) * (h - pad * 2);
+    const t = range === 0 ? 0.5 : (v - min) / range;
+    const y = midY + (0.5 - t) * amplitude;
     return { x, y };
   });
   const startX = top[0].x;
   const endX = top[top.length - 1].x;
-  const baseY = h - pad;
+  const baseY = midY + amplitude / 2;
   const topSeg = top.map((pt, idx) => `${idx === 0 ? "M" : "L"}${pt.x.toFixed(2)} ${pt.y.toFixed(2)}`).join(" ");
   return `${topSeg} L${endX.toFixed(2)} ${baseY.toFixed(2)} L${startX.toFixed(2)} ${baseY.toFixed(2)} Z`;
 };
 
 const chartLinePath = computed(() => buildLinePath(chartValues.value));
 const chartAreaPath = computed(() => buildAreaPath(chartValues.value));
+
+const chartSvgRef = ref<SVGSVGElement | null>(null);
+const chartHover = ref<{ index: number; x: number; y: number; left: number; top: number } | null>(null);
+
+const getChartPointCoord = (values: number[], index: number) => {
+  const w = 300;
+  const h = 120;
+  const pad = 10;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = Math.max(0, max - min);
+  const amplitude = (h - pad * 2) * 0.7;
+  const midY = h / 2;
+  const step = values.length === 1 ? 0 : (w - pad * 2) / (values.length - 1);
+  const x = pad + index * step;
+  const v = values[index] ?? 0;
+  const t = range === 0 ? 0.5 : (v - min) / range;
+  const y = midY + (0.5 - t) * amplitude;
+  return { x, y };
+};
+
+const hoverDate = computed(() => {
+  if (!chartHover.value) return "";
+  return String((curvePoints.value[chartHover.value.index] as any)?.date || "");
+});
+
+const hoverValue = computed(() => {
+  if (!chartHover.value) return 0;
+  return chartValues.value[chartHover.value.index] ?? 0;
+});
+
+const handleChartMouseMove = (e: MouseEvent) => {
+  if (!chartHasData.value || !chartSvgRef.value) return;
+  const values = chartValues.value;
+  if (!values.length) return;
+
+  const rect = chartSvgRef.value.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+
+  const w = 300;
+  const h = 120;
+  const pad = 10;
+  const count = values.length;
+  const step = count === 1 ? 0 : (w - pad * 2) / (count - 1);
+  const xV = (Math.min(Math.max(e.clientX - rect.left, 0), rect.width) / rect.width) * w;
+  const rawIndex = step === 0 ? 0 : Math.round((xV - pad) / step);
+  const index = Math.min(Math.max(rawIndex, 0), count - 1);
+  const { x, y } = getChartPointCoord(values, index);
+  const left = (x / w) * rect.width;
+  const top = (y / h) * rect.height;
+  chartHover.value = { index, x, y, left, top };
+};
+
+const handleChartMouseLeave = () => {
+  chartHover.value = null;
+};
 
 const fetchCurve = async (platform: OJPlatform = selectedPlatform.value) => {
   const seq = ++curveRequestSeq.value;
@@ -301,7 +383,8 @@ watch(
           <div class="chart-header">
             <div class="chart-title">{{ curveTitle }}</div>
             <div class="chart-meta">
-              <span class="meta-item">累计通过：{{ curveTotal }}</span>
+              <span class="meta-item">累计通过：{{ curveTotal }}题</span>
+              <span v-if="chartHasData" class="meta-item">当前：{{ chartLatest }}题</span>
               <span v-if="curveLastSyncAtFormatted" class="meta-item">同步：{{ curveLastSyncAtFormatted }}</span>
             </div>
           </div>
@@ -313,7 +396,14 @@ watch(
             </div>
             <div v-else-if="!chartHasData" class="chart-empty">暂无曲线数据</div>
             <div v-else class="chart-canvas">
-              <svg viewBox="0 0 300 120" class="chart-svg" preserveAspectRatio="none">
+              <svg
+                ref="chartSvgRef"
+                viewBox="0 0 300 120"
+                class="chart-svg"
+                preserveAspectRatio="none"
+                @mousemove="handleChartMouseMove"
+                @mouseleave="handleChartMouseLeave"
+              >
                 <defs>
                   <linearGradient id="curve-fill" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stop-color="#1890ff" stop-opacity="0.28" />
@@ -330,14 +420,42 @@ watch(
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
+                <line
+                  v-if="chartHover"
+                  :x1="chartHover.x"
+                  :x2="chartHover.x"
+                  y1="0"
+                  y2="120"
+                  stroke="rgba(24, 144, 255, 0.25)"
+                  stroke-width="1"
+                />
+                <circle
+                  v-if="chartHover"
+                  :cx="chartHover.x"
+                  :cy="chartHover.y"
+                  r="4.5"
+                  fill="#1890ff"
+                  stroke="#ffffff"
+                  stroke-width="2"
+                />
               </svg>
 
+              <div
+                v-if="chartHover"
+                class="chart-tooltip"
+                :style="{ left: `${chartHover.left}px`, top: `${chartHover.top}px` }"
+              >
+                <div class="tooltip-date">{{ hoverDate }}</div>
+                <div class="tooltip-value">{{ hoverValue }}题</div>
+              </div>
+
               <div class="chart-footer">
-                <span class="chart-note">最大值：{{ chartMax }}</span>
+                <span class="chart-note">最小：{{ chartMin }}题</span>
+                <span class="chart-note">最大：{{ chartMax }}题</span>
                 <span v-if="chartStartDate && chartEndDate" class="chart-note">
                   {{ chartStartDate }} ~ {{ chartEndDate }}
                 </span>
-                <span v-if="chartHasData && !chartHasNonZero" class="chart-note">近30天无刷题记录</span>
+                <span v-if="chartHasData && !chartHasIncrease" class="chart-note">近30天无新增刷题</span>
               </div>
             </div>
           </div>
@@ -615,11 +733,37 @@ watch(
   min-height: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .chart-svg {
   width: 100%;
   flex: 1;
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -120%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.2;
+  pointer-events: none;
+  min-width: 120px;
+  backdrop-filter: blur(8px);
+}
+
+.tooltip-date {
+  opacity: 0.9;
+}
+
+.tooltip-value {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .chart-footer {

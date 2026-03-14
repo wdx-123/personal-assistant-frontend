@@ -30,15 +30,23 @@
     </div>
 
     <div class="card-content">
-      <p class="description">
-        {{ isRebinding ? "输入新的用户ID完成重新绑定" : description }}
-      </p>
+      <p class="description">{{ displayDescription }}</p>
       <div class="input-group">
         <input
           :value="identifier"
           type="text"
-          :placeholder="placeholder"
-          @input="handleInput"
+          :placeholder="platform === 'lanqiao' ? '请输入蓝桥杯登录手机号' : placeholder"
+          @input="handleIdentifierInput"
+          @keydown.enter="onBind"
+          :disabled="loading"
+        />
+      </div>
+      <div v-if="platform === 'lanqiao'" class="input-group">
+        <input
+          :value="secret"
+          type="password"
+          placeholder="请输入蓝桥杯登录密码"
+          @input="handleSecretInput"
           @keydown.enter="onBind"
           :disabled="loading"
         />
@@ -48,7 +56,7 @@
     <div class="card-footer">
       <button
         class="bind-button"
-        :disabled="loading || !identifier"
+        :disabled="loading || !canSubmit"
         @click="onBind"
       >
         {{
@@ -67,26 +75,49 @@
 /**
  * OJ 卡片正面 - 绑定输入
  */
+import { computed } from 'vue'
+import type { OJPlatform } from '@/types'
+
 interface Props {
+  platform: OJPlatform
   platformName: string
   description: string
   placeholder: string
   identifier: string
+  secret: string
   loading: boolean
   isRebinding: boolean
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'update:identifier', value: string): void
+  (e: 'update:secret', value: string): void
   (e: 'bind'): void
   (e: 'flipBack'): void
 }>()
 
-const handleInput = (e: Event) => {
+const displayDescription = computed(() => {
+  if (!props.isRebinding) return props.description
+  return props.platform === 'lanqiao'
+    ? '输入手机号和密码完成重新绑定'
+    : '输入新的用户ID完成重新绑定'
+})
+
+const canSubmit = computed(() => {
+  if (props.platform !== 'lanqiao') return !!props.identifier
+  return !!props.identifier && !!props.secret
+})
+
+const handleIdentifierInput = (e: Event) => {
   const target = e.target as HTMLInputElement
   emit('update:identifier', target.value)
+}
+
+const handleSecretInput = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  emit('update:secret', target.value)
 }
 
 const onBind = () => {

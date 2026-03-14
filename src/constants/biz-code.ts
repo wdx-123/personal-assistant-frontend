@@ -68,6 +68,7 @@ export enum BizCode {
   CodeOJIdentifierInvalid = 40004, // OJ账号标识无效
   CodeOJBindCoolDown = 40005, // 绑定冷却中
   CodeOJSyncFailed = 40006, // OJ数据同步失败
+  CodeOJRemoteAuthFailed = 40007, // OJ远端鉴权失败
 }
 
 export const BizCodeMessages: Record<number, string> = {
@@ -134,4 +135,5 @@ export const BizCodeMessages: Record<number, string> = {
   [BizCode.CodeOJIdentifierInvalid]: "OJ账号标识无效",
   [BizCode.CodeOJBindCoolDown]: "操作过于频繁，请稍后再试",
   [BizCode.CodeOJSyncFailed]: "OJ数据同步失败",
+  [BizCode.CodeOJRemoteAuthFailed]: "远端鉴权失败，请检查账号与密码",
 }

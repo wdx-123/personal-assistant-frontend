@@ -55,8 +55,17 @@
         </div>
 
         <div class="card-footer">
-          <button v-if="!team.isCurrent" class="btn-text btn-switch" @click="handleSwitchTeam(team)">
-            切换团队
+          <button
+            v-if="!team.isCurrent"
+            class="btn-text btn-switch"
+            :disabled="switchingOrgId !== null"
+            @click="handleSwitchTeam(team)"
+          >
+            <span v-if="switchingOrgId === team.id" class="switch-loading">
+              <span class="spinner-sm" />
+              切换中...
+            </span>
+            <span v-else>切换团队</span>
           </button>
           <div class="footer-actions">
             <button class="btn-icon" title="团队详情" @click="handleViewDetails(team)">
@@ -169,6 +178,7 @@ const modalMode = ref<'create' | 'edit' | 'detail' | 'join' | ''>('')
 const modalBodyText = ref('')
 const modalSubmitting = ref(false)
 const editingOrgId = ref<number | null>(null)
+const switchingOrgId = ref<number | null>(null)
 
 const showModal = ref(false)
 const modalTitle = ref('')
@@ -240,6 +250,7 @@ const handleCreateTeam = () => {
 }
 
 const handleSwitchTeam = async (team: Team) => {
+  if (switchingOrgId.value !== null) return
   try {
     await Confirm({
       title: '切换团队',
@@ -249,6 +260,7 @@ const handleSwitchTeam = async (team: Team) => {
       cancelText: '取消'
     })
     
+    switchingOrgId.value = team.id
     await setCurrentOrg({ org_id: team.id }, { skipSuccTip: true })
     if (authStore.user) {
       authStore.setUser({
@@ -267,11 +279,14 @@ const handleSwitchTeam = async (team: Team) => {
       })
     }
     await authStore.fetchMyMenus(team.id, { skipSuccTip: true, skipErrTip: true })
-    teams.value.forEach((t) => {
-      t.isCurrent = t.id === team.id
-    })
+    await fetchTeams()
     message.success(`已切换到 ${team.name}`)
+    setTimeout(() => {
+      window.location.reload()
+    }, 400)
   } catch (e) {
+  } finally {
+    switchingOrgId.value = null
   }
 }
 
@@ -648,6 +663,39 @@ onMounted(() => {
   color: #1890ff;
   font-weight: 500;
   font-size: 14px;
+}
+
+.btn-switch:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.btn-switch:disabled:hover {
+  text-decoration: none;
+}
+
+.switch-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(24, 144, 255, 0.2);
+  border-top-color: #1890ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .btn-switch:hover {

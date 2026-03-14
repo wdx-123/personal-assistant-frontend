@@ -3,7 +3,7 @@
  */
 import { ref, computed, onMounted } from 'vue'
 import { message } from '@/components/common'
-import { bindOJ, getOJStats } from '@/services/oj.service'
+import { bindLanqiao, bindOJ, getOJStats } from '@/services/oj.service'
 import type { OJPlatform, OJStatsResponse } from '@/types'
 
 interface PlatformConfig {
@@ -22,6 +22,7 @@ export function useOJCard(options: UseOJCardOptions) {
 
   // 用户输入
   const identifier = ref('')
+  const secret = ref('')
 
   // 加载状态
   const loading = ref(false)
@@ -50,8 +51,8 @@ export function useOJCard(options: UseOJCardOptions) {
     },
     lanqiao: {
       name: '蓝桥杯',
-      description: '绑定您的蓝桥杯账号，即可参与排名(*^▽^*)',
-      placeholder: '请输入蓝桥杯用户ID',
+      description: '绑定您的蓝桥杯账号（手机号+密码），即可参与排名(*^▽^*)',
+      placeholder: '请输入蓝桥杯登录手机号',
     },
   }
 
@@ -88,9 +89,20 @@ export function useOJCard(options: UseOJCardOptions) {
    * 绑定 OJ 账号（首次绑定 + 重新绑定）
    */
   const handleBind = async () => {
-    if (!identifier.value.trim()) {
-      message.warning('请输入用户ID')
-      return
+    if (platform === 'lanqiao') {
+      if (!identifier.value.trim()) {
+        message.warning('请输入手机号')
+        return
+      }
+      if (!secret.value.trim()) {
+        message.warning('请输入密码')
+        return
+      }
+    } else {
+      if (!identifier.value.trim()) {
+        message.warning('请输入用户ID')
+        return
+      }
     }
 
     try {
@@ -101,22 +113,35 @@ export function useOJCard(options: UseOJCardOptions) {
         ? `${platformName.value}账号重新绑定成功！`
         : `${platformName.value}账号绑定成功！`
 
-      await bindOJ(
-        {
-          platform,
-          identifier: identifier.value.trim(),
-        },
-        {
-          customSuccTip: tipMessage,
-          skipErrTip: true
-        }
-      )
+      if (platform === 'lanqiao') {
+        await bindLanqiao(
+          {
+            phone: identifier.value.trim(),
+            password: secret.value,
+          },
+          {
+            skipErrTip: true
+          }
+        )
+      } else {
+        await bindOJ(
+          {
+            platform,
+            identifier: identifier.value.trim(),
+          },
+          {
+            customSuccTip: tipMessage,
+            skipErrTip: true
+          }
+        )
+      }
 
       // 更新用户信息
       await loadOJStats()
 
       // 清空输入
       identifier.value = ''
+      secret.value = ''
 
       // 重置重新绑定状态
       isRebinding.value = false
@@ -126,9 +151,22 @@ export function useOJCard(options: UseOJCardOptions) {
         onBound?.(userInfo.value)
       }
     } catch (error: unknown) {
-      const err = error as { code?: number };
+      const err = error as { code?: number; message?: string; messages?: string; msg?: string; tip?: string };
+      if (platform === 'lanqiao') {
+        const serverMsg = err.tip || err.message || err.messages || err.msg
+        if (serverMsg) {
+          message.error(serverMsg)
+          return
+        }
+      }
       if(err?.code === 4290){
         message.error('距离上次修改超过48h后才能再次修改')
+      } else if (platform === 'lanqiao' && err?.code === 40002) {
+        message.error('该蓝桥账号已被其他用户绑定')
+      } else if (platform === 'lanqiao' && err?.code === 40007) {
+        message.error('蓝桥账号或密码错误')
+      } else if (platform === 'lanqiao' && err?.code === 40006) {
+        message.error('蓝桥数据同步失败，请稍后重试')
       }else {
         message.error('绑定失败')
       }
@@ -147,8 +185,11 @@ export function useOJCard(options: UseOJCardOptions) {
     // 标记为重新绑定模式
     isRebinding.value = true
     // 预填充当前绑定的ID（可选）
-    if (userInfo.value?.identifier) {
+    if (platform !== 'lanqiao' && userInfo.value?.identifier) {
       identifier.value = userInfo.value.identifier
+    } else {
+      identifier.value = ''
+      secret.value = ''
     }
   }
 
@@ -168,6 +209,7 @@ export function useOJCard(options: UseOJCardOptions) {
   return {
     // 数据
     identifier,
+    secret,
     loading,
     isLoading,
     isBound,

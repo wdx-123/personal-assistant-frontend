@@ -160,7 +160,7 @@ const {
 } = useRankingData()
 
 // 当前查看的范围：'all' | 'org'
-const currentScope = ref<'all' | 'org'>('all')
+const currentScope = ref<'all' | 'org'>('org')
 
 // 翻转状态
 const isFlipped = ref(false)

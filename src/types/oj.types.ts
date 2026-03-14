@@ -22,6 +22,18 @@ export interface OJBindResponse {
   passed_number?: number
 }
 
+export interface LanqiaoBindRequest {
+  phone: string
+  password: string
+}
+
+export interface LanqiaoBindResponse {
+  identifier: string
+  passed_number: number
+  submit_success_count?: number
+  submit_failed_count?: number
+}
+
 // OJ 统计信息响应（GET /oj/stats）
 export interface OJStatsResponse {
   platform: OJPlatform
@@ -33,7 +45,9 @@ export interface OJStatsResponse {
 
 export interface OJCurvePoint {
   date: string
-  value: number
+  solved_count?: number
+  solved_total?: number
+  value?: number
 }
 
 export interface OJCurveResponse {

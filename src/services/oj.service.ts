@@ -6,6 +6,8 @@
 
 import apiClient, { type RequestOptions } from '@/utils/request'
 import type {
+  LanqiaoBindRequest,
+  LanqiaoBindResponse,
   OJBindRequest,
   OJBindResponse,
   OJCurveResponse,
@@ -43,6 +45,13 @@ export function getOJCurve(
   config?: RequestOptions
 ): Promise<OJCurveResponse> {
   return apiClient.post('/oj/curve', data, config)
+}
+
+export function bindLanqiao(
+  data: LanqiaoBindRequest,
+  config?: RequestOptions
+): Promise<LanqiaoBindResponse> {
+  return apiClient.post('/oj/lanqiao/bind', data, config)
 }
 
 /**

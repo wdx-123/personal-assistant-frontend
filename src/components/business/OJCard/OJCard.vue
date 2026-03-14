@@ -5,13 +5,16 @@
       <!-- 正面：绑定输入 -->
       <div class="flip-card-front">
         <OJCardFront
+          :platform="platform"
           :platform-name="platformName"
           :description="description"
           :placeholder="placeholder"
           :identifier="identifier"
+          :secret="secret"
           :loading="loading"
           :is-rebinding="isRebinding"
           @update:identifier="identifier = $event"
+          @update:secret="secret = $event"
           @bind="handleBind"
           @flip-back="handleFlipBack"
         />
@@ -52,6 +55,7 @@ const emit = defineEmits<{
 
 const {
   identifier,
+  secret,
   loading,
   isLoading,
   isBound,
