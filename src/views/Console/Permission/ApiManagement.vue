@@ -37,7 +37,7 @@
             </a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item>
+        <a-form-item class="search-form-actions">
           <a-space>
             <a-button type="primary" @click="search" class="btn-search">
               <template #icon><SearchOutlined /></template>

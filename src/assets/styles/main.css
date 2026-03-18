@@ -13,6 +13,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.anticon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  vertical-align: -0.125em;
+}
+
+.anticon > svg {
+  display: block;
+}
+
 /* 隐藏滚动条但保留滚动功能 */
 .scrollbar-hide {
   -ms-overflow-style: none;

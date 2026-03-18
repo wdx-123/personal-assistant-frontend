@@ -3,17 +3,22 @@
  * 应用根组件
  */
 import { defineAsyncComponent, onMounted } from 'vue'
+import dayjs from 'dayjs'
+import 'dayjs/locale/zh-cn'
+import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import { useAuthStore } from '@/stores'
 import { useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const antdLocale = zhCN
 const BackgroundCarousel = defineAsyncComponent(
   () => import('@/components/business/Carousel/BackgroundCarousel.vue')
 )
 
 // 初始化认证状态
 onMounted(() => {
+  dayjs.locale('zh-cn')
   authStore.restoreAuth()
 
   // 如果当前在登录页且已登录，跳转到首页
@@ -24,15 +29,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="app-container">
-    <!-- 全局背景轮播 -->
-    <BackgroundCarousel/>
+  <a-config-provider :locale="antdLocale">
+    <div class="app-container">
+      <!-- 全局背景轮播 -->
+      <BackgroundCarousel/>
 
-    <!-- 页面内容 -->
-    <div class="page-content">
-      <router-view />
+      <!-- 页面内容 -->
+      <div class="page-content">
+        <router-view />
+      </div>
     </div>
-  </div>
+  </a-config-provider>
 </template>
 
 <style>
