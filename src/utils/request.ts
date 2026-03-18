@@ -57,7 +57,7 @@ let isRefreshing = false
 
 type RefreshQueueItem = {
   config: RequestConfig
-  resolve: (value: AxiosResponse) => void
+  resolve: (value: AxiosResponse | Promise<AxiosResponse>) => void
   reject: (reason?: unknown) => void
 }
 let refreshQueue: RefreshQueueItem[] = []
@@ -139,7 +139,7 @@ const handleTokenExpired = async (_response: AxiosResponse, config: RequestConfi
 
 const responseInterceptor = (
   response: AxiosResponse
-): unknown => {
+): AxiosResponse | Promise<AxiosResponse> => {
   const res = response.data as ApiResponse & {
     success?: boolean
     msg?: string
@@ -155,7 +155,7 @@ const responseInterceptor = (
       const succText = customSuccTip || res.tip || res.message || res.messages || res.msg || '操作成功'
       message.success(succText)
     }
-    return res.data
+    return res.data as unknown as AxiosResponse
   }
 
   if (normalizedCode === StatusCode.UNAUTHORIZED ||

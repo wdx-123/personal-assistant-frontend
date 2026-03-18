@@ -1,5 +1,6 @@
 export const routeMap: Record<string, string> = {
   '/dashboard': '/console/dashboard',
+  '/workbench/task': '/console/workbench/task',
   '/permission/role': '/console/permission/role',
   '/permission/api': '/console/permission/api',
   '/permission/menu': '/console/permission/menu',

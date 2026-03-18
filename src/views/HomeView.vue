@@ -78,7 +78,7 @@ const formatSyncAt = (value: string) => {
       hour12: false,
       timeZone: "Asia/Shanghai",
     }).format(parsed);
-    return formatted.replaceAll("/", "-").replace(",", "");
+    return formatted.replace(/\//g, "-").replace(",", "");
   }
   if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
     return raw.length >= 16 ? raw.slice(0, 16) : raw;
@@ -110,12 +110,13 @@ const chartLatest = computed(() => {
   return chartValues.value[chartValues.value.length - 1];
 });
 const chartHasData = computed(() => chartValues.value.length > 0);
-const chartHasNonZero = computed(() => chartValues.value.some((v) => v > 0));
 const chartHasIncrease = computed(() => {
   const values = chartValues.value;
   if (values.length <= 1) return false;
   for (let i = 1; i < values.length; i += 1) {
-    if (values[i] > values[i - 1]) return true;
+    const current = values[i];
+    const previous = values[i - 1];
+    if (current !== undefined && previous !== undefined && current > previous) return true;
   }
   return false;
 });
@@ -162,8 +163,11 @@ const buildAreaPath = (values: number[]) => {
     const y = midY + (0.5 - t) * amplitude;
     return { x, y };
   });
-  const startX = top[0].x;
-  const endX = top[top.length - 1].x;
+  const firstPoint = top[0];
+  const lastPoint = top[top.length - 1];
+  if (!firstPoint || !lastPoint) return "";
+  const startX = firstPoint.x;
+  const endX = lastPoint.x;
   const baseY = midY + amplitude / 2;
   const topSeg = top.map((pt, idx) => `${idx === 0 ? "M" : "L"}${pt.x.toFixed(2)} ${pt.y.toFixed(2)}`).join(" ");
   return `${topSeg} L${endX.toFixed(2)} ${baseY.toFixed(2)} L${startX.toFixed(2)} ${baseY.toFixed(2)} Z`;
@@ -246,7 +250,7 @@ const fetchCurve = async (platform: OJPlatform = selectedPlatform.value) => {
 };
 
 // 路由离开前的守卫
-onBeforeRouteLeave((to, from, next) => {
+onBeforeRouteLeave((to, _from, next) => {
   if (to.path.startsWith('/console')) {
     isExiting.value = true;
     // 等待动画完成
@@ -283,7 +287,8 @@ const loadMyOrgOptions = async () => {
       if (!exists) {
         const fallbackId =
           orgOptions.value.find((o) => o.id === (authStore.user?.current_org_id || 0))?.id ||
-          orgOptions.value[0].id;
+          orgOptions.value[0]?.id ||
+          0;
         authStore.setBrowsingOrgId(fallbackId);
       }
     }

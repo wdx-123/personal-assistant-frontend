@@ -678,8 +678,6 @@ const savePermission = async () => {
   // 但是后端需要完整的 menu_ids 路径才能构建树，或者我们在这里手动补全。
   
   // 实际上，为了保险起见，我们需要遍历权限树，找到所有被选中节点的父节点
-  const checkedMenuIdSet = new Set(selectedMenuIds.value.filter((id) => Number.isInteger(id) && id > 0))
-  
   const findParentIds = (nodes: PermissionNode[], targetId: number, parents: number[]): number[] | null => {
     for (const node of nodes) {
       const nodeId = typeof node.id === 'string' && node.id.startsWith('menu-') 

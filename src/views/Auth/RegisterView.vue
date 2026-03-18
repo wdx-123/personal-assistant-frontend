@@ -25,8 +25,6 @@ const confirmPassword = ref("");
 const inviteCode = ref("");
 const captcha = ref("");
 const captchaId = ref("");
-const orgId = ref<string | number>("0");
-
 // 状态
 const loading = ref(false);
 const agreeTerms = ref(false);

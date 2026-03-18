@@ -22,7 +22,9 @@
         >
           <div class="menu-title" :title="menu.meta?.title">
             <div class="title-content">
-              <component :is="getIcon(menu)" class="menu-icon" />
+              <span class="menu-icon">
+                <component :is="getIcon(menu)" />
+              </span>
               <span class="menu-text">{{ menu.meta?.title }}</span>
             </div>
           </div>
@@ -36,7 +38,9 @@
         >
           <div class="menu-title" :title="menu.meta?.title" @click="toggleSubmenu(menu.name as string)">
             <div class="title-content">
-              <component :is="getIcon(menu)" class="menu-icon" />
+              <span class="menu-icon">
+                <component :is="getIcon(menu)" />
+              </span>
               <span class="menu-text">{{ menu.meta?.title }}</span>
             </div>
             <svg class="submenu-arrow" :class="{ rotated: isSubmenuOpen(menu.name as string) }" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -71,7 +75,7 @@
 
 <script setup lang="ts">
 import { ref, computed, h } from 'vue';
-import { useRoute, useRouter, type RouteRecordRaw } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { usePermissionStore } from '@/stores/permission';
 import * as AntdIcons from '@ant-design/icons-vue';
 
@@ -117,6 +121,9 @@ const Icons = {
   Team: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
     h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" })
   ]),
+  Workbench: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
+    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M9.75 3.104v5.714m0 0H4.036m5.714 0L3.75 2.854m6 18.042v-5.714m0 0h5.714m-5.714 0 6 5.964M20.25 8.818h-5.714m0 0V3.104m0 5.714 5.964-6M3.75 15.182h5.714m0 0v5.714m0-5.714-6 5.964" })
+  ]),
   Settings: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
     h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" }),
     h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M15 12a3 3 0 11-6 0 3 3 0 016 0z" })
@@ -126,7 +133,7 @@ const Icons = {
   ])
 };
 
-const getIcon = (menu: any) => {
+const getIcon = (menu: any): any => {
   // 1. 优先使用 meta.icon 配置的 Ant Design 图标
   if (menu.meta?.icon && AntdIcons[menu.meta.icon as keyof typeof AntdIcons]) {
     return AntdIcons[menu.meta.icon as keyof typeof AntdIcons];
@@ -135,6 +142,7 @@ const getIcon = (menu: any) => {
   // 2. 兜底逻辑：根据 name 匹配旧的 SVG 图标
   const name = menu.name as string;
   if (name.includes('Dashboard')) return Icons.Home;
+  if (name.includes('Workbench')) return Icons.Workbench;
   if (name.includes('Permission')) return Icons.Permission;
   if (name.includes('Team')) return Icons.Team;
   if (name.includes('Settings')) return Icons.Settings;

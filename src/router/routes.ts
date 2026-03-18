@@ -72,6 +72,21 @@ export const asyncRoutes: RouteRecordRaw[] = [
         meta: { title: '主页' }
       },
       {
+        path: 'workbench',
+        name: 'ConsoleWorkbench',
+        component: () => import('@/views/Console/Workbench.vue'),
+        meta: { title: '工作台' },
+        redirect: '/console/workbench/task',
+        children: [
+          {
+            path: 'task',
+            name: 'WorkbenchTask',
+            component: () => import('@/views/Console/Workbench/TaskWorkbench.vue'),
+            meta: { title: 'OJ任务' }
+          }
+        ]
+      },
+      {
         path: 'permission',
         name: 'ConsolePermission',
         component: () => import('@/views/Console/Permission.vue'),

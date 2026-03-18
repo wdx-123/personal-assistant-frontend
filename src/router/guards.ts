@@ -9,7 +9,7 @@ import { message } from '@/components/common'
 // White list (routes that don't need auth) - usually covered by meta.requiresAuth: false
 // But we can check here too if needed.
 
-router.beforeEach(async (to: RouteLocationNormalized, from: RouteLocationNormalized, next) => {
+router.beforeEach(async (to: RouteLocationNormalized, _from: RouteLocationNormalized, next) => {
   const authStore = useAuthStore()
   const permissionStore = usePermissionStore()
 
@@ -36,33 +36,36 @@ router.beforeEach(async (to: RouteLocationNormalized, from: RouteLocationNormali
         next()
       } else {
         try {
-          // Fetch user info/menus if missing
-          // Note: restoreAuth recovers myMenus from localStorage.
-          // If you want to force fetch on refresh, you can check if myMenus is empty.
-          if (authStore.myMenus.length === 0) {
-            try {
-              await authStore.fetchMyMenus()
-            } catch (error: any) {
-              const code = error.response?.data?.code || error.code
-              const isAuthError = [
-                StatusCode.UNAUTHORIZED,
-                StatusCode.TOKEN_EXPIRED,
-                StatusCode.TOKEN_INVALID,
-                StatusCode.TOKEN_MALFORMED,
-                BizCode.CodeUnauthorized,
-                BizCode.CodeTokenExpired,
-                BizCode.CodeTokenInvalid,
-                BizCode.CodeTokenMalformed,
-                BizCode.CodeLoginRequired
-              ].includes(code)
+          const cachedMenus = authStore.myMenus.slice()
+          const browsingOrgId = authStore.browsingOrgId || authStore.user?.current_org_id
 
-              if (isAuthError) {
-                throw error
-              }
-              // 非认证错误（如服务器错误、网络错误），仅提示并不强制退出
-              console.warn('Failed to fetch menus, proceeding with basic routes:', error)
-              message.warning('菜单加载失败，部分功能可能不可用')
+          try {
+            await authStore.fetchMyMenus(browsingOrgId || undefined, {
+              skipSuccTip: true,
+              skipErrTip: true
+            })
+          } catch (error: any) {
+            const code = error.response?.data?.code || error.code
+            const isAuthError = [
+              StatusCode.UNAUTHORIZED,
+              StatusCode.TOKEN_EXPIRED,
+              StatusCode.TOKEN_INVALID,
+              StatusCode.TOKEN_MALFORMED,
+              BizCode.CodeUnauthorized,
+              BizCode.CodeTokenExpired,
+              BizCode.CodeTokenInvalid,
+              BizCode.CodeTokenMalformed,
+              BizCode.CodeLoginRequired
+            ].includes(code)
+
+            if (isAuthError) {
+              throw error
             }
+
+            // 非认证错误（如服务器错误、网络错误）时回退到本地缓存菜单，避免整页不可用
+            console.warn('Failed to refresh menus, falling back to cached menus:', error)
+            authStore.setMyMenus(cachedMenus)
+            message.warning(cachedMenus.length > 0 ? '最新菜单加载失败，已使用本地缓存菜单' : '菜单加载失败，部分功能可能不可用')
           }
 
           // Generate accessible routes

@@ -211,7 +211,7 @@ const mapOrgToTeam = (org: OrgItem): Team => {
     isCurrent: org.id === currentOrgId,
     inviteCode: org.code || '-',
     avatar: org.avatar || '',
-    avatarId: org.avatar_id,
+    avatarId: org.avatar_id ?? undefined,
     ownerId: org.owner_id
   }
 }
@@ -323,27 +323,29 @@ const handleDeleteTeam = async (team: Team) => {
     teams.value = teams.value.filter(t => t.id !== team.id)
     if (team.isCurrent && teams.value.length) {
       const fallbackTeam = teams.value[0]
-      await setCurrentOrg({ org_id: fallbackTeam.id }, { skipSuccTip: true })
-      if (authStore.user) {
-        authStore.setUser({
-          ...authStore.user,
-          current_org_id: fallbackTeam.id,
-          current_org: {
-            ...authStore.user.current_org,
-            id: fallbackTeam.id,
-            name: fallbackTeam.name,
-            description: fallbackTeam.description,
-            code: fallbackTeam.inviteCode,
-            owner_id: fallbackTeam.ownerId || 0,
-            created_at: fallbackTeam.createdAt,
-            updated_at: ''
-          }
+      if (fallbackTeam) {
+        await setCurrentOrg({ org_id: fallbackTeam.id }, { skipSuccTip: true })
+        if (authStore.user) {
+          authStore.setUser({
+            ...authStore.user,
+            current_org_id: fallbackTeam.id,
+            current_org: {
+              ...authStore.user.current_org,
+              id: fallbackTeam.id,
+              name: fallbackTeam.name,
+              description: fallbackTeam.description,
+              code: fallbackTeam.inviteCode,
+              owner_id: fallbackTeam.ownerId || 0,
+              created_at: fallbackTeam.createdAt,
+              updated_at: ''
+            }
+          })
+        }
+        await authStore.fetchMyMenus(fallbackTeam.id, { skipSuccTip: true, skipErrTip: true })
+        teams.value.forEach((t) => {
+          t.isCurrent = t.id === fallbackTeam.id
         })
       }
-      await authStore.fetchMyMenus(fallbackTeam.id, { skipSuccTip: true, skipErrTip: true })
-      teams.value.forEach((t) => {
-        t.isCurrent = t.id === fallbackTeam.id
-      })
     }
     message.success('团队已解散')
   } catch (e) {
@@ -401,7 +403,10 @@ const submitOrgForm = async () => {
           if (myOrgs.length > 0) {
             // Sort by ID descending to get the latest one
             myOrgs.sort((a: any, b: any) => b.id - a.id)
-            orgId = myOrgs[0].id
+            const latestOrg = myOrgs[0]
+            if (latestOrg) {
+              orgId = latestOrg.id
+            }
           }
         }
 

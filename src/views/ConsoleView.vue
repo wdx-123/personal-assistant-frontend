@@ -12,7 +12,7 @@ const ConsoleSidebar = defineAsyncComponent(() => import("@/components/layout/Co
 const isExiting = ref(false);
 
 // 路由离开前的守卫
-onBeforeRouteLeave((to, from, next) => {
+onBeforeRouteLeave((to, _from, next) => {
   // 如果是去首页，执行收起动画
   if (to.path === '/home' || to.path === '/') {
     isExiting.value = true;
