@@ -107,7 +107,7 @@ apiClientRaw.interceptors.request.use(
     const requestConfig = config as RequestConfig
     bindRequestController(requestConfig)
 
-    if (config.url?.includes('/refreshToken')) {
+    if (isRefreshTokenRequest(config.url)) {
       return config
     }
 
@@ -130,6 +130,11 @@ type RefreshQueueItem = {
   reject: (reason?: unknown) => void
 }
 let refreshQueue: RefreshQueueItem[] = []
+
+const isLoginRequest = (url?: string) => !!url?.includes('/user/login')
+const isRegisterRequest = (url?: string) => !!url?.includes('/user/register')
+const isRefreshTokenRequest = (url?: string) => !!url?.includes('/refreshToken')
+const isLogoutRequest = (url?: string) => !!url?.includes('/user/logout')
 
 const refreshAccessToken = async (): Promise<string> => {
   const authStore = useAuthStore()
@@ -232,17 +237,17 @@ const responseInterceptor = (
     normalizedCode === BizCode.CodeUnauthorized ||
     normalizedCode === BizCode.CodeTokenExpired) {
     const shouldRefreshToken =
-      !config.url?.includes('/user/login') &&
-      !config.url?.includes('/user/register') &&
-      !config.url?.includes('/refreshToken') &&
+      !isLoginRequest(config.url) &&
+      !isRegisterRequest(config.url) &&
+      !isRefreshTokenRequest(config.url) &&
+      !isLogoutRequest(config.url) &&
       !!localStorage.getItem('access_token')
 
     if (shouldRefreshToken) {
       return handleTokenExpired(response, config)
     }
 
-    if (config.url?.includes('/refreshToken')) {
-      handleLogout()
+    if (isRefreshTokenRequest(config.url)) {
       return Promise.reject(new Error('RefreshToken 已失效，请重新登录'))
     }
   }
