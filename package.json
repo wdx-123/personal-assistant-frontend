@@ -14,6 +14,7 @@
     "build:test": "vue-tsc && vite build --mode test",
     "build:staging": "vue-tsc && vite build --mode staging",
     "preview": "vite preview",
+    "lint:check": "eslint . --max-warnings=0",
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
     "compress:images": "node scripts/compress-images.mjs"

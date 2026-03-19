@@ -2444,18 +2444,13 @@ onMounted(() => {
                   :value="item.platform"
                   style="width: 160px"
                   :options="PLATFORM_OPTIONS"
-                  @update:value="
-                    (value) =>
-                      handleTaskItemPlatformChange(item, value as OJPlatform)
-                  "
+                  @update:value="handleTaskItemPlatformChange(item, $event as OJPlatform)"
                 />
                 <a-input
                   :value="item.title"
                   class="task-item-title-input"
                   placeholder="请输入题目标题，例如 Two Sum / A+B Problem"
-                  @update:value="
-                    (value) => handleTaskItemTitleChange(item, value as string)
-                  "
+                  @update:value="handleTaskItemTitleChange(item, $event as string)"
                 />
               </div>
 

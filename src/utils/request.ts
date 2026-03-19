@@ -22,10 +22,9 @@ export type RequestOptions = Partial<Pick<RequestConfig, 'skipTip' | 'skipErrTip
   params?: Record<string, unknown>
 }
 
-const apiBaseURL =
-  import.meta.env.DEV
-    ? ''
-    : import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+const apiBaseURL = import.meta.env.PROD
+  ? import.meta.env.VITE_API_PREFIX?.trim() || '/proxy-api'
+  : ''
 
 const apiClientRaw: AxiosInstance = axios.create({
   baseURL: apiBaseURL,  
