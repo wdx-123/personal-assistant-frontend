@@ -3,7 +3,7 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { Button, Input, message } from "@/components/common";
 import { Captcha } from "@/components/business";
-import { register as registerApi, getOrgList } from "@/services/auth.service";
+import { register as registerApi } from "@/services/auth.service";
 import { useAuthStore } from "@/stores/auth";
 import { VALIDATION_MESSAGES } from "@/constants/validation";
 import {
@@ -28,7 +28,6 @@ const captchaId = ref("");
 // 状态
 const loading = ref(false);
 const agreeTerms = ref(false);
-const orgList = ref<Array<{ id: number; name: string }>>([]);
 
 // 验证码组件引用
 const captchaRef = ref<InstanceType<typeof Captcha>>();
@@ -139,28 +138,6 @@ const goToLogin = () => {
 const handleCaptchaChange = (id: string) => {
   captchaId.value = id;
 };
-
-// 加载组织列表（可选，静默请求）
-const loadOrgList = async () => {
-  try {
-    // ✅ 静默请求，不弹任何提示
-    const response = await getOrgList(0, 0, {
-      skipTip: true,
-    });
-
-    // ✅ 优化：直接使用返回数据，无需判断 code
-    orgList.value = response.list || [];
-  } catch (error) {
-    // 组织列表加载失败不影响注册流程
-    orgList.value = [];
-  }
-};
-
-// 组件挂载时加载组织列表
-import { onMounted } from "vue";
-onMounted(() => {
-  loadOrgList();
-});
 </script>
 
 <template>

@@ -2,12 +2,13 @@
 /**
  * 首页
  */
-import { defineAsyncComponent, ref, watch, onMounted, computed } from "vue";
+import { defineAsyncComponent, ref, watch, onMounted, onUnmounted, computed } from "vue";
 import { onBeforeRouteLeave } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { Modal, message } from "@/components/common";
 import { getMyOrgs } from "@/services/permission.service";
 import { getOJCurve } from "@/services/oj.service";
+import { isRequestCanceled } from "@/utils/request";
 import type LeaderboardCardComponent from "@/components/business/LeaderboardCard/LeaderboardCard.vue";
 import type { OJCurveResponse, OJStatsResponse, OJPlatform } from "@/types";
 
@@ -57,6 +58,7 @@ const curveDataByPlatform = ref<Record<OJPlatform, OJCurveResponse | null>>({
   leetcode: null,
 });
 const curveRequestSeq = ref(0);
+let curveBootTimer: ReturnType<typeof setTimeout> | null = null;
 
 const currentCurve = computed(() => curveDataByPlatform.value[selectedPlatform.value]);
 const curveBound = computed(() => currentCurve.value?.bound ?? false);
@@ -236,10 +238,19 @@ const fetchCurve = async (platform: OJPlatform = selectedPlatform.value) => {
   const seq = ++curveRequestSeq.value;
   curveLoadingPlatform.value = platform;
   try {
-    const data = await getOJCurve({ platform }, { skipSuccTip: true });
+    const data = await getOJCurve(
+      { platform },
+      {
+        skipSuccTip: true,
+        skipErrTip: true,
+        dedupeKey: `home:curve:${platform}`,
+        cancelPrevious: true,
+      }
+    );
     if (seq !== curveRequestSeq.value) return;
     curveDataByPlatform.value = { ...curveDataByPlatform.value, [platform]: data };
   } catch (e) {
+    if (isRequestCanceled(e)) return;
     if (seq !== curveRequestSeq.value) return;
     curveDataByPlatform.value = { ...curveDataByPlatform.value, [platform]: null };
   } finally {
@@ -276,7 +287,12 @@ const normalizeOrg = (item: any) => {
 const loadMyOrgOptions = async () => {
   orgLoading.value = true;
   try {
-    const list = await getMyOrgs({ skipSuccTip: true, skipErrTip: true });
+    const list = await getMyOrgs({
+      skipSuccTip: true,
+      skipErrTip: true,
+      dedupeKey: "home:org-options",
+      cancelPrevious: true,
+    });
     const normalized = (Array.isArray(list) ? list : [])
       .map(normalizeOrg)
       .filter(Boolean) as Array<{ id: number; name: string; description?: string }>;
@@ -293,6 +309,7 @@ const loadMyOrgOptions = async () => {
       }
     }
   } catch (e) {
+    if (isRequestCanceled(e)) return;
     orgOptions.value = [];
   } finally {
     orgLoading.value = false;
@@ -300,11 +317,11 @@ const loadMyOrgOptions = async () => {
 };
 
 const openSwitchOrgModal = async () => {
+  pendingOrgId.value = browsingOrgId.value;
+  switchOrgVisible.value = true;
   if (!orgOptions.value.length && !orgLoading.value) {
     await loadMyOrgOptions();
   }
-  pendingOrgId.value = browsingOrgId.value;
-  switchOrgVisible.value = true;
 };
 
 const confirmSwitchOrg = () => {
@@ -329,8 +346,15 @@ const handleBound = (_data: OJStatsResponse) => {
 };
 
 onMounted(() => {
-  loadMyOrgOptions();
-  fetchCurve(selectedPlatform.value);
+  curveBootTimer = setTimeout(() => {
+    void fetchCurve(selectedPlatform.value);
+  }, 300);
+});
+
+onUnmounted(() => {
+  if (!curveBootTimer) return;
+  clearTimeout(curveBootTimer);
+  curveBootTimer = null;
 });
 
 watch(

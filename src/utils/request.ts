@@ -1,4 +1,11 @@
-import axios, { AxiosHeaders, type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios'
+import axios, {
+  AxiosHeaders,
+  type AxiosInstance,
+  type AxiosError,
+  type GenericAbortSignal,
+  type InternalAxiosRequestConfig,
+  type AxiosResponse
+} from 'axios'
 import type { ApiResponse } from '@/types'
 import {
   StatusCode,
@@ -15,11 +22,71 @@ export interface RequestConfig extends InternalAxiosRequestConfig {
   skipSuccTip?: boolean
   customErrTip?: string
   customSuccTip?: string
+  dedupeKey?: string
+  cancelPrevious?: boolean
   _retry?: boolean
+  _dedupeController?: AbortController
 }
 
-export type RequestOptions = Partial<Pick<RequestConfig, 'skipTip' | 'skipErrTip' | 'skipSuccTip' | 'customErrTip' | 'customSuccTip'>> & {
+export type RequestOptions = Partial<
+  Pick<
+    RequestConfig,
+    'skipTip' | 'skipErrTip' | 'skipSuccTip' | 'customErrTip' | 'customSuccTip' | 'dedupeKey' | 'cancelPrevious'
+  >
+> & {
   params?: Record<string, unknown>
+}
+
+const pendingRequestControllers = new Map<string, AbortController>()
+
+export const isRequestCanceled = (error: unknown): boolean => {
+  if (axios.isCancel(error)) {
+    return true
+  }
+
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ERR_CANCELED'
+}
+
+const syncAbortSignals = (sourceSignal: GenericAbortSignal | undefined, controller: AbortController) => {
+  if (!sourceSignal) return
+
+  if (sourceSignal.aborted) {
+    controller.abort()
+    return
+  }
+
+  sourceSignal.addEventListener?.(
+    'abort',
+    () => {
+      controller.abort()
+    },
+    { once: true }
+  )
+}
+
+const bindRequestController = (config: RequestConfig) => {
+  if (!config.dedupeKey) return
+
+  const existingController = pendingRequestControllers.get(config.dedupeKey)
+  if (config.cancelPrevious && existingController) {
+    existingController.abort()
+  }
+
+  const controller = new AbortController()
+  syncAbortSignals(config.signal, controller)
+
+  config.signal = controller.signal
+  config._dedupeController = controller
+  pendingRequestControllers.set(config.dedupeKey, controller)
+}
+
+const cleanupRequestController = (config?: RequestConfig) => {
+  if (!config?.dedupeKey) return
+
+  const currentController = pendingRequestControllers.get(config.dedupeKey)
+  if (!currentController || currentController === config._dedupeController) {
+    pendingRequestControllers.delete(config.dedupeKey)
+  }
 }
 
 const apiBaseURL = import.meta.env.PROD
@@ -37,6 +104,9 @@ const apiClientRaw: AxiosInstance = axios.create({
 
 apiClientRaw.interceptors.request.use(
   (config) => {
+    const requestConfig = config as RequestConfig
+    bindRequestController(requestConfig)
+
     if (config.url?.includes('/refreshToken')) {
       return config
     }
@@ -145,6 +215,7 @@ const responseInterceptor = (
     code?: number | string
   }
   const config = response.config as RequestConfig
+  cleanupRequestController(config)
 
   const { skipTip, skipSuccTip, skipErrTip, customSuccTip, customErrTip } = config
   const normalizedCode = typeof res.code === 'string' ? Number(res.code) : res.code
@@ -208,6 +279,11 @@ const errorInterceptor = async (
   const originalRequest = error.config as RequestConfig
 
   const config = originalRequest
+  cleanupRequestController(config)
+
+  if (isRequestCanceled(error)) {
+    return Promise.reject(error)
+  }
 
   if (!config?.skipTip && !config?.skipErrTip) {
     const errText =

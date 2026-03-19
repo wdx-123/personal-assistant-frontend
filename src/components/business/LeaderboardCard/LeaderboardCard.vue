@@ -156,7 +156,7 @@ const {
   loadMoreLuogu,
   loadMoreLeetcode,
   loadMoreLanqiao,
-  refreshAll,
+  refreshPlatform,
 } = useRankingData()
 
 // 当前查看的范围：'all' | 'org'
@@ -183,12 +183,6 @@ const scopeTagText = computed(() => {
 const scopeTagClass = computed(() => {
   return currentScope.value === 'all' ? 'scope-all' : 'scope-org'
 })
-
-// 根据当前平台和 scope 获取对应的数据和状态
-// 注意：目前 useRankingData 还没有支持 scope 参数，这里暂时假设数据是一样的，或者需要修改 useRankingData
-// 假设后端接口支持 scope 参数，我们需要在 useRankingData 里扩展。
-// 鉴于目前 useRankingData 还没有 scope 逻辑，我们先只做 UI 上的切换，实际数据可能需要后续对接。
-// 为了演示效果，我们假设所有数据都是 'all' scope 的。
 
 const currentLoading = computed(() => {
   if (props.platform === 'luogu') return luoguLoading.value
@@ -220,7 +214,7 @@ const currentRankList = computed(() => {
 
 const refreshCurrent = () => {
   const apiScope = currentScope.value === 'all' ? 'all_members' : 'org'
-  refreshAll(apiScope, apiScope === 'org' ? props.orgId : undefined)
+  refreshPlatform(props.platform, apiScope, apiScope === 'org' ? props.orgId : undefined)
 }
 
 const loadMoreCurrent = () => {
