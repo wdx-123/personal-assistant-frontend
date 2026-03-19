@@ -2,19 +2,22 @@
 /**
  * 应用根组件
  */
-import { defineAsyncComponent, onMounted } from 'vue'
+import { computed, defineAsyncComponent, onMounted } from 'vue'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import { useAuthStore } from '@/stores'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const antdLocale = zhCN
 const BackgroundCarousel = defineAsyncComponent(
   () => import('@/components/business/Carousel/BackgroundCarousel.vue')
 )
+const backgroundRoutes = new Set(['/login', '/register', '/home'])
+const showBackground = computed(() => backgroundRoutes.has(route.path))
 
 // 初始化认证状态
 onMounted(() => {
@@ -31,10 +34,8 @@ onMounted(() => {
 <template>
   <a-config-provider :locale="antdLocale">
     <div class="app-container">
-      <!-- 全局背景轮播 -->
-      <BackgroundCarousel/>
+      <BackgroundCarousel v-if="showBackground" />
 
-      <!-- 页面内容 -->
       <div class="page-content">
         <router-view />
       </div>

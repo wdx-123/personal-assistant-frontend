@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
-import { asyncRoutes } from '@/router/routes'
 import { reverseRouteMap } from '@/router/route-map'
 import { useAuthStore } from '@/stores/auth'
 import type { MenuItem } from '@/types/permission.types'
@@ -20,14 +19,13 @@ export const usePermissionStore = defineStore('permission', () => {
   const generateRoutes = async (): Promise<RouteRecordRaw[]> => {
     const authStore = useAuthStore()
     const myMenus = authStore.myMenus // 后端返回的菜单列表
-    console.log(myMenus)
+    const { asyncRoutes } = await import('@/router/async-routes')
 
     // 第一步：把所有“允许访问的路径”都整理到一个白名单里
     const allowedPathList = getAllowedPaths(myMenus)
     // 提取图标映射
     const iconMap = getIconMap(myMenus)
-    
-    console.log(allowedPathList)
+
     // 第二步：拿着白名单，去过滤前端写好的所有路由
     const accessedRoutes = filterAsyncRoutes(asyncRoutes, allowedPathList, iconMap)
     // 保存结果

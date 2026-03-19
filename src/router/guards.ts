@@ -6,8 +6,92 @@ import { StatusCode } from '@/constants/status'
 import { BizCode } from '@/constants/biz-code'
 import { message } from '@/components/common'
 
-// White list (routes that don't need auth) - usually covered by meta.requiresAuth: false
-// But we can check here too if needed.
+let pendingMenuRefresh: Promise<void> | null = null
+
+const authErrorCodes = [
+  StatusCode.UNAUTHORIZED,
+  StatusCode.TOKEN_EXPIRED,
+  StatusCode.TOKEN_INVALID,
+  StatusCode.TOKEN_MALFORMED,
+  BizCode.CodeUnauthorized,
+  BizCode.CodeTokenExpired,
+  BizCode.CodeTokenInvalid,
+  BizCode.CodeTokenMalformed,
+  BizCode.CodeLoginRequired
+]
+
+const isAuthError = (error: any) => {
+  const code = error?.response?.data?.code || error?.code
+  return authErrorCodes.includes(code)
+}
+
+const addAccessRoutes = async () => {
+  const permissionStore = usePermissionStore()
+  const accessRoutes = await permissionStore.generateRoutes()
+
+  accessRoutes.forEach((route) => {
+    if (route.name && router.hasRoute(route.name)) {
+      return
+    }
+
+    router.addRoute(route)
+  })
+}
+
+const needsRouteRematch = (to: RouteLocationNormalized) => {
+  return to.path.startsWith('/console') || to.name === 'NotFound'
+}
+
+const continueAfterRouteSetup = (
+  to: RouteLocationNormalized,
+  next: (value?: string | object | boolean | void) => void
+) => {
+  if (needsRouteRematch(to)) {
+    next({ path: to.path, query: to.query, hash: to.hash, replace: true })
+    return
+  }
+
+  next()
+}
+
+const refreshMenusInBackground = (
+  authStore: ReturnType<typeof useAuthStore>,
+  permissionStore: ReturnType<typeof usePermissionStore>,
+  cachedMenus: typeof authStore.myMenus,
+  browsingOrgId?: number
+) => {
+  if (pendingMenuRefresh) {
+    return pendingMenuRefresh
+  }
+
+  pendingMenuRefresh = (async () => {
+    try {
+      await authStore.fetchMyMenus(browsingOrgId || undefined, {
+        skipSuccTip: true,
+        skipErrTip: true,
+        dedupeKey: `auth:menus:${browsingOrgId || 0}`,
+        cancelPrevious: true
+      })
+
+      if (!permissionStore.isRoutesAdded && authStore.myMenus.length > 0) {
+        await addAccessRoutes()
+      }
+    } catch (error) {
+      if (isAuthError(error)) {
+        authStore.clearAuth()
+        await router.replace(`/login?redirect=${router.currentRoute.value.fullPath}`)
+        return
+      }
+
+      authStore.setMyMenus(cachedMenus)
+      message.warning(cachedMenus.length > 0 ? '最新菜单加载失败，已使用本地缓存菜单' : '菜单加载失败，部分功能可能不可用')
+    } finally {
+      pendingMenuRefresh = null
+    }
+  })()
+
+  return pendingMenuRefresh
+}
 
 router.beforeEach(async (to: RouteLocationNormalized, _from: RouteLocationNormalized, next) => {
   const authStore = useAuthStore()
@@ -31,67 +115,45 @@ router.beforeEach(async (to: RouteLocationNormalized, _from: RouteLocationNormal
       // If logged in, redirect to home
       next({ path: '/' })
     } else {
-      // Check if dynamic routes are added
       if (permissionStore.isRoutesAdded) {
         next()
       } else {
+        const cachedMenus = authStore.myMenus.slice()
+        const browsingOrgId = authStore.browsingOrgId || authStore.user?.current_org_id
+
         try {
-          const cachedMenus = authStore.myMenus.slice()
-          const browsingOrgId = authStore.browsingOrgId || authStore.user?.current_org_id
-
-          try {
-            await authStore.fetchMyMenus(browsingOrgId || undefined, {
-              skipSuccTip: true,
-              skipErrTip: true
-            })
-          } catch (error: any) {
-            const code = error.response?.data?.code || error.code
-            const isAuthError = [
-              StatusCode.UNAUTHORIZED,
-              StatusCode.TOKEN_EXPIRED,
-              StatusCode.TOKEN_INVALID,
-              StatusCode.TOKEN_MALFORMED,
-              BizCode.CodeUnauthorized,
-              BizCode.CodeTokenExpired,
-              BizCode.CodeTokenInvalid,
-              BizCode.CodeTokenMalformed,
-              BizCode.CodeLoginRequired
-            ].includes(code)
-
-            if (isAuthError) {
-              throw error
-            }
-
-            // 非认证错误（如服务器错误、网络错误）时回退到本地缓存菜单，避免整页不可用
-            console.warn('Failed to refresh menus, falling back to cached menus:', error)
-            authStore.setMyMenus(cachedMenus)
-            message.warning(cachedMenus.length > 0 ? '最新菜单加载失败，已使用本地缓存菜单' : '菜单加载失败，部分功能可能不可用')
+          if (cachedMenus.length > 0) {
+            await addAccessRoutes()
+            continueAfterRouteSetup(to, next)
+            void refreshMenusInBackground(authStore, permissionStore, cachedMenus, browsingOrgId || undefined)
+            return
           }
 
-          // Generate accessible routes
-          const accessRoutes = await permissionStore.generateRoutes()
+          if (!to.path.startsWith('/console')) {
+            next()
+            void refreshMenusInBackground(authStore, permissionStore, cachedMenus, browsingOrgId || undefined)
+            return
+          }
 
-          // Add routes to router
-          accessRoutes.forEach(route => {
-            router.addRoute(route)
+          await authStore.fetchMyMenus(browsingOrgId || undefined, {
+            skipSuccTip: true,
+            skipErrTip: true,
+            dedupeKey: `auth:menus:${browsingOrgId || 0}`,
+            cancelPrevious: true
           })
 
-          // Hack to ensure addRoutes is complete
-          // replace: true is important, it ensures the navigation history is correct
-          // However, if we are already at the target route, we might need to handle it.
-          // For dynamic routing, "to" might be a route that didn't exist when we started navigation (hence 404 potentially)
-          // But since we caught it in beforeEach, the router hasn't decided it's 404 yet (unless it matched the catch-all).
-          
-          // If the user refreshed on /console/settings, "to" matched NotFound (catch-all) because /console/settings wasn't added yet.
-          // Now we added it.
-          
-          // We need to redirect to "to.fullPath" to force a new match against the newly added routes.
-          next({ path: to.path, query: to.query, hash: to.hash, replace: true })
+          await addAccessRoutes()
+          continueAfterRouteSetup(to, next)
         } catch (error) {
-          console.error('Error generating routes:', error)
-          // Failed to generate routes (e.g. token expired or api error)
-          authStore.clearAuth()
-          next(`/login?redirect=${to.path}`)
+          if (isAuthError(error)) {
+            authStore.clearAuth()
+            next(`/login?redirect=${to.path}`)
+            return
+          }
+
+          authStore.setMyMenus(cachedMenus)
+          message.warning(cachedMenus.length > 0 ? '菜单加载失败，已使用本地缓存菜单' : '菜单加载失败，已先返回首页')
+          next(cachedMenus.length > 0 ? to.fullPath : '/home')
         }
       }
     }

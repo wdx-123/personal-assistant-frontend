@@ -5,6 +5,33 @@ import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
 import { AntDesignVueResolver } from "unplugin-vue-components/resolvers";
 
+const chunkByPackage = (id: string) => {
+  if (id.includes("/node_modules/vue/") || id.includes("/node_modules/@vue/")) {
+    return "vue-core";
+  }
+
+  if (
+    id.includes("/node_modules/vue-router/") ||
+    id.includes("/node_modules/pinia/") ||
+    id.includes("/node_modules/@vueuse/")
+  ) {
+    return "router-pinia";
+  }
+
+  if (
+    id.includes("/node_modules/ant-design-vue/") ||
+    id.includes("/node_modules/@ant-design/")
+  ) {
+    return;
+  }
+
+  if (id.includes("/node_modules/axios/")) {
+    return "http";
+  }
+
+  return "vendor";
+};
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // 加载环境变量
@@ -61,24 +88,11 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 500,
       rollupOptions: {
         output: {
-          // 更细粒度的代码分割
           manualChunks: (id) => {
-            // 分离 node_modules 中的依赖
-            if (id.includes('node_modules')) {
-              // Vue 核心库
-              if (id.includes('vue') || id.includes('@vue')) {
-                return 'vue-vendor';
-              }
-              // VueUse 工具库
-              if (id.includes('@vueuse')) {
-                return 'vueuse-vendor';
-              }
-              // HTTP 客户端
-              if (id.includes('axios')) {
-                return 'http-vendor';
-              }
-              // 其他第三方库
-              return 'vendor';
+            const normalizedId = id.replace(/\\/g, "/");
+
+            if (normalizedId.includes("/node_modules/")) {
+              return chunkByPackage(normalizedId);
             }
           },
           // 文件命名（带 hash，利于缓存）

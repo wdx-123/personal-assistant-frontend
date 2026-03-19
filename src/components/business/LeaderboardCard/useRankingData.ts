@@ -5,7 +5,10 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getRankingList } from '@/services/oj.service'
+import { isRequestCanceled } from '@/utils/request'
 import type { RankingItem, MyRank } from '@/types'
+
+type RankingScope = 'current_org' | 'all_members' | 'org'
 
 export function useRankingData() {
   // 加载状态 - 两个平台独立
@@ -55,13 +58,24 @@ export function useRankingData() {
     return user?.id === item.user_id
   }
 
+  const buildRankingConfig = (
+    platform: 'luogu' | 'leetcode' | 'lanqiao',
+    scope: RankingScope,
+    orgId?: number
+  ) => ({
+    skipTip: true,
+    skipErrTip: true,
+    dedupeKey: `ranking:${platform}:${scope}:${orgId || 0}`,
+    cancelPrevious: true
+  })
+
   /**
    * 获取洛谷排行榜数据（静默请求）
    */
   const fetchLuoguRankingList = async (
     page: number = 1,
     isLoadMore: boolean = false,
-    scope: 'current_org' | 'all_members' | 'org' = 'current_org',
+    scope: RankingScope = 'current_org',
     orgId?: number
   ) => {
     try {
@@ -73,7 +87,7 @@ export function useRankingData() {
 
       const data = await getRankingList(
         { platform: 'luogu', page, page_size: pageSize, scope, org_id: orgId || undefined },
-        { skipTip: true }
+        buildRankingConfig('luogu', scope, orgId)
       )
 
       if (isLoadMore) {
@@ -91,6 +105,8 @@ export function useRankingData() {
       // 判断是否还有更多数据
       luoguHasMore.value = luoguRankList.value.length < luoguTotal.value
     } catch (error) {
+      if (isRequestCanceled(error)) return
+
       // 失败也不弹提示
       if (!isLoadMore) {
         luoguRankList.value = []
@@ -110,7 +126,7 @@ export function useRankingData() {
   const fetchLeetcodeRankingList = async (
     page: number = 1,
     isLoadMore: boolean = false,
-    scope: 'current_org' | 'all_members' | 'org' = 'current_org',
+    scope: RankingScope = 'current_org',
     orgId?: number
   ) => {
     try {
@@ -122,7 +138,7 @@ export function useRankingData() {
 
       const data = await getRankingList(
         { platform: 'leetcode', page, page_size: pageSize, scope, org_id: orgId || undefined },
-        { skipTip: true }
+        buildRankingConfig('leetcode', scope, orgId)
       )
 
       if (isLoadMore) {
@@ -140,6 +156,8 @@ export function useRankingData() {
       // 判断是否还有更多数据
       leetcodeHasMore.value = leetcodeRankList.value.length < leetcodeTotal.value
     } catch (error) {
+      if (isRequestCanceled(error)) return
+
       // 失败也不弹提示
       if (!isLoadMore) {
         leetcodeRankList.value = []
@@ -159,7 +177,7 @@ export function useRankingData() {
   const fetchLanqiaoRankingList = async (
     page: number = 1,
     isLoadMore: boolean = false,
-    scope: 'current_org' | 'all_members' | 'org' = 'current_org',
+    scope: RankingScope = 'current_org',
     orgId?: number
   ) => {
     try {
@@ -171,7 +189,7 @@ export function useRankingData() {
 
       const data = await getRankingList(
         { platform: 'lanqiao', page, page_size: pageSize, scope, org_id: orgId || undefined },
-        { skipTip: true }
+        buildRankingConfig('lanqiao', scope, orgId)
       )
 
       if (isLoadMore) {
@@ -189,6 +207,8 @@ export function useRankingData() {
       // 判断是否还有更多数据
       lanqiaoHasMore.value = lanqiaoRankList.value.length < lanqiaoTotal.value
     } catch (error) {
+      if (isRequestCanceled(error)) return
+
       // 失败也不弹提示
       if (!isLoadMore) {
         lanqiaoRankList.value = []
@@ -206,7 +226,7 @@ export function useRankingData() {
    * 加载更多洛谷数据
    */
   const loadMoreLuogu = async (
-    scope: 'current_org' | 'all_members' | 'org' = 'current_org',
+    scope: RankingScope = 'current_org',
     orgId?: number
   ) => {
     if (!luoguHasMore.value || luoguLoadingMore.value) return
@@ -219,7 +239,7 @@ export function useRankingData() {
    * 加载更多力扣数据
    */
   const loadMoreLeetcode = async (
-    scope: 'current_org' | 'all_members' | 'org' = 'current_org',
+    scope: RankingScope = 'current_org',
     orgId?: number
   ) => {
     if (!leetcodeHasMore.value || leetcodeLoadingMore.value) return
@@ -232,7 +252,7 @@ export function useRankingData() {
    * 加载更多蓝桥杯数据
    */
   const loadMoreLanqiao = async (
-    scope: 'current_org' | 'all_members' | 'org' = 'current_org',
+    scope: RankingScope = 'current_org',
     orgId?: number
   ) => {
     if (!lanqiaoHasMore.value || lanqiaoLoadingMore.value) return
@@ -242,14 +262,24 @@ export function useRankingData() {
   }
 
   /**
-   * 刷新所有排行榜数据
+   * 按当前平台刷新排行榜
    */
-  const refreshAll = async (scope: 'current_org' | 'all_members' | 'org' = 'current_org', orgId?: number) => {
-    await Promise.all([
-      fetchLuoguRankingList(1, false, scope, orgId),
-      fetchLeetcodeRankingList(1, false, scope, orgId),
-      fetchLanqiaoRankingList(1, false, scope, orgId)
-    ])
+  const refreshPlatform = async (
+    platform: 'luogu' | 'leetcode' | 'lanqiao',
+    scope: RankingScope = 'current_org',
+    orgId?: number
+  ) => {
+    if (platform === 'luogu') {
+      await fetchLuoguRankingList(1, false, scope, orgId)
+      return
+    }
+
+    if (platform === 'leetcode') {
+      await fetchLeetcodeRankingList(1, false, scope, orgId)
+      return
+    }
+
+    await fetchLanqiaoRankingList(1, false, scope, orgId)
   }
 
   return {
@@ -275,6 +305,6 @@ export function useRankingData() {
     loadMoreLuogu,
     loadMoreLeetcode,
     loadMoreLanqiao,
-    refreshAll,
+    refreshPlatform,
   }
 }
