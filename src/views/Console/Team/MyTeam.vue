@@ -181,7 +181,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { message, Confirm } from '@/components/common'
 import { useAuthStore } from '@/stores/auth'
 import { createOrg, deleteOrg, getOrgList, setCurrentOrg, updateOrg, joinOrg, getRoleList, assignUserRole } from '@/services/permission.service'
