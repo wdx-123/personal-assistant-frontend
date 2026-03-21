@@ -57,6 +57,11 @@ export interface OJCurveResponse {
   last_sync_at: string
 }
 
+export interface RankingCurrentOrg {
+  id: number
+  name: string
+}
+
 // 排行榜项详情
 export interface RankingItem {
   rank: number
@@ -64,6 +69,7 @@ export interface RankingItem {
   real_name: string
   avatar: string
   total_passed: number
+  current_org?: RankingCurrentOrg
   platform_details: {
     [key: string]: number
   }

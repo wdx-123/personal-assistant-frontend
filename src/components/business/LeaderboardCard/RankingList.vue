@@ -10,16 +10,24 @@
       <div class="rank-number">{{ startIndex + index + 1 }}</div>
       <div class="user-info">
         <div class="avatar">
-          <img
-            v-if="item.avatar"
+          <RankingAvatar
             :src="item.avatar"
-            :alt="item.real_name"
+            :name="item.real_name"
+            :user-id="item.user_id"
+            size="list"
+            accent="default"
           />
-          <div v-else class="avatar-placeholder">
-            {{ item.real_name?.charAt(0) || "U" }}
+        </div>
+        <div class="user-meta">
+          <div class="name">{{ item.real_name }}</div>
+          <div
+            v-if="showCurrentOrg"
+            class="current-org-tag"
+            :class="{ 'is-fallback': isFallbackCurrentOrg(item) }"
+          >
+            {{ resolveCurrentOrgName(item) }}
           </div>
         </div>
-        <div class="name">{{ item.real_name }}</div>
       </div>
       <div class="passed-count">{{ item.total_passed }}题</div>
     </div>
@@ -47,12 +55,14 @@
 import { ref } from 'vue'
 import type { RankingItem } from '@/types'
 import { useAuthStore } from '@/stores/auth'
+import RankingAvatar from './RankingAvatar.vue'
 
 interface Props {
   items: RankingItem[]
   startIndex?: number
   loadingMore?: boolean
   hasMore?: boolean
+  showCurrentOrg?: boolean
   onLoadMore?: () => void
 }
 
@@ -60,6 +70,7 @@ const props = withDefaults(defineProps<Props>(), {
   startIndex: 3,
   loadingMore: false,
   hasMore: true,
+  showCurrentOrg: false,
 })
 
 const listRef = ref<HTMLElement | null>(null)
@@ -73,6 +84,15 @@ const authStore = useAuthStore()
 const isCurrentUser = (item: RankingItem) => {
   const user = authStore.user
   return user?.id === item.user_id
+}
+
+const resolveCurrentOrgName = (item: RankingItem) => {
+  const name = item.current_org?.name?.trim()
+  return name || '全体成员'
+}
+
+const isFallbackCurrentOrg = (item: RankingItem) => {
+  return !item.current_org?.name?.trim()
 }
 
 /**
@@ -142,32 +162,24 @@ const handleLoadMore = () => {
 .user-info .avatar {
   width: 40px;
   height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   overflow: hidden;
   background: #f0f0f0;
   flex-shrink: 0;
 }
 
-.user-info .avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.user-info .avatar-placeholder {
-  width: 100%;
-  height: 100%;
+.user-meta {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .user-info .name {
-  flex: 1;
   font-size: 14px;
   font-weight: 500;
   color: #262626;
@@ -176,13 +188,41 @@ const handleLoadMore = () => {
   white-space: nowrap;
 }
 
+.current-org-tag {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.88);
+  color: #5f6b7a;
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.current-org-tag.is-fallback {
+  height: 18px;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 400;
+  color: #7b8797;
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
 /* 通过题目数 */
 .passed-count {
   font-size: 16px;
   font-weight: 600;
   color: #1890ff;
   text-align: right;
-  min-width: 60px;
+  min-width: 68px;
 }
 
 /* 加载更多按钮容器 */

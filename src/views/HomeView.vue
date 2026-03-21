@@ -41,6 +41,17 @@ const browsingOrgName = computed(() => {
   return found?.name || authStore.user?.current_org?.name || "未选择组织";
 });
 
+const leaderboardOrgId = computed(() => {
+  return authStore.user?.current_org_id || 0;
+});
+
+const leaderboardOrgName = computed(() => {
+  const currentOrgId = authStore.user?.current_org_id || 0;
+  if (!currentOrgId) return "";
+  const found = orgOptions.value.find((o) => o.id === currentOrgId);
+  return (authStore.user?.current_org?.name || found?.name || "").trim();
+});
+
 // 平台选项
 const platformOptions = [
   { label: '洛谷', value: 'luogu' },
@@ -496,8 +507,8 @@ watch(
         <LeaderboardCard 
           ref="leaderboardRef" 
           :platform="selectedPlatform" 
-          :org-id="browsingOrgId"
-          :org-name="browsingOrgName"
+          :org-id="leaderboardOrgId"
+          :org-name="leaderboardOrgName"
         />
       </div>
 
