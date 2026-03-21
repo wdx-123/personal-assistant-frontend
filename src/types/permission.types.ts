@@ -114,6 +114,8 @@ export interface ApiItem {
   method: string
   detail: string
   status: number
+  sync_state: string
+  last_seen_at?: string | null
   menu_id?: number | null
   menu_name: string
   created_at: string
@@ -149,8 +151,9 @@ export interface SyncApiRequest {
 
 export interface SyncApiResponse {
   added: number
-  updated: number
-  disabled: number
+  restored: number
+  marked_missing: number
+  archived: number
   total: number
 }
 
@@ -184,6 +187,24 @@ export interface AssignUserRoleRequest {
   user_id: number
   org_id: number
   role_ids: number[]
+}
+
+export type UserRoleMatrixLevel = 'super_admin' | 'org_admin' | 'member'
+
+export interface UserRoleMatrixRoleItem {
+  id: number
+  name: string
+  code: string
+  is_builtin: boolean
+  matrix_level: UserRoleMatrixLevel
+  assignable: boolean
+  disabled_reason?: string
+}
+
+export interface UserRoleMatrixItem {
+  assigned_role_ids: number[]
+  operator_matrix_level: UserRoleMatrixLevel
+  roles: UserRoleMatrixRoleItem[]
 }
 
 export interface OrgItem {

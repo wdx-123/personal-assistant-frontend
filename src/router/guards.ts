@@ -38,8 +38,28 @@ const addAccessRoutes = async () => {
   })
 }
 
+const isConsoleRoute = (to: Pick<RouteLocationNormalized, 'path'> | string) => {
+  const path = typeof to === 'string' ? to : to.path
+  return path.startsWith('/console')
+}
+
 const needsRouteRematch = (to: RouteLocationNormalized) => {
-  return to.path.startsWith('/console') || to.name === 'NotFound'
+  return isConsoleRoute(to) || to.name === 'NotFound'
+}
+
+const getMenuLoadFailureMessage = (options: {
+  hasCachedMenus: boolean
+  redirectedToHome?: boolean
+}) => {
+  if (options.hasCachedMenus) {
+    return '菜单加载失败，已使用本地缓存菜单'
+  }
+
+  if (options.redirectedToHome) {
+    return '菜单加载失败，已先返回首页'
+  }
+
+  return '菜单加载失败，部分功能可能不可用'
 }
 
 const continueAfterRouteSetup = (
@@ -58,7 +78,8 @@ const refreshMenusInBackground = (
   authStore: ReturnType<typeof useAuthStore>,
   permissionStore: ReturnType<typeof usePermissionStore>,
   cachedMenus: typeof authStore.myMenus,
-  browsingOrgId?: number
+  browsingOrgId?: number,
+  shouldWarn = false
 ) => {
   if (pendingMenuRefresh) {
     return pendingMenuRefresh
@@ -84,7 +105,11 @@ const refreshMenusInBackground = (
       }
 
       authStore.setMyMenus(cachedMenus)
-      message.warning(cachedMenus.length > 0 ? '最新菜单加载失败，已使用本地缓存菜单' : '菜单加载失败，部分功能可能不可用')
+      if (shouldWarn) {
+        message.warning(getMenuLoadFailureMessage({
+          hasCachedMenus: cachedMenus.length > 0
+        }))
+      }
     } finally {
       pendingMenuRefresh = null
     }
@@ -120,18 +145,31 @@ router.beforeEach(async (to: RouteLocationNormalized, _from: RouteLocationNormal
       } else {
         const cachedMenus = authStore.myMenus.slice()
         const browsingOrgId = authStore.browsingOrgId || authStore.user?.current_org_id
+        const targetIsConsole = isConsoleRoute(to)
 
         try {
           if (cachedMenus.length > 0) {
             await addAccessRoutes()
             continueAfterRouteSetup(to, next)
-            void refreshMenusInBackground(authStore, permissionStore, cachedMenus, browsingOrgId || undefined)
+            void refreshMenusInBackground(
+              authStore,
+              permissionStore,
+              cachedMenus,
+              browsingOrgId || undefined,
+              targetIsConsole
+            )
             return
           }
 
-          if (!to.path.startsWith('/console')) {
+          if (!targetIsConsole) {
             next()
-            void refreshMenusInBackground(authStore, permissionStore, cachedMenus, browsingOrgId || undefined)
+            void refreshMenusInBackground(
+              authStore,
+              permissionStore,
+              cachedMenus,
+              browsingOrgId || undefined,
+              false
+            )
             return
           }
 
@@ -152,7 +190,12 @@ router.beforeEach(async (to: RouteLocationNormalized, _from: RouteLocationNormal
           }
 
           authStore.setMyMenus(cachedMenus)
-          message.warning(cachedMenus.length > 0 ? '菜单加载失败，已使用本地缓存菜单' : '菜单加载失败，已先返回首页')
+          if (targetIsConsole) {
+            message.warning(getMenuLoadFailureMessage({
+              hasCachedMenus: cachedMenus.length > 0,
+              redirectedToHome: cachedMenus.length === 0
+            }))
+          }
           next(cachedMenus.length > 0 ? to.fullPath : '/home')
         }
       }

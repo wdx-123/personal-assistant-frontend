@@ -160,9 +160,10 @@
               {{ role.name }}
             </option>
           </select>
+          <p v-if="roleOptions.length === 0" class="form-help">当前没有可分配角色</p>
         </div>
         <div class="modal-footer">
-          <button @click="showModal = false" class="btn btn-secondary" :disabled="modalLoading">取消</button>
+          <button @click="resetModalState" class="btn btn-secondary" :disabled="modalLoading">取消</button>
           <button
             v-permission="['permission:user:assign_role', 'permission:user:role:assign']"
             @click="handleSaveMember"
@@ -181,9 +182,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message, Confirm } from '@/components/common'
-import { getOrgList, getUserList, removeOrgMember, leaveOrg, getRoleList, assignUserRole } from '@/services/permission.service'
+import { getOrgList, getUserList, removeOrgMember, leaveOrg, getUserRoleMatrix, assignUserRole } from '@/services/permission.service'
 import { useAuthStore } from '@/stores/auth'
-import type { OrgItem } from '@/types'
+import type { OrgItem, UserDetailItem, UserRoleMatrixRoleItem } from '@/types'
 import { isPermissionDenied } from '@/utils/request'
 
 interface Member {
@@ -191,7 +192,6 @@ interface Member {
   username: string
   avatar: string
   role: string
-  roleIds: number[]
   phone: string
   status: 'enabled' | 'disabled'
 }
@@ -214,19 +214,16 @@ const targetOrgId = ref<number>(0)
 const searchQuery = ref('')
 const showModal = ref(false)
 const modalTitle = ref('')
-const roleOptions = ref<{id: number, name: string}[]>([])
+const roleOptions = ref<UserRoleMatrixRoleItem[]>([])
 const selectedRoleId = ref<number | undefined>(undefined)
 const editingMemberId = ref<number | undefined>(undefined)
 const modalLoading = ref(false)
 
-const fetchRoles = async () => {
-  try {
-    const data = await getRoleList({ page: 0, page_size: 100 }, { skipSuccTip: true })
-    roleOptions.value = (data?.list || []).map((r: any) => ({ id: r.id, name: r.name }))
-  } catch (error) {
-    console.error('Failed to fetch roles:', error)
-    roleOptions.value = []
-  }
+const resetModalState = () => {
+  showModal.value = false
+  roleOptions.value = []
+  selectedRoleId.value = undefined
+  editingMemberId.value = undefined
 }
 
 const handleSaveMember = async () => {
@@ -240,7 +237,7 @@ const handleSaveMember = async () => {
       role_ids: [selectedRoleId.value]
     }, { skipSuccTip: true })
     message.success('角色分配成功')
-    showModal.value = false
+    resetModalState()
     await fetchMembers()
   } catch (e) {
     console.error(e)
@@ -302,13 +299,13 @@ const fetchMembers = async () => {
       },
       { skipSuccTip: true, skipErrTip: true }
     )
+    const list = data?.list || []
     membersNoPermission.value = false
-    members.value = (data?.list || []).map((item: any) => ({
+    members.value = list.map((item: UserDetailItem) => ({
       id: item.id,
       username: item.username || '-',
       avatar: item.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(item.username || String(item.id))}`,
       role: item.roles?.[0]?.name || '普通成员',
-      roleIds: item.roles?.map((r: any) => r.id) || [],
       phone: item.phone || '-',
       status: item.freeze ? 'disabled' : 'enabled'
     }))
@@ -355,13 +352,35 @@ const handleLeaveTeam = async () => {
 }
 
 const handleEditMember = async (member: Member) => {
-  if (roleOptions.value.length === 0) {
-    await fetchRoles()
+  const orgId = targetOrgId.value || currentOrgId.value
+  if (!orgId) {
+    message.warning('未找到当前组织')
+    return
   }
+
   editingMemberId.value = member.id
-  selectedRoleId.value = member.roleIds[0]
   modalTitle.value = `编辑成员 - ${member.username}`
-  showModal.value = true
+  roleOptions.value = []
+  selectedRoleId.value = undefined
+  modalLoading.value = true
+
+  try {
+    const roleMatrix = await getUserRoleMatrix(member.id, orgId, { skipSuccTip: true })
+    roleOptions.value = roleMatrix.roles.filter((role) => role.assignable)
+
+    const defaultRoleId = roleMatrix.assigned_role_ids[0]
+    if (defaultRoleId && roleOptions.value.some((role) => role.id === defaultRoleId)) {
+      selectedRoleId.value = defaultRoleId
+    }
+
+    showModal.value = true
+  } catch (error) {
+    editingMemberId.value = undefined
+    roleOptions.value = []
+    selectedRoleId.value = undefined
+  } finally {
+    modalLoading.value = false
+  }
 }
 
 const handleDeleteMember = async (member: Member) => {
@@ -823,5 +842,11 @@ watch(
 .form-select:focus {
   border-color: #1890ff;
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.form-help {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #6b7280;
 }
 </style>

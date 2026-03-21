@@ -68,7 +68,17 @@ export enum BizCode {
   CodeOJIdentifierInvalid = 40004, // OJ账号标识无效
   CodeOJBindCoolDown = 40005, // 绑定冷却中
   CodeOJSyncFailed = 40006, // OJ数据同步失败
-  CodeOJRemoteAuthFailed = 40007, // OJ远端鉴权失败
+  CodeOJCredentialInvalid = 40007, // OJ凭据无效
+  CodeOJSyncDisabled = 40008, // OJ同步已被自动关闭
+  CodeOJTaskNotFound = 40101, // OJ任务不存在
+  CodeOJTaskNotEditable = 40102, // OJ任务不可修改
+  CodeOJTaskExecuteAtInvalid = 40103, // OJ任务执行时间非法
+  CodeOJTaskQuestionNotFound = 40104, // OJ任务题目不存在
+  CodeOJTaskVisibleDenied = 40105, // OJ任务无可见权限
+  CodeOJTaskDeleted = 40106, // OJ任务已删除
+  CodeOJTaskExecutionNotFound = 40107, // OJ任务执行记录不存在
+  CodeOJTaskPendingConfirmation = 40108, // OJ任务存在未确认的新题
+  CodeOJTaskQuestionAmbiguous = 40109, // OJ任务题目存在多个候选
 }
 
 export const BizCodeMessages: Record<number, string> = {
@@ -135,5 +145,15 @@ export const BizCodeMessages: Record<number, string> = {
   [BizCode.CodeOJIdentifierInvalid]: "OJ账号标识无效",
   [BizCode.CodeOJBindCoolDown]: "操作过于频繁，请稍后再试",
   [BizCode.CodeOJSyncFailed]: "OJ数据同步失败",
-  [BizCode.CodeOJRemoteAuthFailed]: "远端鉴权失败，请检查账号与密码",
+  [BizCode.CodeOJCredentialInvalid]: "OJ账号凭据无效",
+  [BizCode.CodeOJSyncDisabled]: "该OJ账号同步已被自动关闭，请重新绑定后再试",
+  [BizCode.CodeOJTaskNotFound]: "OJ任务不存在",
+  [BizCode.CodeOJTaskNotEditable]: "该 OJ 任务版本当前不可修改",
+  [BizCode.CodeOJTaskExecuteAtInvalid]: "执行时间不合法",
+  [BizCode.CodeOJTaskQuestionNotFound]: "任务题目不存在",
+  [BizCode.CodeOJTaskVisibleDenied]: "无权查看该 OJ 任务",
+  [BizCode.CodeOJTaskDeleted]: "该 OJ 任务已删除",
+  [BizCode.CodeOJTaskExecutionNotFound]: "OJ任务执行记录不存在",
+  [BizCode.CodeOJTaskPendingConfirmation]: "存在未确认的新题目，请确认后再创建任务",
+  [BizCode.CodeOJTaskQuestionAmbiguous]: "任务题目存在多个候选，请先确认具体题目",
 }
