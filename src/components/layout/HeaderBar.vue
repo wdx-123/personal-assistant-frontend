@@ -1,9 +1,15 @@
 <template>
-  <div class="header-bar-wrapper">
+  <div
+    ref="wrapperRef"
+    class="header-bar-wrapper"
+    @mouseenter="showHeaderBar"
+    @mouseleave="hideHeaderBar"
+  >
     <!-- 触发按钮 -->
     <button
       class="trigger-button"
-      @click="toggleHeaderBar"
+      @click="showHeaderBar"
+      @focus="showHeaderBar"
       :class="{ active: isVisible }"
     >
       <svg
@@ -153,7 +159,7 @@
  * 默认隐藏，通过顶部小按钮触发显示
  * 用户头像在右侧，点击显示下拉菜单
  */
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { message } from "@/components/common";
@@ -169,9 +175,8 @@ const isConsolePage = computed(() => route.path.startsWith('/console'));
 const isVisible = ref(false);
 
 // 监听路由变化，切换页面时默认隐藏
-import { watch } from 'vue';
 watch(() => route.path, () => {
-  isVisible.value = false;
+  hideHeaderBar();
 });
 
 // 是否显示下拉菜单
@@ -182,18 +187,24 @@ const isLoggingOut = ref(false);
 
 // 下拉菜单容器的引用
 const dropdownRef = ref<HTMLElement | null>(null);
+const wrapperRef = ref<HTMLElement | null>(null);
 
 // 用户信息
 const user = computed(() => authStore.user);
 
 /**
- * 切换 HeaderBar 显示/隐藏
+ * 展示 HeaderBar
  */
-const toggleHeaderBar = () => {
-  isVisible.value = !isVisible.value;
-  if (!isVisible.value) {
-    isDropdownVisible.value = false;
-  }
+const showHeaderBar = () => {
+  isVisible.value = true;
+};
+
+/**
+ * 隐藏 HeaderBar
+ */
+const hideHeaderBar = () => {
+  isVisible.value = false;
+  isDropdownVisible.value = false;
 };
 
 /**
@@ -214,11 +225,15 @@ const closeDropdown = () => {
  * 处理点击外部区域
  */
 const handleClickOutside = (event: MouseEvent) => {
-  if (isDropdownVisible.value && dropdownRef.value) {
-    // 检查点击是否在下拉菜单外部
-    if (!dropdownRef.value.contains(event.target as Node)) {
-      closeDropdown();
-    }
+  const target = event.target as Node;
+
+  if (isVisible.value && wrapperRef.value && !wrapperRef.value.contains(target)) {
+    hideHeaderBar();
+    return;
+  }
+
+  if (isDropdownVisible.value && dropdownRef.value && !dropdownRef.value.contains(target)) {
+    closeDropdown();
   }
 };
 
@@ -235,8 +250,7 @@ const handleProfile = () => {
  */
 const handleNavigation = () => {
   // 先收起 HeaderBar
-  isVisible.value = false;
-  isDropdownVisible.value = false;
+  hideHeaderBar();
   
   // 等待动画结束后跳转
   setTimeout(() => {

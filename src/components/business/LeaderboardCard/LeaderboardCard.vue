@@ -32,21 +32,21 @@
           <div class="card-header">
             <div class="header-left">
               <h2>算法排行榜 - {{ platformName }}</h2>
-              <span class="scope-tag" :class="scopeTagClass">{{ scopeTagText }}</span>
+              <span class="scope-tag scope-org">{{ orgScopeTagText }}</span>
             </div>
             <div class="flip-hint" @click="handleFlip">
-              {{ currentScope === 'all' ? '查看我的组织排名' : '查看全部组织排名' }} →
+              查看全部组织排名 →
             </div>
           </div>
           <div class="card-content">
             <!-- 加载状态 -->
-            <div v-if="currentLoading" class="loading-state">
+            <div v-if="orgLoading" class="loading-state">
               <div class="spinner"></div>
               <p>加载中...</p>
             </div>
 
             <!-- 空状态 -->
-            <div v-else-if="currentRankList.length === 0" class="empty-state">
+            <div v-else-if="orgRankList.length === 0" class="empty-state">
               <p>暂无排行榜数据</p>
               <p class="hint">绑定{{ platformName }}账号后即可查看</p>
             </div>
@@ -54,14 +54,14 @@
             <!-- 数据列表 -->
             <div v-else>
               <!-- 前三名颁奖台 -->
-              <RankingPodium :items="currentRankList.slice(0, 3)" />
+              <RankingPodium :items="orgRankList.slice(0, 3)" />
 
               <!-- 第四名及以后 -->
               <RankingList
-                :items="currentRankList.slice(3)"
+                :items="orgRankList.slice(3)"
                 :start-index="3"
-                :loading-more="currentLoadingMore"
-                :has-more="currentHasMore"
+                :loading-more="orgLoadingMore"
+                :has-more="orgHasMore"
                 @load-more="loadMoreCurrent"
               />
             </div>
@@ -75,24 +75,21 @@
           <div class="card-header">
             <div class="header-left">
               <h2>算法排行榜 - {{ platformName }}</h2>
-              <span class="scope-tag" :class="scopeTagClass">{{ scopeTagText }}</span>
+              <span class="scope-tag scope-all">全部组织</span>
             </div>
             <div class="flip-hint" @click="handleFlip">
-              ← {{ currentScope === 'all' ? '查看我的组织排名' : '查看全部组织排名' }}
+              ← 查看我的组织排名
             </div>
           </div>
-          <!-- 这里不需要渲染内容，因为翻转瞬间我们会切换 scope 并重新渲染正面 -->
-          <!-- 或者我们可以简单复用上面的结构，但为了简化逻辑，我们让翻转只是一个视觉效果 -->
-          <!-- 实际上，为了平滑过渡，反面应该显示“即将切换到...”的状态 -->
           <div class="card-content">
             <!-- 加载状态 -->
-            <div v-if="currentLoading" class="loading-state">
+            <div v-if="allLoading" class="loading-state">
               <div class="spinner"></div>
               <p>加载中...</p>
             </div>
 
             <!-- 空状态 -->
-            <div v-else-if="currentRankList.length === 0" class="empty-state">
+            <div v-else-if="allRankList.length === 0" class="empty-state">
               <p>暂无排行榜数据</p>
               <p class="hint">绑定{{ platformName }}账号后即可查看</p>
             </div>
@@ -100,14 +97,14 @@
             <!-- 数据列表 -->
             <div v-else>
               <!-- 前三名颁奖台 -->
-              <RankingPodium :items="currentRankList.slice(0, 3)" />
+              <RankingPodium :items="allRankList.slice(0, 3)" />
 
               <!-- 第四名及以后 -->
               <RankingList
-                :items="currentRankList.slice(3)"
+                :items="allRankList.slice(3)"
                 :start-index="3"
-                :loading-more="currentLoadingMore"
-                :has-more="currentHasMore"
+                :loading-more="allLoadingMore"
+                :has-more="allHasMore"
                 @load-more="loadMoreCurrent"
               />
             </div>
@@ -123,7 +120,7 @@
  * 排行榜卡片组件
  * 支持3D翻转切换 全网/本组织 排名
  */
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { OJPlatform } from '@/types'
 import RankingPodium from './RankingPodium.vue'
 import RankingList from './RankingList.vue'
@@ -141,26 +138,11 @@ const props = withDefaults(defineProps<Props>(), {
 
 // 使用数据逻辑
 const {
-  luoguLoading,
-  leetcodeLoading,
-  lanqiaoLoading,
-  luoguLoadingMore,
-  leetcodeLoadingMore,
-  lanqiaoLoadingMore,
-  luoguHasMore,
-  leetcodeHasMore,
-  lanqiaoHasMore,
-  luoguRankList,
-  leetcodeRankList,
-  lanqiaoRankList,
-  loadMoreLuogu,
-  loadMoreLeetcode,
-  loadMoreLanqiao,
-  refreshPlatform,
+  getState,
+  loadMore,
+  preparePlatform,
+  ensureScopeReady,
 } = useRankingData()
-
-// 当前查看的范围：'all' | 'org'
-const currentScope = ref<'all' | 'org'>('org')
 
 // 翻转状态
 const isFlipped = ref(false)
@@ -174,55 +156,34 @@ const platformNames: Record<OJPlatform, string> = {
 
 const platformName = computed(() => platformNames[props.platform])
 
-const scopeTagText = computed(() => {
-  if (currentScope.value === 'all') return '全部组织'
+const orgScopeTagText = computed(() => {
   const name = (props.orgName || '').trim()
   return name ? `${name}` : '我的组织'
 })
 
-const scopeTagClass = computed(() => {
-  return currentScope.value === 'all' ? 'scope-all' : 'scope-org'
-})
+const orgState = computed(() => getState(props.platform, 'org', props.orgId))
+const allState = computed(() => getState(props.platform, 'all_members'))
+const activeScope = computed<'org' | 'all_members'>(() => (isFlipped.value ? 'all_members' : 'org'))
 
-const currentLoading = computed(() => {
-  if (props.platform === 'luogu') return luoguLoading.value
-  if (props.platform === 'leetcode') return leetcodeLoading.value
-  if (props.platform === 'lanqiao') return lanqiaoLoading.value
-  return false
-})
+const orgLoading = computed(() => orgState.value.loading)
+const orgLoadingMore = computed(() => orgState.value.loadingMore)
+const orgHasMore = computed(() => orgState.value.hasMore)
+const orgRankList = computed(() => orgState.value.list)
 
-const currentLoadingMore = computed(() => {
-  if (props.platform === 'luogu') return luoguLoadingMore.value
-  if (props.platform === 'leetcode') return leetcodeLoadingMore.value
-  if (props.platform === 'lanqiao') return lanqiaoLoadingMore.value
-  return false
-})
+const allLoading = computed(() => allState.value.loading)
+const allLoadingMore = computed(() => allState.value.loadingMore)
+const allHasMore = computed(() => allState.value.hasMore)
+const allRankList = computed(() => allState.value.list)
 
-const currentHasMore = computed(() => {
-  if (props.platform === 'luogu') return luoguHasMore.value
-  if (props.platform === 'leetcode') return leetcodeHasMore.value
-  if (props.platform === 'lanqiao') return lanqiaoHasMore.value
-  return false
-})
-
-const currentRankList = computed(() => {
-  if (props.platform === 'luogu') return luoguRankList.value
-  if (props.platform === 'leetcode') return leetcodeRankList.value
-  if (props.platform === 'lanqiao') return lanqiaoRankList.value
-  return []
-})
-
-const refreshCurrent = () => {
-  const apiScope = currentScope.value === 'all' ? 'all_members' : 'org'
-  refreshPlatform(props.platform, apiScope, apiScope === 'org' ? props.orgId : undefined)
+const prepareCurrentPlatform = async () => {
+  isFlipped.value = false
+  await preparePlatform(props.platform, props.orgId)
 }
 
 const loadMoreCurrent = () => {
-  const apiScope = currentScope.value === 'all' ? 'all_members' : 'org'
-  const orgId = apiScope === 'org' ? props.orgId : undefined
-  if (props.platform === 'luogu') loadMoreLuogu(apiScope, orgId)
-  if (props.platform === 'leetcode') loadMoreLeetcode(apiScope, orgId)
-  if (props.platform === 'lanqiao') loadMoreLanqiao(apiScope, orgId)
+  const scope = activeScope.value
+  const orgId = scope === 'org' ? props.orgId : undefined
+  void loadMore(props.platform, scope, orgId)
 }
 
 /**
@@ -230,30 +191,23 @@ const loadMoreCurrent = () => {
  */
 const handleFlip = () => {
   isFlipped.value = !isFlipped.value
-  // 延迟切换 scope，等待翻转动画过半
-  setTimeout(() => {
-    currentScope.value = currentScope.value === 'all' ? 'org' : 'all'
-    refreshCurrent()
-  }, 300)
+
+  if (isFlipped.value && !allState.value.initialized && !allState.value.loading) {
+    void ensureScopeReady(props.platform, 'all_members')
+  }
 }
 
-// 监听平台变化，自动刷新数据
-watch(() => props.platform, () => {
-  refreshCurrent()
-})
-
-watch(() => props.orgId, () => {
-  refreshCurrent()
-})
-
-// 组件挂载时获取数据
-onMounted(() => {
-  refreshCurrent()
-})
+watch(
+  () => [props.platform, props.orgId],
+  () => {
+    void prepareCurrentPlatform()
+  },
+  { immediate: true }
+)
 
 // 暴露刷新方法
 defineExpose({
-  refresh: refreshCurrent,
+  refresh: prepareCurrentPlatform,
 })
 </script>
 

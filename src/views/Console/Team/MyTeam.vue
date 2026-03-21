@@ -37,10 +37,22 @@
           </div>
           <div class="team-info">
             <h3 class="team-name">{{ team.name }}</h3>
-            <div class="invite-code-wrapper" @click.stop="copyInviteCode(team.inviteCode)" title="点击复制邀请码">
+            <div
+              class="invite-code-wrapper"
+              :class="{ masked: !team.canViewInviteCode }"
+              @click.stop="copyInviteCode(team)"
+              :title="team.canViewInviteCode ? '点击复制邀请码' : '你没有权限查看邀请码'"
+            >
               <span class="invite-label">邀请码：</span>
-              <span class="invite-code">{{ team.inviteCode }}</span>
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon-copy" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <span class="invite-code">{{ getInviteCodeText(team) }}</span>
+              <svg
+                v-if="team.canViewInviteCode && team.inviteCode"
+                xmlns="http://www.w3.org/2000/svg"
+                class="icon-copy"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
             </div>
@@ -181,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { message, Confirm } from '@/components/common'
 import { useAuthStore } from '@/stores/auth'
 import { createOrg, deleteOrg, getOrgList, setCurrentOrg, updateOrg, joinOrg, getRoleList, assignUserRole } from '@/services/permission.service'
@@ -197,6 +209,7 @@ interface Team {
   createdAt: string
   isCurrent: boolean
   inviteCode: string
+  canViewInviteCode: boolean
   avatar?: string
   avatarId?: number
   ownerId?: number
@@ -232,6 +245,7 @@ const resetOrgForm = () => {
 const mapOrgToTeam = (org: OrgItem): Team => {
   const currentOrgId = authStore.user?.current_org_id || 0
   const isOwner = org.owner_id ? org.owner_id === authStore.user?.id : true
+  const inviteCode = org.code || ''
   return {
     id: org.id,
     name: org.name || '-',
@@ -240,11 +254,19 @@ const mapOrgToTeam = (org: OrgItem): Team => {
     memberCount: org.member_count || 0,
     createdAt: org.created_at ? String(org.created_at).slice(0, 10) : '-',
     isCurrent: org.id === currentOrgId,
-    inviteCode: org.code || '-',
+    inviteCode,
+    canViewInviteCode: inviteCode !== '',
     avatar: org.avatar || '',
     avatarId: org.avatar_id ?? undefined,
     ownerId: org.owner_id
   }
+}
+
+const getInviteCodeText = (team: Team) => {
+  if (!team.canViewInviteCode) {
+    return '无权限查看'
+  }
+  return team.inviteCode || '暂无邀请码'
 }
 
 const fetchTeams = async () => {
@@ -306,7 +328,7 @@ const handleSwitchTeam = async (team: Team) => {
           id: team.id,
           name: team.name,
           description: team.description,
-          code: team.inviteCode,
+          code: team.canViewInviteCode ? team.inviteCode : '',
           owner_id: team.ownerId || 0,
           created_at: team.createdAt,
           updated_at: '' // No need to be precise here for simple update
@@ -328,7 +350,7 @@ const handleSwitchTeam = async (team: Team) => {
 const handleViewDetails = (team: Team) => {
   modalMode.value = 'detail'
   modalTitle.value = `团队详情 - ${team.name}`
-  modalBodyText.value = `组织名称：${team.name}\n邀请码：${team.inviteCode}\n组织描述：${team.description || '暂无描述'}`
+  modalBodyText.value = `组织名称：${team.name}\n邀请码：${getInviteCodeText(team)}\n组织描述：${team.description || '暂无描述'}`
   showModal.value = true
 }
 
@@ -338,7 +360,7 @@ const handleEditTeam = (team: Team) => {
   editingOrgId.value = team.id
   orgForm.name = team.name
   orgForm.description = team.description || ''
-  orgForm.code = team.inviteCode === '-' ? '' : team.inviteCode
+  orgForm.code = team.canViewInviteCode ? team.inviteCode : ''
   orgForm.avatar = team.avatar || ''
   orgForm.avatar_id = team.avatarId
   showModal.value = true
@@ -369,7 +391,7 @@ const handleDeleteTeam = async (team: Team) => {
               id: fallbackTeam.id,
               name: fallbackTeam.name,
               description: fallbackTeam.description,
-              code: fallbackTeam.inviteCode,
+              code: fallbackTeam.canViewInviteCode ? fallbackTeam.inviteCode : '',
               owner_id: fallbackTeam.ownerId || 0,
               created_at: fallbackTeam.createdAt,
               updated_at: ''
@@ -387,13 +409,17 @@ const handleDeleteTeam = async (team: Team) => {
   }
 }
 
-const copyInviteCode = async (code: string) => {
-  if (!code || code === '-') {
+const copyInviteCode = async (team: Team) => {
+  if (!team.canViewInviteCode) {
+    message.warning('你没有权限查看邀请码')
+    return
+  }
+  if (!team.inviteCode) {
     message.warning('该组织暂无邀请码')
     return
   }
   try {
-    await navigator.clipboard.writeText(code)
+    await navigator.clipboard.writeText(team.inviteCode)
     message.success('邀请码已复制')
   } catch (err) {
     message.error('复制失败，请手动复制')
@@ -618,8 +644,20 @@ onMounted(() => {
   color: #1890ff;
 }
 
+.invite-code-wrapper.masked {
+  cursor: default;
+}
+
+.invite-code-wrapper.masked:hover {
+  color: #6b7280;
+}
+
 .invite-code-wrapper:hover .invite-code {
   text-decoration: underline;
+}
+
+.invite-code-wrapper.masked:hover .invite-code {
+  text-decoration: none;
 }
 
 .invite-label {

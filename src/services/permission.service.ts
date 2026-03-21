@@ -20,6 +20,7 @@ import type {
   PageDataUser,
   UserDetailItem,
   AssignUserRoleRequest,
+  UserRoleMatrixItem,
   OrgItem,
   PageDataOrg,
   CreateOrgRequest,
@@ -160,6 +161,13 @@ export function getUserDetail(id: number, config?: RequestOptions): Promise<User
 
 export function getUserRoles(id: number, orgId: number, config?: RequestOptions): Promise<RoleItem[]> {
   return apiClient.get(`/system/user/${id}/roles`, {
+    ...config,
+    params: { org_id: orgId }
+  } as any)
+}
+
+export function getUserRoleMatrix(id: number, orgId: number, config?: RequestOptions): Promise<UserRoleMatrixItem> {
+  return apiClient.get(`/system/user/${id}/role_matrix`, {
     ...config,
     params: { org_id: orgId }
   } as any)

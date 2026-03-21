@@ -82,14 +82,22 @@ const ensureOriginSnapshot = (el: HTMLElement) => {
   dataset[ORIG_TITLE] = el.getAttribute('title') || ''
 }
 
-const restoreOriginSnapshot = (el: HTMLElement) => {
+const restoreOriginSnapshot = (
+  el: HTMLElement,
+  options: { restoreDisabled?: boolean } = {}
+) => {
   const dataset = el.dataset as any
   const anyEl = el as any
+  const { restoreDisabled = true } = options
 
-  const originDisabled = dataset[ORIG_DISABLED] === 'true'
-  if (typeof anyEl.disabled === 'boolean') {
-    anyEl.disabled = originDisabled
-  } else {
+  if (restoreDisabled) {
+    const originDisabled = dataset[ORIG_DISABLED] === 'true'
+    if (typeof anyEl.disabled === 'boolean') {
+      anyEl.disabled = originDisabled
+    }
+  }
+
+  if (typeof anyEl.disabled !== 'boolean') {
     const originAria = dataset[ORIG_ARIA_DISABLED]
     if (originAria) el.setAttribute('aria-disabled', originAria)
     else el.removeAttribute('aria-disabled')
@@ -148,9 +156,9 @@ const applyPermission = (el: HTMLElement, binding: { value: PermissionValue }) =
   const { allowed, showIcon, tip } = resolveAllowed(binding.value)
 
   if (allowed) {
-    restoreOriginSnapshot(el)
+    restoreOriginSnapshot(el, { restoreDisabled: false })
     if (targetEl !== el) {
-      restoreOriginSnapshot(targetEl)
+      restoreOriginSnapshot(targetEl, { restoreDisabled: false })
     }
     el.classList.remove('permission-denied')
     el.classList.remove('permission-denied-icon')

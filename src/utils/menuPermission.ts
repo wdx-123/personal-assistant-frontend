@@ -49,6 +49,12 @@ export function buildApiKey(method: string, path: string): string {
   return `${normalizedMethod} ${normalizedPath}`
 }
 
+function parseApiKey(key: string): { method: string; path: string } | null {
+  const [method = '', path = ''] = key.split(' ')
+  if (!method || !path) return null
+  return { method, path }
+}
+
 export function collectApiKeys(items: MenuItem[]): Set<string> {
   const apis: ApiItemSimple[] = []
 
@@ -61,13 +67,7 @@ export function collectApiKeys(items: MenuItem[]): Set<string> {
   return new Set(
     apis
       .map((api) => buildApiKey(String(api?.method || ''), String(api?.path || '')))
-      .filter((key) => {
-        const trimmed = (key || '').trim()
-        if (!trimmed) return false
-        if (!trimmed.includes(' ')) return false
-        const [method, path] = trimmed.split(' ')
-        return !!method && !!path
-      })
+      .filter((key) => parseApiKey((key || '').trim()) !== null)
   )
 }
 
@@ -85,6 +85,7 @@ export function matchApiPath(allowedPath: string, requiredPath: string): boolean
   for (let i = 0; i < aSeg.length; i += 1) {
     const left = aSeg[i]
     const right = rSeg[i]
+    if (!left || !right) return false
     if (left === right) continue
     if (isPathPlaceholder(left) || isPathPlaceholder(right)) continue
     return false
@@ -98,15 +99,16 @@ export function hasApiPermission(
   api: { method: string; path: string }
 ): boolean {
   const requiredKey = buildApiKey(api.method, api.path)
-  const [requiredMethod, requiredPath] = requiredKey.split(' ')
+  const requiredApi = parseApiKey(requiredKey)
   const keys = collectApiKeys(items)
-  if (!requiredMethod || !requiredPath) return false
+  if (!requiredApi) return false
   if (keys.size === 0) return false
 
   for (const key of keys) {
-    const [method, path] = key.split(' ')
-    if (method !== requiredMethod) continue
-    if (matchApiPath(path, requiredPath)) return true
+    const allowedApi = parseApiKey(key)
+    if (!allowedApi) continue
+    if (allowedApi.method !== requiredApi.method) continue
+    if (matchApiPath(allowedApi.path, requiredApi.path)) return true
   }
 
   return false

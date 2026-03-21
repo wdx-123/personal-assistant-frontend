@@ -59,7 +59,7 @@
             新增菜单
           </a-button>
           <a-button
-            v-permission="['permission:menu:batch_delete', 'permission:menu:delete_batch', 'permission:menu:delete']"
+            v-permission="['permission:menu:batch_delete']"
             danger
             :disabled="!hasSelected"
             @click="batchDelete"
@@ -271,7 +271,6 @@ import {
   DeleteOutlined
 } from '@ant-design/icons-vue'
 import { getMenuList, createMenu, updateMenu, deleteMenu } from '@/services/permission.service'
-import { useAuthStore } from '@/stores/auth'
 import { isPermissionDenied } from '@/utils/request'
 
 const searchForm = reactive({
@@ -294,7 +293,6 @@ type TableKey = string | number
 const tree = ref<any[]>([])
 const loading = ref(false)
 const noPermission = ref(false)
-const authStore = useAuthStore()
 const tableLocale = computed(() => ({ emptyText: noPermission.value ? '你没有权限访问' : '暂无数据' }))
 const selectedIds = ref<TableKey[]>([])
 const hasSelected = computed(() => selectedIds.value.length > 0)

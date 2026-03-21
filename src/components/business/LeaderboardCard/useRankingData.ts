@@ -1,71 +1,86 @@
 /**
  * 排行榜数据获取逻辑
- * 支持分页加载
+ * 按平台 + 范围 + 组织维度缓存，支持翻面预加载和分页加载
  */
-import { ref } from 'vue'
+import { reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getRankingList } from '@/services/oj.service'
 import { getUserList } from '@/services/permission.service'
 import { isRequestCanceled } from '@/utils/request'
-import type { RankingItem, MyRank } from '@/types'
+import type { OJPlatform, RankingItem, MyRank } from '@/types'
 
 type RankingScope = 'current_org' | 'all_members' | 'org'
 
+interface RankingCacheState {
+  list: RankingItem[]
+  myRank: MyRank | null
+  total: number
+  page: number
+  hasMore: boolean
+  loading: boolean
+  loadingMore: boolean
+  initialized: boolean
+}
+
+interface FetchRankingOptions {
+  append?: boolean
+  silentIfCached?: boolean
+}
+
+const createEmptyState = (): RankingCacheState => ({
+  list: [],
+  myRank: null,
+  total: 0,
+  page: 1,
+  hasMore: true,
+  loading: false,
+  loadingMore: false,
+  initialized: false,
+})
+
 export function useRankingData() {
-  // 加载状态 - 两个平台独立
-  const luoguLoading = ref(false)
-  const leetcodeLoading = ref(false)
-  const lanqiaoLoading = ref(false)
-
-  // 加载更多状态
-  const luoguLoadingMore = ref(false)
-  const leetcodeLoadingMore = ref(false)
-  const lanqiaoLoadingMore = ref(false)
-
-  // 是否还有更多数据
-  const luoguHasMore = ref(true)
-  const leetcodeHasMore = ref(true)
-  const lanqiaoHasMore = ref(true)
-
-  // 分页信息
-  const luoguPage = ref(1)
-  const leetcodePage = ref(1)
-  const lanqiaoPage = ref(1)
-  const pageSize = 10
-
-  // 洛谷排行榜数据
-  const luoguRankList = ref<RankingItem[]>([])
-  const luoguMyRank = ref<MyRank | null>(null)
-  const luoguTotal = ref(0)
-
-  // 力扣排行榜数据
-  const leetcodeRankList = ref<RankingItem[]>([])
-  const leetcodeMyRank = ref<MyRank | null>(null)
-  const leetcodeTotal = ref(0)
-
-  // 蓝桥杯排行榜数据
-  const lanqiaoRankList = ref<RankingItem[]>([])
-  const lanqiaoMyRank = ref<MyRank | null>(null)
-  const lanqiaoTotal = ref(0)
-
-  // 当前用户信息
   const authStore = useAuthStore()
-  const user = authStore.user
 
+  const rankingStateMap = reactive<Record<string, RankingCacheState>>({})
+  const pendingBaseRequests = new Map<string, Promise<void>>()
+  const pendingMoreRequests = new Map<string, Promise<void>>()
   const usernameMapCache = new Map<number, Map<number, string>>()
   const UNKNOWN_REAL_NAME = '未知用户'
+  const pageSize = 10
+
+  const normalizeScope = (scope: RankingScope): RankingScope => {
+    return scope === 'current_org' ? 'org' : scope
+  }
+
+  const resolveScopeOrgId = (scope: RankingScope, orgId?: number) => {
+    if (scope === 'all_members') return undefined
+    return orgId || authStore.user?.current_org_id || undefined
+  }
+
+  const buildCacheKey = (platform: OJPlatform, scope: RankingScope, orgId?: number) => {
+    const normalizedScope = normalizeScope(scope)
+    if (normalizedScope === 'all_members') {
+      return `${platform}:all_members`
+    }
+
+    return `${platform}:org:${orgId || 0}`
+  }
+
+  const getState = (platform: OJPlatform, scope: RankingScope, orgId?: number) => {
+    const normalizedScope = normalizeScope(scope)
+    const effectiveOrgId = resolveScopeOrgId(normalizedScope, orgId)
+    const cacheKey = buildCacheKey(platform, normalizedScope, effectiveOrgId)
+
+    if (!rankingStateMap[cacheKey]) {
+      rankingStateMap[cacheKey] = reactive(createEmptyState())
+    }
+
+    return rankingStateMap[cacheKey]
+  }
 
   const isUnknownRealName = (value: string) => {
     const normalized = (value || '').trim()
     return !normalized || normalized === UNKNOWN_REAL_NAME
-  }
-
-  const resolveOrgIdForUserMap = (scope: RankingScope, orgId?: number) => {
-    if (orgId) return orgId
-    if (scope === 'current_org' || scope === 'org') {
-      return authStore.user?.current_org_id
-    }
-    return undefined
   }
 
   const ensureUsernameMap = async (orgId: number) => {
@@ -97,7 +112,7 @@ export function useRankingData() {
 
     const currentUserId = authStore.user?.id
     const currentUserName = (authStore.user?.username || '').trim()
-    const effectiveOrgId = resolveOrgIdForUserMap(scope, orgId)
+    const effectiveOrgId = resolveScopeOrgId(scope, orgId)
 
     let usernameMap: Map<number, string> | null = null
     if (effectiveOrgId) {
@@ -117,266 +132,168 @@ export function useRankingData() {
 
       const mapped = usernameMap?.get(item.user_id)
       if (mapped) return { ...item, real_name: mapped }
+
       return item
     })
   }
 
-  /**
-   * 判断排行榜项是否是当前用户
-   */
-  const isCurrentUser = (item: RankingItem) => {
-    return user?.id === item.user_id
-  }
-
   const buildRankingConfig = (
-    platform: 'luogu' | 'leetcode' | 'lanqiao',
+    platform: OJPlatform,
     scope: RankingScope,
-    orgId?: number
+    orgId?: number,
+    mode: 'base' | 'more' = 'base'
   ) => ({
     skipTip: true,
     skipErrTip: true,
-    dedupeKey: `ranking:${platform}:${scope}:${orgId || 0}`,
-    cancelPrevious: true
+    dedupeKey: `ranking:${platform}:${scope}:${orgId || 0}:${mode}`,
+    cancelPrevious: true,
   })
 
-  /**
-   * 获取洛谷排行榜数据（静默请求）
-   */
-  const fetchLuoguRankingList = async (
-    page: number = 1,
-    isLoadMore: boolean = false,
-    scope: RankingScope = 'current_org',
-    orgId?: number
+  const fetchRankingPage = async (
+    platform: OJPlatform,
+    scope: RankingScope,
+    orgId: number | undefined,
+    page: number,
+    options: FetchRankingOptions = {}
   ) => {
-    try {
-      if (isLoadMore) {
-        luoguLoadingMore.value = true
-      } else {
-        luoguLoading.value = true
+    const normalizedScope = normalizeScope(scope)
+    const effectiveOrgId = resolveScopeOrgId(normalizedScope, orgId)
+    const state = getState(platform, normalizedScope, effectiveOrgId)
+    const cacheKey = buildCacheKey(platform, normalizedScope, effectiveOrgId)
+    const isAppend = options.append === true
+    const pendingMap = isAppend ? pendingMoreRequests : pendingBaseRequests
+    const pendingRequest = pendingMap.get(cacheKey)
+    if (pendingRequest) return pendingRequest
+
+    const requestPromise = (async () => {
+      const shouldShowInitialLoading =
+        !isAppend && !(options.silentIfCached && state.initialized)
+
+      if (isAppend) {
+        state.loadingMore = true
+      } else if (shouldShowInitialLoading) {
+        state.loading = true
       }
 
-      const data = await getRankingList(
-        { platform: 'luogu', page, page_size: pageSize, scope, org_id: orgId || undefined },
-        buildRankingConfig('luogu', scope, orgId)
-      )
+      try {
+        const data = await getRankingList(
+          {
+            platform,
+            page,
+            page_size: pageSize,
+            scope: normalizedScope,
+            org_id: normalizedScope === 'org' ? effectiveOrgId : undefined,
+          },
+          buildRankingConfig(platform, normalizedScope, effectiveOrgId, isAppend ? 'more' : 'base')
+        )
 
-      if (isLoadMore) {
-        // 加载更多：追加数据
-        luoguRankList.value = [...luoguRankList.value, ...(data.list || [])]
-      } else {
-        // 刷新或首次加载：替换数据
-        luoguRankList.value = data.list || []
-        luoguPage.value = 1
+        const nextList =
+          platform === 'lanqiao'
+            ? await patchUnknownNamesForLanqiao(data.list || [], normalizedScope, effectiveOrgId)
+            : data.list || []
+
+        if (isAppend) {
+          state.list = [...state.list, ...nextList]
+          state.page = page
+        } else {
+          state.list = nextList
+          state.page = 1
+        }
+
+        state.myRank = data.my_rank || null
+        state.total = data.total || 0
+        state.hasMore = state.list.length < state.total
+        state.initialized = true
+      } catch (error) {
+        if (isRequestCanceled(error)) return
+
+        if (!isAppend && !state.initialized) {
+          state.list = []
+          state.myRank = null
+          state.total = 0
+          state.page = 1
+          state.hasMore = false
+          state.initialized = true
+        }
+      } finally {
+        state.loading = false
+        state.loadingMore = false
+        pendingMap.delete(cacheKey)
       }
+    })()
 
-      luoguMyRank.value = data.my_rank || null
-      luoguTotal.value = data.total || 0
-
-      // 判断是否还有更多数据
-      luoguHasMore.value = luoguRankList.value.length < luoguTotal.value
-    } catch (error) {
-      if (isRequestCanceled(error)) return
-
-      // 失败也不弹提示
-      if (!isLoadMore) {
-        luoguRankList.value = []
-        luoguMyRank.value = null
-        luoguTotal.value = 0
-        luoguHasMore.value = false
-      }
-    } finally {
-      luoguLoading.value = false
-      luoguLoadingMore.value = false
-    }
+    pendingMap.set(cacheKey, requestPromise)
+    return requestPromise
   }
 
-  /**
-   * 获取力扣排行榜数据（静默请求）
-   */
-  const fetchLeetcodeRankingList = async (
-    page: number = 1,
-    isLoadMore: boolean = false,
-    scope: RankingScope = 'current_org',
-    orgId?: number
+  const refreshPlatform = (
+    platform: OJPlatform,
+    scope: RankingScope = 'org',
+    orgId?: number,
+    options: FetchRankingOptions = {}
   ) => {
-    try {
-      if (isLoadMore) {
-        leetcodeLoadingMore.value = true
-      } else {
-        leetcodeLoading.value = true
-      }
-
-      const data = await getRankingList(
-        { platform: 'leetcode', page, page_size: pageSize, scope, org_id: orgId || undefined },
-        buildRankingConfig('leetcode', scope, orgId)
-      )
-
-      if (isLoadMore) {
-        // 加载更多：追加数据
-        leetcodeRankList.value = [...leetcodeRankList.value, ...(data.list || [])]
-      } else {
-        // 刷新或首次加载：替换数据
-        leetcodeRankList.value = data.list || []
-        leetcodePage.value = 1
-      }
-
-      leetcodeMyRank.value = data.my_rank || null
-      leetcodeTotal.value = data.total || 0
-
-      // 判断是否还有更多数据
-      leetcodeHasMore.value = leetcodeRankList.value.length < leetcodeTotal.value
-    } catch (error) {
-      if (isRequestCanceled(error)) return
-
-      // 失败也不弹提示
-      if (!isLoadMore) {
-        leetcodeRankList.value = []
-        leetcodeMyRank.value = null
-        leetcodeTotal.value = 0
-        leetcodeHasMore.value = false
-      }
-    } finally {
-      leetcodeLoading.value = false
-      leetcodeLoadingMore.value = false
-    }
+    return fetchRankingPage(platform, scope, orgId, 1, options)
   }
 
-  /**
-   * 获取蓝桥杯排行榜数据（静默请求）
-   */
-  const fetchLanqiaoRankingList = async (
-    page: number = 1,
-    isLoadMore: boolean = false,
-    scope: RankingScope = 'current_org',
-    orgId?: number
+  const ensureScopeReady = async (
+    platform: OJPlatform,
+    scope: RankingScope = 'org',
+    orgId?: number,
+    options: FetchRankingOptions = {}
   ) => {
-    try {
-      if (isLoadMore) {
-        lanqiaoLoadingMore.value = true
-      } else {
-        lanqiaoLoading.value = true
-      }
+    const normalizedScope = normalizeScope(scope)
+    const effectiveOrgId = resolveScopeOrgId(normalizedScope, orgId)
+    const state = getState(platform, normalizedScope, effectiveOrgId)
 
-      const data = await getRankingList(
-        { platform: 'lanqiao', page, page_size: pageSize, scope, org_id: orgId || undefined },
-        buildRankingConfig('lanqiao', scope, orgId)
-      )
-
-      const patchedList = await patchUnknownNamesForLanqiao(data.list || [], scope, orgId)
-
-      if (isLoadMore) {
-        // 加载更多：追加数据
-        lanqiaoRankList.value = [...lanqiaoRankList.value, ...patchedList]
-      } else {
-        // 刷新或首次加载：替换数据
-        lanqiaoRankList.value = patchedList
-        lanqiaoPage.value = 1
-      }
-
-      lanqiaoMyRank.value = data.my_rank || null
-      lanqiaoTotal.value = data.total || 0
-
-      // 判断是否还有更多数据
-      lanqiaoHasMore.value = lanqiaoRankList.value.length < lanqiaoTotal.value
-    } catch (error) {
-      if (isRequestCanceled(error)) return
-
-      // 失败也不弹提示
-      if (!isLoadMore) {
-        lanqiaoRankList.value = []
-        lanqiaoMyRank.value = null
-        lanqiaoTotal.value = 0
-        lanqiaoHasMore.value = false
-      }
-    } finally {
-      lanqiaoLoading.value = false
-      lanqiaoLoadingMore.value = false
-    }
-  }
-
-  /**
-   * 加载更多洛谷数据
-   */
-  const loadMoreLuogu = async (
-    scope: RankingScope = 'current_org',
-    orgId?: number
-  ) => {
-    if (!luoguHasMore.value || luoguLoadingMore.value) return
-
-    luoguPage.value += 1
-    await fetchLuoguRankingList(luoguPage.value, true, scope, orgId)
-  }
-
-  /**
-   * 加载更多力扣数据
-   */
-  const loadMoreLeetcode = async (
-    scope: RankingScope = 'current_org',
-    orgId?: number
-  ) => {
-    if (!leetcodeHasMore.value || leetcodeLoadingMore.value) return
-
-    leetcodePage.value += 1
-    await fetchLeetcodeRankingList(leetcodePage.value, true, scope, orgId)
-  }
-
-  /**
-   * 加载更多蓝桥杯数据
-   */
-  const loadMoreLanqiao = async (
-    scope: RankingScope = 'current_org',
-    orgId?: number
-  ) => {
-    if (!lanqiaoHasMore.value || lanqiaoLoadingMore.value) return
-
-    lanqiaoPage.value += 1
-    await fetchLanqiaoRankingList(lanqiaoPage.value, true, scope, orgId)
-  }
-
-  /**
-   * 按当前平台刷新排行榜
-   */
-  const refreshPlatform = async (
-    platform: 'luogu' | 'leetcode' | 'lanqiao',
-    scope: RankingScope = 'current_org',
-    orgId?: number
-  ) => {
-    if (platform === 'luogu') {
-      await fetchLuoguRankingList(1, false, scope, orgId)
+    if (!state.initialized) {
+      await refreshPlatform(platform, normalizedScope, effectiveOrgId, options)
       return
     }
 
-    if (platform === 'leetcode') {
-      await fetchLeetcodeRankingList(1, false, scope, orgId)
-      return
+    void refreshPlatform(platform, normalizedScope, effectiveOrgId, {
+      ...options,
+      silentIfCached: true,
+    })
+  }
+
+  const preparePlatform = async (platform: OJPlatform, orgId?: number) => {
+    const effectiveOrgId = resolveScopeOrgId('org', orgId)
+    const orgState = getState(platform, 'org', effectiveOrgId)
+
+    if (orgState.initialized) {
+      void refreshPlatform(platform, 'org', effectiveOrgId, { silentIfCached: true })
+    } else {
+      await refreshPlatform(platform, 'org', effectiveOrgId)
     }
 
-    await fetchLanqiaoRankingList(1, false, scope, orgId)
+    void ensureScopeReady(platform, 'all_members', undefined, { silentIfCached: true })
+  }
+
+  const loadMore = async (
+    platform: OJPlatform,
+    scope: RankingScope = 'org',
+    orgId?: number
+  ) => {
+    const normalizedScope = normalizeScope(scope)
+    const effectiveOrgId = resolveScopeOrgId(normalizedScope, orgId)
+    const state = getState(platform, normalizedScope, effectiveOrgId)
+
+    if (!state.hasMore || state.loadingMore) return
+
+    await fetchRankingPage(
+      platform,
+      normalizedScope,
+      effectiveOrgId,
+      state.page + 1,
+      { append: true }
+    )
   }
 
   return {
-    luoguLoading,
-    leetcodeLoading,
-    lanqiaoLoading,
-    luoguLoadingMore,
-    leetcodeLoadingMore,
-    lanqiaoLoadingMore,
-    luoguHasMore,
-    leetcodeHasMore,
-    lanqiaoHasMore,
-    luoguRankList,
-    luoguMyRank,
-    luoguTotal,
-    leetcodeRankList,
-    leetcodeMyRank,
-    leetcodeTotal,
-    lanqiaoRankList,
-    lanqiaoMyRank,
-    lanqiaoTotal,
-    isCurrentUser,
-    loadMoreLuogu,
-    loadMoreLeetcode,
-    loadMoreLanqiao,
+    getState,
+    loadMore,
+    preparePlatform,
     refreshPlatform,
+    ensureScopeReady,
   }
 }

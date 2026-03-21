@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   computed,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   reactive,
@@ -118,6 +119,7 @@ interface TaskAnalysisSummary {
 
 const DETAIL_POLL_INTERVAL = 2000;
 const DETAIL_POLL_TIMEOUT = 60000;
+const DEFAULT_TASK_PAGE_SIZE = 5;
 
 const OJ_TASK_PERMISSION_CODES = {
   create: ["permission:oj_task:create", "workbench_task_create"],
@@ -438,13 +440,15 @@ const taskFilters = reactive({
 
 const taskPagination = reactive({
   current: 1,
-  pageSize: 10,
+  pageSize: DEFAULT_TASK_PAGE_SIZE,
   total: 0,
 });
 
 const tasks = ref<OJTaskListItem[]>([]);
 const taskLoading = ref(false);
 const taskError = ref("");
+const taskTableRegionRef = ref<HTMLElement | null>(null);
+const taskScrollTrackRef = ref<HTMLElement | null>(null);
 
 const orgLoading = ref(false);
 const orgOptions = ref<MyOrgItem[]>([]);
@@ -505,6 +509,9 @@ const detailPolling = reactive({
 
 let taskItemSeed = 0;
 let detailPollTimer: number | null = null;
+let taskTableScrollContainer: HTMLElement | null = null;
+let taskScrollbarResizeObserver: ResizeObserver | null = null;
+let taskScrollbarMeasureFrame: number | null = null;
 
 const menuCodeSet = computed(() => collectMenuCodes(authStore.myMenus));
 const canCreate = computed(() =>
@@ -564,6 +571,25 @@ const taskPaginationConfig = computed(() => ({
   pageSizeOptions: ["5", "10", "20", "50"],
   showQuickJumper: false,
   showTotal: (total: number) => `共 ${total} 条`,
+}));
+
+const taskScrollbar = reactive({
+  hasOverflow: false,
+  hovered: false,
+  dragging: false,
+  thumbWidth: 0,
+  thumbOffset: 0,
+  dragStartX: 0,
+  dragStartScrollLeft: 0,
+});
+
+const taskScrollThumbVisible = computed(
+  () => taskScrollbar.hovered || taskScrollbar.dragging,
+);
+
+const taskScrollThumbStyle = computed(() => ({
+  width: `${taskScrollbar.thumbWidth}px`,
+  left: `${taskScrollbar.thumbOffset}px`,
 }));
 
 const executionUserPaginationConfig = computed(() => ({
@@ -1433,6 +1459,7 @@ async function fetchTasks(options: { silent?: boolean } = {}): Promise<void> {
     }
   } finally {
     taskLoading.value = false;
+    scheduleTaskScrollbarSync();
   }
 }
 
@@ -1453,6 +1480,7 @@ function resetTaskFilters(): void {
   taskFilters.status = "all";
   taskFilters.only_latest = "latest";
   taskPagination.current = 1;
+  taskPagination.pageSize = DEFAULT_TASK_PAGE_SIZE;
   void fetchTasks();
 }
 
@@ -1460,13 +1488,286 @@ function refreshTasks(): void {
   void fetchTasks();
 }
 
-function handleTaskTableChange(pagination: {
-  current?: number;
-  pageSize?: number;
-}): void {
-  taskPagination.current = pagination.current || 1;
-  taskPagination.pageSize = pagination.pageSize || 10;
+function handleTaskPaginationChange(page: number, pageSize: number): void {
+  taskPagination.current = page || 1;
+  taskPagination.pageSize = pageSize || DEFAULT_TASK_PAGE_SIZE;
   void fetchTasks();
+}
+
+function clampTaskScrollbarValue(
+  value: number,
+  min: number,
+  max: number,
+): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function cleanupTaskScrollbarDragListeners(): void {
+  window.removeEventListener("pointermove", handleTaskThumbPointerMove);
+  window.removeEventListener("pointerup", handleTaskThumbPointerUp);
+  window.removeEventListener("pointercancel", handleTaskThumbPointerUp);
+}
+
+function detachTaskTableScrollContainer(): void {
+  if (taskTableScrollContainer) {
+    taskTableScrollContainer.removeEventListener(
+      "scroll",
+      handleTaskTableScroll,
+    );
+    if (taskScrollbarResizeObserver) {
+      taskScrollbarResizeObserver.unobserve(taskTableScrollContainer);
+    }
+  }
+  taskTableScrollContainer = null;
+}
+
+function resolveTaskTableScrollContainer(): HTMLElement | null {
+  const nextContainer =
+    taskTableRegionRef.value?.querySelector(
+      ".oj-task-main-table .ant-table-content",
+    ) || null;
+
+  if (nextContainer === taskTableScrollContainer) {
+    return taskTableScrollContainer;
+  }
+
+  detachTaskTableScrollContainer();
+  taskTableScrollContainer = nextContainer as HTMLElement | null;
+
+  if (taskTableScrollContainer) {
+    taskTableScrollContainer.addEventListener("scroll", handleTaskTableScroll, {
+      passive: true,
+    });
+    if (taskScrollbarResizeObserver) {
+      taskScrollbarResizeObserver.observe(taskTableScrollContainer);
+    }
+  }
+
+  return taskTableScrollContainer;
+}
+
+function ensureTaskScrollbarResizeObserver(): void {
+  if (taskScrollbarResizeObserver || typeof ResizeObserver === "undefined") {
+    return;
+  }
+
+  taskScrollbarResizeObserver = new ResizeObserver(() => {
+    updateTaskScrollbarMetrics();
+  });
+
+  if (taskTableRegionRef.value) {
+    taskScrollbarResizeObserver.observe(taskTableRegionRef.value);
+  }
+  if (taskScrollTrackRef.value) {
+    taskScrollbarResizeObserver.observe(taskScrollTrackRef.value);
+  }
+}
+
+function updateTaskScrollbarMetrics(): void {
+  const scrollContainer = resolveTaskTableScrollContainer();
+  const track = taskScrollTrackRef.value;
+
+  if (!scrollContainer || !track) {
+    taskScrollbar.hasOverflow = false;
+    taskScrollbar.thumbWidth = 0;
+    taskScrollbar.thumbOffset = 0;
+    return;
+  }
+
+  const maxScrollLeft = Math.max(
+    scrollContainer.scrollWidth - scrollContainer.clientWidth,
+    0,
+  );
+  const trackWidth = track.clientWidth;
+
+  if (maxScrollLeft <= 0 || trackWidth <= 0) {
+    taskScrollbar.hasOverflow = false;
+    taskScrollbar.hovered = false;
+    taskScrollbar.thumbWidth = 0;
+    taskScrollbar.thumbOffset = 0;
+    return;
+  }
+
+  const visibleRatio = scrollContainer.clientWidth / scrollContainer.scrollWidth;
+  const thumbWidth = clampTaskScrollbarValue(
+    Math.round(trackWidth * visibleRatio),
+    32,
+    trackWidth,
+  );
+  const maxThumbOffset = Math.max(trackWidth - thumbWidth, 0);
+  const scrollRatio =
+    maxScrollLeft > 0 ? scrollContainer.scrollLeft / maxScrollLeft : 0;
+
+  taskScrollbar.hasOverflow = true;
+  taskScrollbar.thumbWidth = thumbWidth;
+  taskScrollbar.thumbOffset = clampTaskScrollbarValue(
+    scrollRatio * maxThumbOffset,
+    0,
+    maxThumbOffset,
+  );
+}
+
+function scheduleTaskScrollbarSync(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (taskScrollbarMeasureFrame !== null) {
+    window.cancelAnimationFrame(taskScrollbarMeasureFrame);
+    taskScrollbarMeasureFrame = null;
+  }
+
+  void nextTick().then(() => {
+    taskScrollbarMeasureFrame = window.requestAnimationFrame(() => {
+      taskScrollbarMeasureFrame = null;
+      ensureTaskScrollbarResizeObserver();
+      resolveTaskTableScrollContainer();
+      updateTaskScrollbarMetrics();
+    });
+  });
+}
+
+function syncTaskScrollFromThumbOffset(nextThumbOffset: number): void {
+  const scrollContainer = resolveTaskTableScrollContainer();
+  const track = taskScrollTrackRef.value;
+
+  if (!scrollContainer || !track || !taskScrollbar.hasOverflow) {
+    return;
+  }
+
+  const maxScrollLeft = Math.max(
+    scrollContainer.scrollWidth - scrollContainer.clientWidth,
+    0,
+  );
+  const maxThumbOffset = Math.max(track.clientWidth - taskScrollbar.thumbWidth, 0);
+  const clampedThumbOffset = clampTaskScrollbarValue(
+    nextThumbOffset,
+    0,
+    maxThumbOffset,
+  );
+
+  taskScrollbar.thumbOffset = clampedThumbOffset;
+
+  if (maxScrollLeft <= 0 || maxThumbOffset <= 0) {
+    scrollContainer.scrollLeft = 0;
+    return;
+  }
+
+  scrollContainer.scrollLeft =
+    (clampedThumbOffset / maxThumbOffset) * maxScrollLeft;
+}
+
+function moveTaskThumbToClientX(clientX: number): void {
+  const track = taskScrollTrackRef.value;
+  if (!track) {
+    return;
+  }
+
+  const trackRect = track.getBoundingClientRect();
+  const nextThumbOffset =
+    clientX - trackRect.left - taskScrollbar.thumbWidth / 2;
+  syncTaskScrollFromThumbOffset(nextThumbOffset);
+}
+
+function isPointerInsideTaskTrack(clientX: number, clientY: number): boolean {
+  const track = taskScrollTrackRef.value;
+  if (!track) {
+    return false;
+  }
+
+  const trackRect = track.getBoundingClientRect();
+  return (
+    clientX >= trackRect.left &&
+    clientX <= trackRect.right &&
+    clientY >= trackRect.top &&
+    clientY <= trackRect.bottom
+  );
+}
+
+function handleTaskTableScroll(): void {
+  updateTaskScrollbarMetrics();
+}
+
+function handleTaskScrollTrackEnter(): void {
+  if (!taskScrollbar.hasOverflow) {
+    return;
+  }
+  taskScrollbar.hovered = true;
+}
+
+function handleTaskScrollTrackLeave(): void {
+  if (taskScrollbar.dragging) {
+    return;
+  }
+  taskScrollbar.hovered = false;
+}
+
+function handleTaskScrollTrackPointerDown(event: PointerEvent): void {
+  if (!taskScrollbar.hasOverflow) {
+    return;
+  }
+  taskScrollbar.hovered = true;
+  moveTaskThumbToClientX(event.clientX);
+}
+
+function handleTaskThumbPointerDown(event: PointerEvent): void {
+  if (!taskScrollbar.hasOverflow) {
+    return;
+  }
+
+  event.preventDefault();
+  taskScrollbar.dragging = true;
+  taskScrollbar.hovered = true;
+  taskScrollbar.dragStartX = event.clientX;
+  taskScrollbar.dragStartScrollLeft = taskTableScrollContainer?.scrollLeft || 0;
+
+  document.body.style.userSelect = "none";
+  window.addEventListener("pointermove", handleTaskThumbPointerMove);
+  window.addEventListener("pointerup", handleTaskThumbPointerUp);
+  window.addEventListener("pointercancel", handleTaskThumbPointerUp);
+}
+
+function handleTaskThumbPointerMove(event: PointerEvent): void {
+  if (!taskScrollbar.dragging) {
+    return;
+  }
+
+  event.preventDefault();
+
+  const scrollContainer = resolveTaskTableScrollContainer();
+  const track = taskScrollTrackRef.value;
+
+  if (!scrollContainer || !track) {
+    return;
+  }
+
+  const maxScrollLeft = Math.max(
+    scrollContainer.scrollWidth - scrollContainer.clientWidth,
+    0,
+  );
+  const maxThumbOffset = Math.max(track.clientWidth - taskScrollbar.thumbWidth, 0);
+
+  if (maxScrollLeft <= 0 || maxThumbOffset <= 0) {
+    return;
+  }
+
+  const deltaX = event.clientX - taskScrollbar.dragStartX;
+  const scrollPerPixel = maxScrollLeft / maxThumbOffset;
+  scrollContainer.scrollLeft = clampTaskScrollbarValue(
+    taskScrollbar.dragStartScrollLeft + deltaX * scrollPerPixel,
+    0,
+    maxScrollLeft,
+  );
+}
+
+function handleTaskThumbPointerUp(event: PointerEvent): void {
+  taskScrollbar.dragging = false;
+  cleanupTaskScrollbarDragListeners();
+  document.body.style.removeProperty("user-select");
+
+  if (!isPointerInsideTaskTrack(event.clientX, event.clientY)) {
+    taskScrollbar.hovered = false;
+  }
 }
 
 function openCreateDrawer(): void {
@@ -2054,10 +2355,22 @@ watch(
 
 onBeforeUnmount(() => {
   stopDetailPolling();
+  cleanupTaskScrollbarDragListeners();
+  detachTaskTableScrollContainer();
+  if (taskScrollbarResizeObserver) {
+    taskScrollbarResizeObserver.disconnect();
+    taskScrollbarResizeObserver = null;
+  }
+  if (taskScrollbarMeasureFrame !== null) {
+    window.cancelAnimationFrame(taskScrollbarMeasureFrame);
+    taskScrollbarMeasureFrame = null;
+  }
+  document.body.style.removeProperty("user-select");
 });
 
 onMounted(() => {
   resetTaskForm();
+  scheduleTaskScrollbarSync();
   void fetchOrgOptions();
   void fetchTasks();
 });
@@ -2183,126 +2496,159 @@ onMounted(() => {
         :message="taskError"
       />
 
-      <a-table
-        :columns="LIST_COLUMNS as any"
-        :data-source="tasks"
-        :pagination="taskPaginationConfig"
-        :loading="taskLoading"
-        :locale="tableLocale"
-        row-key="task_id"
-        size="middle"
-        :scroll="{ x: 1750 }"
-        @change="handleTaskTableChange"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'title'">
-            <div class="task-title-cell">
-              <div class="task-title-main">{{ record.title }}</div>
-              <div class="task-title-sub">
-                v{{ record.version_no }} · root #{{ record.root_task_id }}
-                <span v-if="record.parent_task_id">
-                  · 来源 #{{ record.parent_task_id }}</span
+      <div ref="taskTableRegionRef" class="task-table-region">
+        <a-table
+          class="oj-task-main-table"
+          :columns="LIST_COLUMNS as any"
+          :data-source="tasks"
+          :pagination="false"
+          :loading="taskLoading"
+          :locale="tableLocale"
+          row-key="task_id"
+          size="middle"
+          :scroll="{ x: 1750 }"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'title'">
+              <div class="task-title-cell">
+                <div class="task-title-main">{{ record.title }}</div>
+                <div class="task-title-sub">
+                  v{{ record.version_no }} · root #{{ record.root_task_id }}
+                  <span v-if="record.parent_task_id">
+                    · 来源 #{{ record.parent_task_id }}</span
+                  >
+                </div>
+                <div v-if="record.description" class="task-title-desc">
+                  {{ record.description }}
+                </div>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'mode'">
+              <a-tag :color="record.mode === 'scheduled' ? 'gold' : 'blue'">
+                {{ getModeLabel(record.mode) }}
+              </a-tag>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <a-tag :color="getTaskStatusMeta(record.status).color">
+                {{ getTaskStatusMeta(record.status).label }}
+              </a-tag>
+            </template>
+            <template v-else-if="column.key === 'execution_status'">
+              <a-tag
+                :color="getExecutionStatusMeta(record.execution_status).color"
+              >
+                {{ getExecutionStatusMeta(record.execution_status).label }}
+              </a-tag>
+            </template>
+            <template v-else-if="column.key === 'execute_at'">
+              {{ formatDateTime(record.execute_at) }}
+            </template>
+            <template v-else-if="column.key === 'updated_at'">
+              {{ formatDateTime(record.updated_at) }}
+            </template>
+            <template v-else-if="column.key === 'action'">
+              <div class="action-buttons">
+                <a-button
+                  type="link"
+                  size="small"
+                  @click="openTaskDetailFromRecord(record)"
                 >
+                  <template #icon><EyeOutlined /></template>
+                  详情
+                </a-button>
+                <a-button
+                  v-permission="OJ_TASK_PERMISSION_CODES.edit"
+                  type="link"
+                  size="small"
+                  :disabled="!canEditTask(buildTaskActionStateFromRecord(record))"
+                  @click="openEditDrawerFromRecord(record)"
+                >
+                  <template #icon><EditOutlined /></template>
+                  编辑
+                </a-button>
+                <a-button
+                  v-permission="OJ_TASK_PERMISSION_CODES.execute"
+                  type="link"
+                  size="small"
+                  :disabled="!canExecuteTask(buildTaskActionStateFromRecord(record))"
+                  @click="
+                    confirmExecuteTask(buildTaskActionStateFromRecord(record))
+                  "
+                >
+                  <template #icon><PlayCircleOutlined /></template>
+                  提前执行
+                </a-button>
+                <a-button
+                  v-permission="OJ_TASK_PERMISSION_CODES.revise"
+                  type="link"
+                  size="small"
+                  :disabled="!canReviseTask()"
+                  @click="openReviseDrawerFromRecord(record)"
+                >
+                  <template #icon><ForkOutlined /></template>
+                  派生
+                </a-button>
+                <a-button
+                  v-permission="OJ_TASK_PERMISSION_CODES.retry"
+                  type="link"
+                  size="small"
+                  :disabled="!canRetryTask(buildTaskActionStateFromRecord(record))"
+                  @click="
+                    confirmRetryTask(buildTaskActionStateFromRecord(record))
+                  "
+                >
+                  <template #icon><RedoOutlined /></template>
+                  重试
+                </a-button>
+                <a-button
+                  v-permission="OJ_TASK_PERMISSION_CODES.delete"
+                  type="link"
+                  danger
+                  size="small"
+                  :disabled="!canDeleteTask(buildTaskActionStateFromRecord(record))"
+                  @click="
+                    confirmDeleteTask(buildTaskActionStateFromRecord(record))
+                  "
+                >
+                  <template #icon><DeleteOutlined /></template>
+                  删除
+                </a-button>
               </div>
-              <div v-if="record.description" class="task-title-desc">
-                {{ record.description }}
-              </div>
-            </div>
+            </template>
           </template>
-          <template v-else-if="column.key === 'mode'">
-            <a-tag :color="record.mode === 'scheduled' ? 'gold' : 'blue'">
-              {{ getModeLabel(record.mode) }}
-            </a-tag>
-          </template>
-          <template v-else-if="column.key === 'status'">
-            <a-tag :color="getTaskStatusMeta(record.status).color">
-              {{ getTaskStatusMeta(record.status).label }}
-            </a-tag>
-          </template>
-          <template v-else-if="column.key === 'execution_status'">
-            <a-tag
-              :color="getExecutionStatusMeta(record.execution_status).color"
-            >
-              {{ getExecutionStatusMeta(record.execution_status).label }}
-            </a-tag>
-          </template>
-          <template v-else-if="column.key === 'execute_at'">
-            {{ formatDateTime(record.execute_at) }}
-          </template>
-          <template v-else-if="column.key === 'updated_at'">
-            {{ formatDateTime(record.updated_at) }}
-          </template>
-          <template v-else-if="column.key === 'action'">
-            <div class="action-buttons">
-              <a-button
-                type="link"
-                size="small"
-                @click="openTaskDetailFromRecord(record)"
-              >
-                <template #icon><EyeOutlined /></template>
-                详情
-              </a-button>
-              <a-button
-                v-permission="OJ_TASK_PERMISSION_CODES.edit"
-                type="link"
-                size="small"
-                :disabled="!canEditTask(buildTaskActionStateFromRecord(record))"
-                @click="openEditDrawerFromRecord(record)"
-              >
-                <template #icon><EditOutlined /></template>
-                编辑
-              </a-button>
-              <a-button
-                v-permission="OJ_TASK_PERMISSION_CODES.execute"
-                type="link"
-                size="small"
-                :disabled="!canExecuteTask(buildTaskActionStateFromRecord(record))"
-                @click="
-                  confirmExecuteTask(buildTaskActionStateFromRecord(record))
-                "
-              >
-                <template #icon><PlayCircleOutlined /></template>
-                提前执行
-              </a-button>
-              <a-button
-                v-permission="OJ_TASK_PERMISSION_CODES.revise"
-                type="link"
-                size="small"
-                :disabled="!canReviseTask()"
-                @click="openReviseDrawerFromRecord(record)"
-              >
-                <template #icon><ForkOutlined /></template>
-                派生
-              </a-button>
-              <a-button
-                v-permission="OJ_TASK_PERMISSION_CODES.retry"
-                type="link"
-                size="small"
-                :disabled="!canRetryTask(buildTaskActionStateFromRecord(record))"
-                @click="
-                  confirmRetryTask(buildTaskActionStateFromRecord(record))
-                "
-              >
-                <template #icon><RedoOutlined /></template>
-                重试
-              </a-button>
-              <a-button
-                v-permission="OJ_TASK_PERMISSION_CODES.delete"
-                type="link"
-                danger
-                size="small"
-                :disabled="!canDeleteTask(buildTaskActionStateFromRecord(record))"
-                @click="
-                  confirmDeleteTask(buildTaskActionStateFromRecord(record))
-                "
-              >
-                <template #icon><DeleteOutlined /></template>
-                删除
-              </a-button>
-            </div>
-          </template>
-        </template>
-      </a-table>
+        </a-table>
+      </div>
+
+      <div
+        ref="taskScrollTrackRef"
+        class="task-scrollbar-track"
+        :class="{
+          'is-overflowing': taskScrollbar.hasOverflow,
+          'is-thumb-visible': taskScrollThumbVisible,
+        }"
+        @pointerenter="handleTaskScrollTrackEnter"
+        @pointerleave="handleTaskScrollTrackLeave"
+        @pointerdown="handleTaskScrollTrackPointerDown"
+      >
+        <div
+          class="task-scrollbar-thumb"
+          :style="taskScrollThumbStyle"
+          @pointerdown.stop="handleTaskThumbPointerDown"
+        />
+      </div>
+
+      <div class="task-pagination-wrapper">
+        <a-pagination
+          :current="taskPaginationConfig.current"
+          :page-size="taskPaginationConfig.pageSize"
+          :total="taskPaginationConfig.total"
+          :show-size-changer="taskPaginationConfig.showSizeChanger"
+          :page-size-options="taskPaginationConfig.pageSizeOptions"
+          :show-quick-jumper="taskPaginationConfig.showQuickJumper"
+          :show-total="taskPaginationConfig.showTotal"
+          @change="handleTaskPaginationChange"
+        />
+      </div>
     </a-card>
 
     <a-drawer
@@ -3358,6 +3704,92 @@ onMounted(() => {
 
 .page-alert {
   margin-bottom: 16px;
+}
+
+.task-table-region {
+  min-width: 0;
+}
+
+:deep(.oj-task-main-table .ant-table-content) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+:deep(.oj-task-main-table .ant-table-content::-webkit-scrollbar) {
+  height: 0;
+  width: 0;
+}
+
+.task-scrollbar-track {
+  position: relative;
+  width: 100%;
+  height: 18px;
+  margin-top: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.18s ease,
+    max-height 0.18s ease,
+    margin-top 0.18s ease;
+}
+
+.task-scrollbar-track::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.38);
+  transform: translateY(-50%);
+}
+
+.task-scrollbar-track.is-overflowing {
+  margin-top: 10px;
+  max-height: 18px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.task-scrollbar-thumb {
+  position: absolute;
+  top: 50%;
+  min-width: 32px;
+  height: 16px;
+  border-radius: 6px;
+  background: rgba(71, 85, 105, 0.88);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+  transform: translateY(-50%) scale(0.92);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease,
+    background-color 0.16s ease;
+  cursor: grab;
+}
+
+.task-scrollbar-track.is-thumb-visible .task-scrollbar-thumb {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%) scale(1);
+}
+
+.task-scrollbar-thumb:hover {
+  background: rgba(51, 65, 85, 0.94);
+}
+
+.task-scrollbar-thumb:active {
+  cursor: grabbing;
+}
+
+.task-pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 
 .task-title-cell,

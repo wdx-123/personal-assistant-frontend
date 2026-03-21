@@ -71,7 +71,7 @@
             新增API
           </a-button>
           <a-button
-            v-permission="['permission:api:batch_delete', 'permission:api:delete_batch', 'permission:api:delete']"
+            v-permission="['permission:api:batch_delete']"
             danger
             :disabled="!hasSelected"
             @click="batchDelete"
@@ -276,7 +276,9 @@ const fetchApis = async () => {
         menu_id: item.menu_id || item.group_id || undefined,
         menu_name: item.menu_name || item.category || '',
         method: item.method,
-        status: item.status === 1 ? 'enabled' : 'disabled'
+        status: item.status === 1 ? 'enabled' : 'disabled',
+        sync_state: item.sync_state,
+        last_seen_at: item.last_seen_at || null
       }))
       pagination.total = data.total
     }
@@ -333,7 +335,9 @@ const refresh = () => {
 const syncRoutes = async () => {
   try {
     const result = await syncApi({}, { skipSuccTip: true })
-    message.success(`同步完成：新增 ${result.added}，更新 ${result.updated}，禁用 ${result.disabled}，总计 ${result.total}`)
+    message.success(
+      `同步完成：新增 ${result.added}，恢复 ${result.restored}，标记缺失 ${result.marked_missing}，归档 ${result.archived}，总计 ${result.total}`
+    )
     fetchApis()
   } catch (error) {
     console.error(error)

@@ -59,7 +59,7 @@
             新增角色
           </a-button>
           <a-button
-            v-permission="['permission:role:batch_delete', 'permission:role:delete_batch', 'permission:role:delete']"
+            v-permission="['permission:role:batch_delete']"
             danger
             :disabled="!hasSelected"
             @click="batchDelete"
