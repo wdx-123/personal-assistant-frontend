@@ -27,11 +27,18 @@
         </a-form-item>
         <a-form-item>
           <a-space>
-            <a-button type="primary" @click="search" class="btn-search">
+            <a-button
+              type="primary"
+              @click="search"
+              class="btn-search"
+            >
               <template #icon><SearchOutlined /></template>
               搜索
             </a-button>
-            <a-button @click="resetSearch" class="btn-reset">
+            <a-button
+              @click="resetSearch"
+              class="btn-reset"
+            >
               <template #icon><ReloadOutlined /></template>
               重置
             </a-button>
@@ -43,11 +50,16 @@
     <a-card :bordered="false" class="content-card">
       <div class="toolbar">
         <a-space>
-          <a-button type="primary" @click="openEditModal()">
+          <a-button
+            v-permission="['permission:role:add', 'permission:role:create']"
+            type="primary"
+            @click="openEditModal()"
+          >
             <template #icon><PlusOutlined /></template>
             新增角色
           </a-button>
           <a-button
+            v-permission="['permission:role:batch_delete', 'permission:role:delete_batch', 'permission:role:delete']"
             danger
             :disabled="!hasSelected"
             @click="batchDelete"
@@ -73,6 +85,7 @@
         row-key="id"
         @change="handleTableChange"
         :loading="loading"
+        :locale="tableLocale"
         size="middle"
       >
         <template #bodyCell="{ column, record }">
@@ -83,11 +96,23 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <div class="action-buttons">
-              <a-button type="link" size="small" class="btn-permission" @click="openPermissionModal(record)">
+              <a-button
+                v-permission="['permission:role:assign', 'permission:role:permission']"
+                type="link"
+                size="small"
+                class="btn-permission"
+                @click="openPermissionModal(record)"
+              >
                 <template #icon><SettingOutlined /></template>
                 修改权限
               </a-button>
-              <a-button type="primary" size="small" class="btn-edit" @click="openEditModal(record)">
+              <a-button
+                v-permission="['permission:role:edit', 'permission:role:update']"
+                type="primary"
+                size="small"
+                class="btn-edit"
+                @click="openEditModal(record)"
+              >
                 编辑
               </a-button>
               <a-popconfirm
@@ -96,7 +121,13 @@
                 ok-text="确定"
                 cancel-text="取消"
               >
-                <a-button type="primary" danger size="small" class="btn-delete">
+                <a-button
+                  v-permission="['permission:role:delete']"
+                  type="primary"
+                  danger
+                  size="small"
+                  class="btn-delete"
+                >
                   删除
                 </a-button>
               </a-popconfirm>
@@ -111,6 +142,8 @@
       v-model:open="isEditModalOpen"
       :title="modalType === 'add' ? '新增角色' : '编辑角色'"
       @ok="saveRole"
+      :okText="roleModalOkText"
+      :okButtonProps="{ disabled: !canSaveRole }"
       :confirmLoading="modalLoading"
       :maskClosable="false"
     >
@@ -140,6 +173,8 @@
       width="1100px"
       @ok="savePermission"
       :confirmLoading="permissionSaving"
+      :okText="permissionModalOkText"
+      :okButtonProps="{ disabled: !canAssignPermission }"
       :maskClosable="false"
     >
       <div class="permission-container">
@@ -207,6 +242,9 @@ import {
   getRoleMenuApiMap,
   assignRolePermission
 } from '@/services/permission.service'
+import { useAuthStore } from '@/stores/auth'
+import { hasAnyMenuCode } from '@/utils/menuPermission'
+import { isPermissionDenied } from '@/utils/request'
 
 const searchQuery = reactive({
   roleName: '',
@@ -223,6 +261,15 @@ const columns = [
 
 const roles = ref<any[]>([])
 const loading = ref(false)
+const noPermission = ref(false)
+const authStore = useAuthStore()
+const canCreateRole = computed(() => hasAnyMenuCode(authStore.myMenus, ['permission:role:add', 'permission:role:create']))
+const canUpdateRole = computed(() => hasAnyMenuCode(authStore.myMenus, ['permission:role:edit', 'permission:role:update']))
+const canAssignPermission = computed(() => hasAnyMenuCode(authStore.myMenus, ['permission:role:assign']))
+const canSaveRole = computed(() => (modalType.value === 'add' ? canCreateRole.value : canUpdateRole.value))
+const roleModalOkText = computed(() => (canSaveRole.value ? '确定' : '⛔ 确定'))
+const permissionModalOkText = computed(() => (canAssignPermission.value ? '保存' : '⛔ 保存'))
+const tableLocale = computed(() => ({ emptyText: noPermission.value ? '你没有权限访问' : '暂无数据' }))
 const pagination = reactive({
   current: 1,
   pageSize: 10,
@@ -242,8 +289,9 @@ const fetchRoles = async () => {
       status: searchQuery.status === 'enabled' ? 1 : (searchQuery.status === 'disabled' ? 0 : undefined)
     }
     
-    const data = await getRoleList(params, { skipSuccTip: true })
+    const data = await getRoleList(params, { skipSuccTip: true, skipErrTip: true })
     if (data) {
+      noPermission.value = false
       roles.value = data.list.map((item: any) => {
         let updateTime = '-'
         if (item.updated_at) {
@@ -270,7 +318,13 @@ const fetchRoles = async () => {
       pagination.total = data.total
     }
   } catch (error) {
-    console.error('Failed to fetch roles:', error)
+    if (isPermissionDenied(error)) {
+      noPermission.value = true
+      roles.value = []
+      pagination.total = 0
+    } else {
+      console.error('Failed to fetch roles:', error)
+    }
   } finally {
     loading.value = false
   }

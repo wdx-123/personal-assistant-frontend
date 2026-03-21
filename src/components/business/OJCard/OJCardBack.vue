@@ -39,14 +39,14 @@
             <img
               v-if="userInfo.user_avatar"
               :src="userInfo.user_avatar"
-              :alt="userInfo.real_name"
+              :alt="displayName"
             />
             <div v-else class="avatar-placeholder">
-              {{ userInfo.real_name?.charAt(0) || "U" }}
+              {{ displayInitial }}
             </div>
           </div>
           <div class="info">
-            <div class="name">{{ userInfo.real_name || "未知用户" }}</div>
+            <div class="name">{{ displayName }}</div>
             <div class="id">@{{ userInfo.identifier || "" }}</div>
           </div>
           <span class="status-inline bound">已绑定</span>
@@ -71,9 +71,8 @@
 </template>
 
 <script setup lang="ts">
-/**
- * OJ 卡片反面 - 用户信息展示
- */
+import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import type { OJStatsResponse } from '@/types'
 
 interface Props {
@@ -82,11 +81,22 @@ interface Props {
   isLoading: boolean
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'rebind'): void
 }>()
+
+const authStore = useAuthStore()
+
+const displayName = computed(() => {
+  const raw = props.userInfo?.real_name || ''
+  const normalized = raw.trim()
+  if (normalized && normalized !== '未知用户') return normalized
+  return (authStore.user?.username || '').trim() || '未知用户'
+})
+
+const displayInitial = computed(() => displayName.value.charAt(0) || 'U')
 
 const onRebind = () => {
   emit('rebind')

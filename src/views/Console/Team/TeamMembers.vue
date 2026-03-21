@@ -43,9 +43,23 @@
             @keydown.enter="searchMembers"
           />
         </div>
-        <button class="btn btn-primary" @click="searchMembers">搜索</button>
-        <button class="btn btn-secondary" @click="resetSearch">重置</button>
-        <button class="btn btn-danger" @click="handleLeaveTeam">
+        <button
+          class="btn btn-primary"
+          @click="searchMembers"
+        >
+          搜索
+        </button>
+        <button
+          class="btn btn-secondary"
+          @click="resetSearch"
+        >
+          重置
+        </button>
+        <button
+          v-permission="['permission:org:exit']"
+          class="btn btn-danger"
+          @click="handleLeaveTeam"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
@@ -91,15 +105,30 @@
               </td>
               <td class="col-action">
                 <div class="action-buttons">
-                  <button class="btn-xs btn-primary" @click="handleEditMember(member)">编辑</button>
-                  <button class="btn-xs btn-danger" @click="handleDeleteMember(member)">移除</button>
+                  <button
+                    v-permission="['permission:user:role:assign']"
+                    class="btn-xs btn-primary"
+                    @click="handleEditMember(member)"
+                  >
+                    编辑
+                  </button>
+                  <button
+                    v-permission="['permission:org:member:remove']"
+                    class="btn-xs btn-danger"
+                    @click="handleDeleteMember(member)"
+                  >
+                    移除
+                  </button>
                 </div>
               </td>
             </tr>
             <tr v-if="membersLoading">
               <td colspan="7" class="empty-cell">成员加载中...</td>
             </tr>
-            <tr v-if="filteredMembers.length === 0">
+            <tr v-else-if="membersNoPermission">
+              <td colspan="7" class="empty-cell">你没有权限访问</td>
+            </tr>
+            <tr v-else-if="filteredMembers.length === 0">
               <td colspan="7" class="empty-cell">暂无成员数据</td>
             </tr>
           </tbody>
@@ -134,7 +163,12 @@
         </div>
         <div class="modal-footer">
           <button @click="showModal = false" class="btn btn-secondary" :disabled="modalLoading">取消</button>
-          <button @click="handleSaveMember" class="btn btn-primary" :disabled="modalLoading || !selectedRoleId">
+          <button
+            v-permission="['permission:user:assign_role', 'permission:user:role:assign']"
+            @click="handleSaveMember"
+            class="btn btn-primary"
+            :disabled="modalLoading || !selectedRoleId"
+          >
             {{ modalLoading ? '保存中...' : '保存' }}
           </button>
         </div>
@@ -150,6 +184,7 @@ import { message, Confirm } from '@/components/common'
 import { getOrgList, getUserList, removeOrgMember, leaveOrg, getRoleList, assignUserRole } from '@/services/permission.service'
 import { useAuthStore } from '@/stores/auth'
 import type { OrgItem } from '@/types'
+import { isPermissionDenied } from '@/utils/request'
 
 interface Member {
   id: number
@@ -172,6 +207,7 @@ const authStore = useAuthStore()
 const router = useRouter()
 const members = ref<Member[]>([])
 const membersLoading = ref(false)
+const membersNoPermission = ref(false)
 const orgs = ref<OrgOption[]>([])
 const targetOrgId = ref<number>(0)
 
@@ -189,6 +225,7 @@ const fetchRoles = async () => {
     roleOptions.value = (data?.list || []).map((r: any) => ({ id: r.id, name: r.name }))
   } catch (error) {
     console.error('Failed to fetch roles:', error)
+    roleOptions.value = []
   }
 }
 
@@ -263,8 +300,9 @@ const fetchMembers = async () => {
         org_id: orgId,
         keyword: searchQuery.value.trim() || undefined
       },
-      { skipSuccTip: true }
+      { skipSuccTip: true, skipErrTip: true }
     )
+    membersNoPermission.value = false
     members.value = (data?.list || []).map((item: any) => ({
       id: item.id,
       username: item.username || '-',
@@ -276,6 +314,9 @@ const fetchMembers = async () => {
     }))
     pagination.value.total = data?.total || 0
   } catch (error) {
+    if (isPermissionDenied(error)) {
+      membersNoPermission.value = true
+    }
     members.value = []
     pagination.value.total = 0
   } finally {
