@@ -171,6 +171,7 @@ export interface UserDetailItem {
   email?: string
   avatar?: string
   freeze?: boolean
+  is_super_admin?: boolean
   created_at?: string
   updated_at?: string
   roles?: UserRoleItem[]
@@ -215,6 +216,8 @@ export interface OrgItem {
   avatar: string
   avatar_id?: number | null
   owner_id: number
+  is_builtin: boolean
+  builtin_key?: string
   member_count: number
   created_at: string
   updated_at: string

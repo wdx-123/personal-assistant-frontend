@@ -18,6 +18,7 @@ export interface User {
   signature: string
   register: number
   freeze: boolean
+  is_super_admin: boolean
   current_org_id: number
   current_org?: Organization
   created_at: string
@@ -78,6 +79,8 @@ export interface Organization {
   description: string
   code: string // 加入邀请码
   owner_id: number // 创建者 ID
+  is_builtin?: boolean
+  builtin_key?: string
   created_at: string
   updated_at: string
 }
