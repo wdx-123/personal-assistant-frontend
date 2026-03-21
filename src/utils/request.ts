@@ -47,6 +47,14 @@ export const isRequestCanceled = (error: unknown): boolean => {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ERR_CANCELED'
 }
 
+export const isPermissionDenied = (error: unknown): boolean => {
+  const raw = error as any
+  const code = raw?.code ?? raw?.response?.data?.code
+  const normalizedCode = typeof code === 'string' ? Number(code) : code
+  const status = raw?.response?.status
+  return status === 403 || normalizedCode === StatusCode.FORBIDDEN || normalizedCode === BizCode.CodePermissionDenied
+}
+
 const syncAbortSignals = (sourceSignal: GenericAbortSignal | undefined, controller: AbortController) => {
   if (!sourceSignal) return
 

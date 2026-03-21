@@ -5,6 +5,7 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getRankingList } from '@/services/oj.service'
+import { getUserList } from '@/services/permission.service'
 import { isRequestCanceled } from '@/utils/request'
 import type { RankingItem, MyRank } from '@/types'
 
@@ -50,6 +51,75 @@ export function useRankingData() {
   // 当前用户信息
   const authStore = useAuthStore()
   const user = authStore.user
+
+  const usernameMapCache = new Map<number, Map<number, string>>()
+  const UNKNOWN_REAL_NAME = '未知用户'
+
+  const isUnknownRealName = (value: string) => {
+    const normalized = (value || '').trim()
+    return !normalized || normalized === UNKNOWN_REAL_NAME
+  }
+
+  const resolveOrgIdForUserMap = (scope: RankingScope, orgId?: number) => {
+    if (orgId) return orgId
+    if (scope === 'current_org' || scope === 'org') {
+      return authStore.user?.current_org_id
+    }
+    return undefined
+  }
+
+  const ensureUsernameMap = async (orgId: number) => {
+    const cached = usernameMapCache.get(orgId)
+    if (cached) return cached
+
+    const data = await getUserList(
+      { page: 0, page_size: 0, org_id: orgId },
+      { skipTip: true, skipErrTip: true }
+    )
+
+    const map = new Map<number, string>()
+    ;(data?.list || []).forEach((u) => {
+      const name = (u.username || '').trim()
+      if (u.id && name) map.set(u.id, name)
+    })
+
+    usernameMapCache.set(orgId, map)
+    return map
+  }
+
+  const patchUnknownNamesForLanqiao = async (
+    list: RankingItem[],
+    scope: RankingScope,
+    orgId?: number
+  ) => {
+    if (!list.length) return list
+    if (!list.some((item) => isUnknownRealName(item.real_name))) return list
+
+    const currentUserId = authStore.user?.id
+    const currentUserName = (authStore.user?.username || '').trim()
+    const effectiveOrgId = resolveOrgIdForUserMap(scope, orgId)
+
+    let usernameMap: Map<number, string> | null = null
+    if (effectiveOrgId) {
+      try {
+        usernameMap = await ensureUsernameMap(effectiveOrgId)
+      } catch {
+        usernameMap = null
+      }
+    }
+
+    return list.map((item) => {
+      if (!isUnknownRealName(item.real_name)) return item
+
+      if (currentUserId && item.user_id === currentUserId && currentUserName) {
+        return { ...item, real_name: currentUserName }
+      }
+
+      const mapped = usernameMap?.get(item.user_id)
+      if (mapped) return { ...item, real_name: mapped }
+      return item
+    })
+  }
 
   /**
    * 判断排行榜项是否是当前用户
@@ -192,12 +262,14 @@ export function useRankingData() {
         buildRankingConfig('lanqiao', scope, orgId)
       )
 
+      const patchedList = await patchUnknownNamesForLanqiao(data.list || [], scope, orgId)
+
       if (isLoadMore) {
         // 加载更多：追加数据
-        lanqiaoRankList.value = [...lanqiaoRankList.value, ...(data.list || [])]
+        lanqiaoRankList.value = [...lanqiaoRankList.value, ...patchedList]
       } else {
         // 刷新或首次加载：替换数据
-        lanqiaoRankList.value = data.list || []
+        lanqiaoRankList.value = patchedList
         lanqiaoPage.value = 1
       }
 

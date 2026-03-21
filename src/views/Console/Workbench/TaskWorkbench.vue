@@ -65,6 +65,7 @@ import type {
   ReviseOJTaskRequest,
   UpdateOJTaskRequest,
 } from "@/types";
+import { isPermissionDenied } from "@/utils/request";
 
 dayjs.extend(utc);
 
@@ -118,13 +119,13 @@ interface TaskAnalysisSummary {
 const DETAIL_POLL_INTERVAL = 2000;
 const DETAIL_POLL_TIMEOUT = 60000;
 
-const WORKBENCH_CODES = {
-  create: "workbench_task_create",
-  edit: "workbench_task_edit",
-  delete: "workbench_task_delete",
-  execute: "workbench_task_execute",
-  revise: "workbench_task_revise",
-  retry: "workbench_task_retry",
+const OJ_TASK_PERMISSION_CODES = {
+  create: ["permission:oj_task:create", "workbench_task_create"],
+  edit: ["permission:oj_task:edit", "workbench_task_edit"],
+  delete: ["permission:oj_task:delete", "workbench_task_delete"],
+  execute: ["permission:oj_task:execute", "workbench_task_execute"],
+  revise: ["permission:oj_task:revise", "workbench_task_revise"],
+  retry: ["permission:oj_task:retry", "workbench_task_retry"],
 } as const;
 
 const STABLE_EXECUTION_STATUS = new Set<OJTaskExecutionStatus>([
@@ -419,7 +420,10 @@ const USER_DETAIL_ITEM_COLUMNS = [
   },
 ];
 
-const tableLocale = { emptyText: "暂无任务数据" };
+const taskListNoPermission = ref(false);
+const tableLocale = computed(() => ({
+  emptyText: taskListNoPermission.value ? "你没有权限访问" : "暂无任务数据",
+}));
 const userTableLocale = { emptyText: "暂无执行用户数据" };
 
 const authStore = useAuthStore();
@@ -503,8 +507,9 @@ let taskItemSeed = 0;
 let detailPollTimer: number | null = null;
 
 const menuCodeSet = computed(() => collectMenuCodes(authStore.myMenus));
-const canCreate = computed(() => menuCodeSet.value.has(WORKBENCH_CODES.create));
-
+const canCreate = computed(() =>
+  OJ_TASK_PERMISSION_CODES.create.some((code) => menuCodeSet.value.has(code)),
+);
 const currentExecution = computed(
   () => detailExecution.value || detailTask.value?.current_execution || null,
 );
@@ -556,6 +561,7 @@ const taskPaginationConfig = computed(() => ({
   pageSize: taskPagination.pageSize,
   total: taskPagination.total,
   showSizeChanger: true,
+  pageSizeOptions: ["5", "10", "20", "50"],
   showQuickJumper: false,
   showTotal: (total: number) => `共 ${total} 条`,
 }));
@@ -845,8 +851,8 @@ function getTaskItemReasonNote(item: OJTaskExecutionUserItem): string {
   return parts.length ? parts.join(" / ") : "-";
 }
 
-function hasActionPermission(code: string): boolean {
-  return menuCodeSet.value.has(code);
+function hasActionPermission(codes: readonly string[]): boolean {
+  return codes.some((code) => menuCodeSet.value.has(code));
 }
 
 function buildTaskActionState(record: OJTaskListItem): TaskActionState {
@@ -888,7 +894,7 @@ function openExecutionUserDetailFromRecord(
 function canEditTask(state: TaskActionState | null): boolean {
   return (
     !!state &&
-    hasActionPermission(WORKBENCH_CODES.edit) &&
+    hasActionPermission(OJ_TASK_PERMISSION_CODES.edit) &&
     state.mode === "scheduled" &&
     state.status === "scheduled" &&
     state.execution_status === "scheduled"
@@ -898,7 +904,7 @@ function canEditTask(state: TaskActionState | null): boolean {
 function canDeleteTask(state: TaskActionState | null): boolean {
   return (
     !!state &&
-    hasActionPermission(WORKBENCH_CODES.delete) &&
+    hasActionPermission(OJ_TASK_PERMISSION_CODES.delete) &&
     state.mode === "scheduled" &&
     state.status === "scheduled" &&
     state.execution_status === "scheduled"
@@ -908,7 +914,7 @@ function canDeleteTask(state: TaskActionState | null): boolean {
 function canExecuteTask(state: TaskActionState | null): boolean {
   return (
     !!state &&
-    hasActionPermission(WORKBENCH_CODES.execute) &&
+    hasActionPermission(OJ_TASK_PERMISSION_CODES.execute) &&
     state.mode === "scheduled" &&
     state.status === "scheduled" &&
     state.execution_status === "scheduled"
@@ -916,13 +922,13 @@ function canExecuteTask(state: TaskActionState | null): boolean {
 }
 
 function canReviseTask(): boolean {
-  return hasActionPermission(WORKBENCH_CODES.revise);
+  return hasActionPermission(OJ_TASK_PERMISSION_CODES.revise);
 }
 
 function canRetryTask(state: TaskActionState | null): boolean {
   return (
     !!state &&
-    hasActionPermission(WORKBENCH_CODES.retry) &&
+    hasActionPermission(OJ_TASK_PERMISSION_CODES.retry) &&
     (state.execution_status === "succeeded" ||
       state.execution_status === "failed")
   );
@@ -1407,11 +1413,18 @@ async function fetchTasks(options: { silent?: boolean } = {}): Promise<void> {
       },
     );
 
+    taskListNoPermission.value = false;
     tasks.value = data.list || [];
     taskPagination.total = data.total || 0;
     taskPagination.current = data.page || taskPagination.current;
     taskPagination.pageSize = data.page_size || taskPagination.pageSize;
   } catch (error) {
+    if (isPermissionDenied(error)) {
+      taskListNoPermission.value = true;
+      tasks.value = [];
+      taskPagination.total = 0;
+      return;
+    }
     taskError.value = "任务列表加载失败，请稍后重试。";
     tasks.value = [];
     taskPagination.total = 0;
@@ -2107,11 +2120,16 @@ onMounted(() => {
         </a-form>
         <div class="task-search-actions">
           <a-space :size="12">
-            <a-button type="primary" @click="searchTasks">
+            <a-button
+              type="primary"
+              @click="searchTasks"
+            >
               <template #icon><SearchOutlined /></template>
               搜索
             </a-button>
-            <a-button @click="resetTaskFilters">
+            <a-button
+              @click="resetTaskFilters"
+            >
               <template #icon><ReloadOutlined /></template>
               重置
             </a-button>
@@ -2123,7 +2141,12 @@ onMounted(() => {
     <a-card :bordered="false" class="content-card">
       <div class="toolbar">
         <a-space>
-          <a-button v-if="canCreate" type="primary" @click="openCreateDrawer">
+          <a-button
+            v-permission="OJ_TASK_PERMISSION_CODES.create"
+            type="primary"
+            :disabled="!canCreate"
+            @click="openCreateDrawer"
+          >
             <template #icon><PlusOutlined /></template>
             新建 OJ 任务
           </a-button>
@@ -2220,18 +2243,20 @@ onMounted(() => {
                 详情
               </a-button>
               <a-button
-                v-if="canEditTask(buildTaskActionStateFromRecord(record))"
+                v-permission="OJ_TASK_PERMISSION_CODES.edit"
                 type="link"
                 size="small"
+                :disabled="!canEditTask(buildTaskActionStateFromRecord(record))"
                 @click="openEditDrawerFromRecord(record)"
               >
                 <template #icon><EditOutlined /></template>
                 编辑
               </a-button>
               <a-button
-                v-if="canExecuteTask(buildTaskActionStateFromRecord(record))"
+                v-permission="OJ_TASK_PERMISSION_CODES.execute"
                 type="link"
                 size="small"
+                :disabled="!canExecuteTask(buildTaskActionStateFromRecord(record))"
                 @click="
                   confirmExecuteTask(buildTaskActionStateFromRecord(record))
                 "
@@ -2240,18 +2265,20 @@ onMounted(() => {
                 提前执行
               </a-button>
               <a-button
-                v-if="canReviseTask()"
+                v-permission="OJ_TASK_PERMISSION_CODES.revise"
                 type="link"
                 size="small"
+                :disabled="!canReviseTask()"
                 @click="openReviseDrawerFromRecord(record)"
               >
                 <template #icon><ForkOutlined /></template>
                 派生
               </a-button>
               <a-button
-                v-if="canRetryTask(buildTaskActionStateFromRecord(record))"
+                v-permission="OJ_TASK_PERMISSION_CODES.retry"
                 type="link"
                 size="small"
+                :disabled="!canRetryTask(buildTaskActionStateFromRecord(record))"
                 @click="
                   confirmRetryTask(buildTaskActionStateFromRecord(record))
                 "
@@ -2260,10 +2287,11 @@ onMounted(() => {
                 重试
               </a-button>
               <a-button
-                v-if="canDeleteTask(buildTaskActionStateFromRecord(record))"
+                v-permission="OJ_TASK_PERMISSION_CODES.delete"
                 type="link"
                 danger
                 size="small"
+                :disabled="!canDeleteTask(buildTaskActionStateFromRecord(record))"
                 @click="
                   confirmDeleteTask(buildTaskActionStateFromRecord(record))
                 "
@@ -2630,41 +2658,46 @@ onMounted(() => {
                     刷新详情
                   </a-button>
                   <a-button
-                    v-if="canEditTask(detailActionState)"
+                    v-permission="OJ_TASK_PERMISSION_CODES.edit"
                     size="small"
+                    :disabled="!canEditTask(detailActionState)"
                     @click="openEditDrawer(detailTask.task_id)"
                   >
                     <template #icon><EditOutlined /></template>
                     编辑
                   </a-button>
                   <a-button
-                    v-if="canExecuteTask(detailActionState)"
+                    v-permission="OJ_TASK_PERMISSION_CODES.execute"
                     size="small"
+                    :disabled="!canExecuteTask(detailActionState)"
                     @click="confirmExecuteTask(detailActionState)"
                   >
                     <template #icon><PlayCircleOutlined /></template>
                     提前执行
                   </a-button>
                   <a-button
-                    v-if="canReviseTask()"
+                    v-permission="OJ_TASK_PERMISSION_CODES.revise"
                     size="small"
+                    :disabled="!canReviseTask()"
                     @click="openReviseDrawer(detailTask.task_id)"
                   >
                     <template #icon><ForkOutlined /></template>
                     派生新版本
                   </a-button>
                   <a-button
-                    v-if="canRetryTask(detailActionState)"
+                    v-permission="OJ_TASK_PERMISSION_CODES.retry"
                     size="small"
+                    :disabled="!canRetryTask(detailActionState)"
                     @click="confirmRetryTask(detailActionState)"
                   >
                     <template #icon><RedoOutlined /></template>
                     重试
                   </a-button>
                   <a-button
-                    v-if="canDeleteTask(detailActionState)"
+                    v-permission="OJ_TASK_PERMISSION_CODES.delete"
                     danger
                     size="small"
+                    :disabled="!canDeleteTask(detailActionState)"
                     @click="confirmDeleteTask(detailActionState)"
                   >
                     <template #icon><DeleteOutlined /></template>

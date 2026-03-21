@@ -27,11 +27,18 @@
         </a-form-item>
         <a-form-item>
           <a-space>
-            <a-button type="primary" @click="search" class="btn-search">
+            <a-button
+              type="primary"
+              @click="search"
+              class="btn-search"
+            >
               <template #icon><SearchOutlined /></template>
               搜索
             </a-button>
-            <a-button @click="resetSearch" class="btn-reset">
+            <a-button
+              @click="resetSearch"
+              class="btn-reset"
+            >
               <template #icon><ReloadOutlined /></template>
               重置
             </a-button>
@@ -43,11 +50,16 @@
     <a-card :bordered="false" class="content-card">
       <div class="toolbar">
         <a-space>
-          <a-button type="primary" @click="openEditModal()">
+          <a-button
+            v-permission="['permission:menu:add', 'permission:menu:create']"
+            type="primary"
+            @click="openEditModal()"
+          >
             <template #icon><PlusOutlined /></template>
             新增菜单
           </a-button>
           <a-button
+            v-permission="['permission:menu:batch_delete', 'permission:menu:delete_batch', 'permission:menu:delete']"
             danger
             :disabled="!hasSelected"
             @click="batchDelete"
@@ -72,6 +84,7 @@
         row-key="id"
         :loading="loading"
         :pagination="false"
+        :locale="tableLocale"
         size="small"
         childrenColumnName="children"
         :indent-size="30"
@@ -112,7 +125,13 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="action-buttons">
-              <a-button type="primary" size="small" class="btn-edit" @click="openEditModal(record)">
+              <a-button
+                v-permission="['permission:menu:edit', 'permission:menu:update']"
+                type="primary"
+                size="small"
+                class="btn-edit"
+                @click="openEditModal(record)"
+              >
                 编辑
               </a-button>
               <a-popconfirm
@@ -121,7 +140,13 @@
                 ok-text="确定"
                 cancel-text="取消"
               >
-                <a-button type="primary" danger size="small" class="btn-delete">
+                <a-button
+                  v-permission="['permission:menu:delete']"
+                  type="primary"
+                  danger
+                  size="small"
+                  class="btn-delete"
+                >
                   删除
                 </a-button>
               </a-popconfirm>
@@ -219,7 +244,16 @@
 
       <div class="menu-modal-footer">
         <a-button @click="isEditModalOpen = false">取消</a-button>
-        <a-button type="primary" :loading="modalLoading" @click="saveMenu">
+        <a-button
+          v-permission="
+            modalType === 'add'
+              ? ['permission:menu:add', 'permission:menu:create']
+              : ['permission:menu:edit', 'permission:menu:update']
+          "
+          type="primary"
+          :loading="modalLoading"
+          @click="saveMenu"
+        >
           {{ modalType === 'add' ? '新增' : '保存' }}
         </a-button>
       </div>
@@ -237,6 +271,8 @@ import {
   DeleteOutlined
 } from '@ant-design/icons-vue'
 import { getMenuList, createMenu, updateMenu, deleteMenu } from '@/services/permission.service'
+import { useAuthStore } from '@/stores/auth'
+import { isPermissionDenied } from '@/utils/request'
 
 const searchForm = reactive({
   name: '',
@@ -257,6 +293,9 @@ const columns = [
 type TableKey = string | number
 const tree = ref<any[]>([])
 const loading = ref(false)
+const noPermission = ref(false)
+const authStore = useAuthStore()
+const tableLocale = computed(() => ({ emptyText: noPermission.value ? '你没有权限访问' : '暂无数据' }))
 const selectedIds = ref<TableKey[]>([])
 const hasSelected = computed(() => selectedIds.value.length > 0)
 
@@ -269,14 +308,20 @@ const fetchMenus = async () => {
       keyword: searchForm.name || undefined,
       status: searchForm.status === 'enabled' ? 1 : (searchForm.status === 'disabled' ? 0 : undefined)
     }
-    const data = await getMenuList(params, { skipSuccTip: true })
+    const data = await getMenuList(params, { skipSuccTip: true, skipErrTip: true })
     if (data) {
       const list = data.list || []
       const hasChildren = list.some((item: any) => Array.isArray(item.children) && item.children.length > 0)
       tree.value = hasChildren ? list.map(mapToNode) : buildTreeFromList(list)
+      noPermission.value = false
     }
   } catch (error) {
-    console.error('Failed to fetch menus:', error)
+    if (isPermissionDenied(error)) {
+      noPermission.value = true
+      tree.value = []
+    } else {
+      console.error('Failed to fetch menus:', error)
+    }
   } finally {
     loading.value = false
   }
