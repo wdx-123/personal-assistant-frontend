@@ -97,7 +97,7 @@
             <!-- 数据列表 -->
             <div v-else>
               <!-- 前三名颁奖台 -->
-              <RankingPodium :items="allRankList.slice(0, 3)" />
+              <RankingPodium :items="allRankList.slice(0, 3)" :show-current-org="true" />
 
               <!-- 第四名及以后 -->
               <RankingList
@@ -105,6 +105,7 @@
                 :start-index="3"
                 :loading-more="allLoadingMore"
                 :has-more="allHasMore"
+                :show-current-org="true"
                 @load-more="loadMoreCurrent"
               />
             </div>
@@ -158,7 +159,7 @@ const platformName = computed(() => platformNames[props.platform])
 
 const orgScopeTagText = computed(() => {
   const name = (props.orgName || '').trim()
-  return name ? `${name}` : '我的组织'
+  return name ? `主组织 · ${name}` : '主组织未设置'
 })
 
 const orgState = computed(() => getState(props.platform, 'org', props.orgId))
@@ -312,9 +313,9 @@ defineExpose({
 }
 
 .scope-org {
-  color: #389e0d;
-  background: rgba(82, 196, 26, 0.08);
-  border: 1px solid rgba(82, 196, 26, 0.25);
+  color: #2f6b79;
+  background: rgba(47, 107, 121, 0.08);
+  border: 1px solid rgba(47, 107, 121, 0.18);
 }
 
 .flip-hint {

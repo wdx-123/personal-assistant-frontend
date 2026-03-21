@@ -10,17 +10,25 @@
       </div>
       <div class="avatar-wrapper">
         <div class="rank-badge silver">2</div>
-        <img
-          v-if="items[1].avatar"
+        <RankingAvatar
           :src="items[1].avatar"
-          :alt="items[1].real_name"
+          :name="items[1].real_name"
+          :user-id="items[1].user_id"
+          size="podium"
+          accent="silver"
         />
-        <div v-else class="avatar-placeholder">
-          {{ items[1].real_name?.charAt(0) || "U" }}
-        </div>
       </div>
-      <div class="podium-name">
-        {{ items[1].real_name }}
+      <div class="podium-meta">
+        <div class="podium-name">
+          {{ items[1].real_name }}
+        </div>
+        <div
+          v-if="showCurrentOrg"
+          class="podium-org-tag"
+          :class="{ 'is-fallback': isFallbackCurrentOrg(items[1]) }"
+        >
+          {{ resolveCurrentOrgName(items[1]) }}
+        </div>
       </div>
       <div class="podium-count">
         {{ items[1].total_passed }}题
@@ -37,17 +45,25 @@
       </div>
       <div class="avatar-wrapper">
         <div class="rank-badge gold">1</div>
-        <img
-          v-if="items[0].avatar"
+        <RankingAvatar
           :src="items[0].avatar"
-          :alt="items[0].real_name"
+          :name="items[0].real_name"
+          :user-id="items[0].user_id"
+          size="podium"
+          accent="gold"
         />
-        <div v-else class="avatar-placeholder">
-          {{ items[0].real_name?.charAt(0) || "U" }}
-        </div>
       </div>
-      <div class="podium-name">
-        {{ items[0].real_name }}
+      <div class="podium-meta">
+        <div class="podium-name">
+          {{ items[0].real_name }}
+        </div>
+        <div
+          v-if="showCurrentOrg"
+          class="podium-org-tag"
+          :class="{ 'is-fallback': isFallbackCurrentOrg(items[0]) }"
+        >
+          {{ resolveCurrentOrgName(items[0]) }}
+        </div>
       </div>
       <div class="podium-count">
         {{ items[0].total_passed }}题
@@ -64,17 +80,25 @@
       </div>
       <div class="avatar-wrapper">
         <div class="rank-badge bronze">3</div>
-        <img
-          v-if="items[2].avatar"
+        <RankingAvatar
           :src="items[2].avatar"
-          :alt="items[2].real_name"
+          :name="items[2].real_name"
+          :user-id="items[2].user_id"
+          size="podium"
+          accent="bronze"
         />
-        <div v-else class="avatar-placeholder">
-          {{ items[2].real_name?.charAt(0) || "U" }}
-        </div>
       </div>
-      <div class="podium-name">
-        {{ items[2].real_name }}
+      <div class="podium-meta">
+        <div class="podium-name">
+          {{ items[2].real_name }}
+        </div>
+        <div
+          v-if="showCurrentOrg"
+          class="podium-org-tag"
+          :class="{ 'is-fallback': isFallbackCurrentOrg(items[2]) }"
+        >
+          {{ resolveCurrentOrgName(items[2]) }}
+        </div>
       </div>
       <div class="podium-count">
         {{ items[2].total_passed }}题
@@ -86,12 +110,16 @@
 <script setup lang="ts">
 import type { RankingItem } from '@/types'
 import { useAuthStore } from '@/stores/auth'
+import RankingAvatar from './RankingAvatar.vue'
 
 interface Props {
   items: RankingItem[]
+  showCurrentOrg?: boolean
 }
 
-defineProps<Props>()
+withDefaults(defineProps<Props>(), {
+  showCurrentOrg: false,
+})
 
 // 获取 auth store
 const authStore = useAuthStore()
@@ -102,6 +130,15 @@ const authStore = useAuthStore()
 const isCurrentUser = (item: RankingItem) => {
   const user = authStore.user
   return user?.id === item.user_id
+}
+
+const resolveCurrentOrgName = (item?: RankingItem) => {
+  const name = item?.current_org?.name?.trim()
+  return name || '全体成员'
+}
+
+const isFallbackCurrentOrg = (item?: RankingItem) => {
+  return !item?.current_org?.name?.trim()
 }
 </script>
 
@@ -194,6 +231,9 @@ const isCurrentUser = (item: RankingItem) => {
   position: relative;
   width: 55px;
   height: 55px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   overflow: visible;
   flex-shrink: 0;
@@ -202,36 +242,6 @@ const isCurrentUser = (item: RankingItem) => {
 .podium-item.rank-1 .avatar-wrapper {
   width: 70px;
   height: 70px;
-}
-
-.podium-item .avatar-wrapper img,
-.podium-item .avatar-wrapper .avatar-placeholder {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  overflow: hidden;
-  background: #f0f0f0;
-  border: 3px solid white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.podium-item.rank-1 .avatar-wrapper img,
-.podium-item.rank-1 .avatar-wrapper .avatar-placeholder {
-  border: 4px solid #ffd700;
-}
-
-.podium-item .avatar-wrapper img {
-  object-fit: cover;
-}
-
-.podium-item .avatar-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  font-size: 24px;
-  font-weight: 600;
 }
 
 /* 排名徽章 - 右上角角标 */
@@ -277,17 +287,53 @@ const isCurrentUser = (item: RankingItem) => {
 }
 
 /* 用户名 */
-.podium-name {
+.podium-meta {
   margin-top: 8px;
+  width: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.podium-name {
   font-size: 14px;
   font-weight: 500;
   color: #262626;
   text-align: center;
-  width: 100px;
+  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.podium-org-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.88);
+  color: #5f6b7a;
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.podium-org-tag.is-fallback {
+  min-height: 18px;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 400;
+  color: #7b8797;
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.18);
 }
 
 /* 题目数 */

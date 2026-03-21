@@ -97,10 +97,12 @@
               </svg>
             </button>
             <button
-              v-if="team.role === 'owner'"
+              v-if="canRenderEditButton(team)"
               v-permission="['permission:org:edit', 'permission:org:update']"
               class="btn-icon"
-              title="编辑团队"
+              :class="{ 'btn-icon-disabled': isBuiltinEditBlocked(team) }"
+              :title="getEditButtonTitle(team)"
+              :disabled="isBuiltinEditBlocked(team)"
               @click="handleEditTeam(team)"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -193,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { message, Confirm } from '@/components/common'
 import { useAuthStore } from '@/stores/auth'
 import { createOrg, deleteOrg, getOrgList, setCurrentOrg, updateOrg, joinOrg, getRoleList, assignUserRole } from '@/services/permission.service'
@@ -213,6 +215,8 @@ interface Team {
   avatar?: string
   avatarId?: number
   ownerId?: number
+  isBuiltin: boolean
+  builtinKey?: string
 }
 
 const authStore = useAuthStore()
@@ -233,6 +237,7 @@ const orgForm = reactive({
   avatar: '',
   avatar_id: undefined as number | undefined
 })
+const isSuperAdmin = computed(() => authStore.user?.is_super_admin === true)
 
 const resetOrgForm = () => {
   orgForm.name = ''
@@ -258,9 +263,26 @@ const mapOrgToTeam = (org: OrgItem): Team => {
     canViewInviteCode: inviteCode !== '',
     avatar: org.avatar || '',
     avatarId: org.avatar_id ?? undefined,
-    ownerId: org.owner_id
+    ownerId: org.owner_id,
+    isBuiltin: org.is_builtin === true,
+    builtinKey: org.builtin_key
   }
 }
+
+const isAllMembersBuiltinTeam = (team: Team) =>
+  team.isBuiltin && team.builtinKey === 'all_members'
+
+const canSuperAdminEditBuiltinTeam = (team: Team) =>
+  isAllMembersBuiltinTeam(team) && isSuperAdmin.value
+
+const isBuiltinEditBlocked = (team: Team) =>
+  isAllMembersBuiltinTeam(team) && !isSuperAdmin.value
+
+const canRenderEditButton = (team: Team) =>
+  team.role === 'owner' || canSuperAdminEditBuiltinTeam(team)
+
+const getEditButtonTitle = (team: Team) =>
+  isBuiltinEditBlocked(team) ? '系统内置组织仅超级管理员可修改' : '编辑团队'
 
 const getInviteCodeText = (team: Team) => {
   if (!team.canViewInviteCode) {
@@ -330,6 +352,8 @@ const handleSwitchTeam = async (team: Team) => {
           description: team.description,
           code: team.canViewInviteCode ? team.inviteCode : '',
           owner_id: team.ownerId || 0,
+          is_builtin: team.isBuiltin,
+          builtin_key: team.builtinKey,
           created_at: team.createdAt,
           updated_at: '' // No need to be precise here for simple update
         }
@@ -355,6 +379,10 @@ const handleViewDetails = (team: Team) => {
 }
 
 const handleEditTeam = (team: Team) => {
+  if (isBuiltinEditBlocked(team)) {
+    message.warning('系统内置组织仅超级管理员可修改')
+    return
+  }
   modalMode.value = 'edit'
   modalTitle.value = `编辑团队 - ${team.name}`
   editingOrgId.value = team.id
@@ -393,6 +421,8 @@ const handleDeleteTeam = async (team: Team) => {
               description: fallbackTeam.description,
               code: fallbackTeam.canViewInviteCode ? fallbackTeam.inviteCode : '',
               owner_id: fallbackTeam.ownerId || 0,
+              is_builtin: fallbackTeam.isBuiltin,
+              builtin_key: fallbackTeam.builtinKey,
               created_at: fallbackTeam.createdAt,
               updated_at: ''
             }
@@ -444,6 +474,11 @@ const submitOrgForm = async () => {
   modalSubmitting.value = true
   try {
     if (modalMode.value === 'edit' && editingOrgId.value) {
+      const editingTeam = teams.value.find(team => team.id === editingOrgId.value)
+      if (editingTeam && isBuiltinEditBlocked(editingTeam)) {
+        message.warning('系统内置组织仅超级管理员可修改')
+        return
+      }
       await updateOrg(editingOrgId.value, payload as UpdateOrgRequest, { skipSuccTip: true })
       message.success('组织信息已更新')
     } else {
@@ -814,6 +849,18 @@ onMounted(() => {
 .btn-icon:hover {
   background-color: #f3f4f6;
   color: #374151;
+}
+
+.btn-icon:disabled,
+.btn-icon-disabled {
+  cursor: not-allowed;
+  color: #9ca3af;
+}
+
+.btn-icon:disabled:hover,
+.btn-icon-disabled:hover {
+  background-color: transparent;
+  color: #9ca3af;
 }
 
 .btn-delete:hover {
