@@ -59,7 +59,7 @@
             新增菜单
           </a-button>
           <a-button
-            v-permission="['permission:menu:batch_delete', 'permission:menu:delete_batch', 'permission:menu:delete']"
+            v-permission="['permission:menu:batch_delete']"
             danger
             :disabled="!hasSelected"
             @click="batchDelete"

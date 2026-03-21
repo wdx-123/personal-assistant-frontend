@@ -71,7 +71,7 @@
             新增API
           </a-button>
           <a-button
-            v-permission="['permission:api:batch_delete', 'permission:api:delete_batch', 'permission:api:delete']"
+            v-permission="['permission:api:batch_delete']"
             danger
             :disabled="!hasSelected"
             @click="batchDelete"
