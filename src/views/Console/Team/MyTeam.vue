@@ -3,13 +3,21 @@
     <div class="page-header">
       <div class="header-title">我的团队</div>
       <div class="header-actions">
-        <button class="btn btn-secondary" @click="handleJoinTeam">
+        <button
+          v-permission="['permission:org:join']"
+          class="btn btn-secondary"
+          @click="handleJoinTeam"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
           </svg>
           加入团队
         </button>
-        <button class="btn btn-primary" @click="handleCreateTeam">
+        <button
+          v-permission="['permission:org:add', 'permission:org:create']"
+          class="btn btn-primary"
+          @click="handleCreateTeam"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
@@ -19,7 +27,9 @@
     </div>
 
     <div class="team-grid">
-      <div v-for="team in teams" :key="team.id" class="team-card" :class="{ 'active': team.isCurrent }">
+      <div v-if="teamsNoPermission" class="empty-state">你没有权限访问</div>
+      <div v-else-if="teams.length === 0" class="empty-state">暂无团队信息</div>
+      <div v-else v-for="team in teams" :key="team.id" class="team-card" :class="{ 'active': team.isCurrent }">
         <div class="card-header">
           <div class="team-avatar" :style="{ backgroundColor: getAvatarColor(team.name) }">
             <img v-if="team.avatar" :src="team.avatar" alt="avatar" class="team-avatar-image" />
@@ -57,6 +67,7 @@
         <div class="card-footer">
           <button
             v-if="!team.isCurrent"
+            v-permission="['permission:org:switch']"
             class="btn-text btn-switch"
             :disabled="switchingOrgId !== null"
             @click="handleSwitchTeam(team)"
@@ -73,12 +84,24 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
-            <button v-if="team.role === 'owner'" class="btn-icon" title="编辑团队" @click="handleEditTeam(team)">
+            <button
+              v-if="team.role === 'owner'"
+              v-permission="['permission:org:edit', 'permission:org:update']"
+              class="btn-icon"
+              title="编辑团队"
+              @click="handleEditTeam(team)"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </button>
-            <button v-if="team.role === 'owner'" class="btn-icon btn-delete" title="删除团队" @click="handleDeleteTeam(team)">
+            <button
+              v-if="team.role === 'owner'"
+              v-permission="['permission:org:delete']"
+              class="btn-icon btn-delete"
+              title="删除团队"
+              @click="handleDeleteTeam(team)"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
@@ -131,6 +154,11 @@
           <button @click="showModal = false" class="btn btn-secondary">取消</button>
           <button
             v-if="modalMode === 'create' || modalMode === 'edit'"
+            v-permission="
+              modalMode === 'create'
+                ? ['permission:org:add', 'permission:org:create']
+                : ['permission:org:edit', 'permission:org:update']
+            "
             @click="submitOrgForm"
             class="btn btn-primary"
             :disabled="modalSubmitting"
@@ -139,6 +167,7 @@
           </button>
           <button
             v-if="modalMode === 'join'"
+            v-permission="['permission:org:join']"
             @click="handleJoinSubmit"
             class="btn btn-primary"
             :disabled="modalSubmitting"
@@ -152,11 +181,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { message, Confirm } from '@/components/common'
 import { useAuthStore } from '@/stores/auth'
 import { createOrg, deleteOrg, getOrgList, setCurrentOrg, updateOrg, joinOrg, getRoleList, assignUserRole } from '@/services/permission.service'
 import type { CreateOrgRequest, OrgItem, UpdateOrgRequest } from '@/types'
+import { isPermissionDenied } from '@/utils/request'
 
 interface Team {
   id: number
@@ -174,6 +204,7 @@ interface Team {
 
 const authStore = useAuthStore()
 const teams = ref<Team[]>([])
+const teamsNoPermission = ref(false)
 const modalMode = ref<'create' | 'edit' | 'detail' | 'join' | ''>('')
 const modalBodyText = ref('')
 const modalSubmitting = ref(false)
@@ -218,9 +249,13 @@ const mapOrgToTeam = (org: OrgItem): Team => {
 
 const fetchTeams = async () => {
   try {
-    const data = await getOrgList({ page: 0, page_size: 0 }, { skipSuccTip: true })
+    const data = await getOrgList({ page: 0, page_size: 0 }, { skipSuccTip: true, skipErrTip: true })
+    teamsNoPermission.value = false
     teams.value = (data?.list || []).map(mapOrgToTeam)
   } catch (error) {
+    if (isPermissionDenied(error)) {
+      teamsNoPermission.value = true
+    }
     teams.value = []
   }
 }
@@ -489,6 +524,17 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 24px;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 40px 24px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
 }
 
 .team-card {

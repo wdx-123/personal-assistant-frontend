@@ -39,11 +39,18 @@
         </a-form-item>
         <a-form-item class="search-form-actions">
           <a-space>
-            <a-button type="primary" @click="search" class="btn-search">
+            <a-button
+              type="primary"
+              @click="search"
+              class="btn-search"
+            >
               <template #icon><SearchOutlined /></template>
               搜索
             </a-button>
-            <a-button @click="resetSearch" class="btn-reset">
+            <a-button
+              @click="resetSearch"
+              class="btn-reset"
+            >
               <template #icon><ReloadOutlined /></template>
               重置
             </a-button>
@@ -55,11 +62,16 @@
     <a-card :bordered="false" class="content-card">
       <div class="toolbar">
         <a-space>
-          <a-button type="primary" @click="openEditModal()">
+          <a-button
+            v-permission="['permission:api:add', 'permission:api:create']"
+            type="primary"
+            @click="openEditModal()"
+          >
             <template #icon><PlusOutlined /></template>
             新增API
           </a-button>
           <a-button
+            v-permission="['permission:api:batch_delete', 'permission:api:delete_batch', 'permission:api:delete']"
             danger
             :disabled="!hasSelected"
             @click="batchDelete"
@@ -69,7 +81,11 @@
           </a-button>
         </a-space>
         <a-space>
-          <a-button type="primary" @click="syncRoutes">
+          <a-button
+            v-permission="['permission:api:sync', 'permission:api:sync_routes']"
+            type="primary"
+            @click="syncRoutes"
+          >
             同步路由
           </a-button>
           <a-tooltip title="刷新">
@@ -88,6 +104,7 @@
         row-key="id"
         @change="handleTableChange"
         :loading="loading"
+        :locale="tableLocale"
         size="middle"
       >
         <template #bodyCell="{ column, record }">
@@ -104,7 +121,13 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <div class="action-buttons">
-              <a-button type="primary" size="small" class="btn-edit" @click="openEditModal(record)">
+              <a-button
+                v-permission="['permission:api:edit', 'permission:api:update']"
+                type="primary"
+                size="small"
+                class="btn-edit"
+                @click="openEditModal(record)"
+              >
                 编辑
               </a-button>
               <a-popconfirm
@@ -113,7 +136,13 @@
                 ok-text="确定"
                 cancel-text="取消"
               >
-                <a-button type="primary" danger size="small" class="btn-delete">
+                <a-button
+                  v-permission="['permission:api:delete']"
+                  type="primary"
+                  danger
+                  size="small"
+                  class="btn-delete"
+                >
                   删除
                 </a-button>
               </a-popconfirm>
@@ -128,6 +157,8 @@
       v-model:open="isEditModalOpen"
       :title="modalType === 'add' ? '新增API' : '编辑API'"
       @ok="saveApi"
+      :okText="apiModalOkText"
+      :okButtonProps="{ disabled: !canSaveApi }"
       :confirmLoading="modalLoading"
       :maskClosable="false"
     >
@@ -178,6 +209,9 @@ import {
   DeleteOutlined
 } from '@ant-design/icons-vue'
 import { getApiList, getMenuList, syncApi, createApi, updateApi, deleteApi as deleteApiService } from '@/services/permission.service'
+import { useAuthStore } from '@/stores/auth'
+import { hasAnyMenuCode } from '@/utils/menuPermission'
+import { isPermissionDenied } from '@/utils/request'
 
 const searchQuery = reactive({
   path: '',
@@ -198,6 +232,9 @@ type TableKey = string | number
 const apis = ref<any[]>([])
 const menuCategoryOptions = ref<{ label: string; value: number }[]>([])
 const loading = ref(false)
+const noPermission = ref(false)
+const authStore = useAuthStore()
+const tableLocale = computed(() => ({ emptyText: noPermission.value ? '你没有权限访问' : '暂无数据' }))
 const pagination = reactive({
   current: 1,
   pageSize: 10,
@@ -229,8 +266,9 @@ const fetchApis = async () => {
       menu_id: searchQuery.menu_id || undefined
     }
     
-    const data = await getApiList(params, { skipSuccTip: true })
+    const data = await getApiList(params, { skipSuccTip: true, skipErrTip: true })
     if (data) {
+      noPermission.value = false
       apis.value = data.list.map((item: any) => ({
         id: item.id,
         path: item.path,
@@ -242,9 +280,14 @@ const fetchApis = async () => {
       }))
       pagination.total = data.total
     }
-    console.log(data)
   } catch (error) {
-    console.error('Failed to fetch APIs:', error)
+    if (isPermissionDenied(error)) {
+      noPermission.value = true
+      apis.value = []
+      pagination.total = 0
+    } else {
+      console.error('Failed to fetch APIs:', error)
+    }
   } finally {
     loading.value = false
   }
@@ -338,6 +381,10 @@ const deleteApi = async (id: number) => {
 const isEditModalOpen = ref(false)
 const modalType = ref<'add' | 'edit'>('add')
 const modalLoading = ref(false)
+const canCreateApi = computed(() => hasAnyMenuCode(authStore.myMenus, ['permission:api:add', 'permission:api:create']))
+const canUpdateApi = computed(() => hasAnyMenuCode(authStore.myMenus, ['permission:api:edit', 'permission:api:update']))
+const canSaveApi = computed(() => (modalType.value === 'add' ? canCreateApi.value : canUpdateApi.value))
+const apiModalOkText = computed(() => (canSaveApi.value ? '保存' : '⛔ 保存'))
 const editingApi = reactive({
   id: 0,
   path: '',
@@ -363,6 +410,9 @@ const openEditModal = (api?: any) => {
 }
 
 const saveApi = async () => {
+  if (!canSaveApi.value) {
+    return
+  }
   if (!editingApi.path || !editingApi.description || !editingApi.method) {
     message.warning('请填写必要的 API 信息')
     return
@@ -379,9 +429,9 @@ const saveApi = async () => {
     }
 
     if (modalType.value === 'add') {
-      await createApi(payload, { skipSuccTip: true })
+      await createApi(payload, { skipSuccTip: true, skipErrTip: true })
     } else {
-      await updateApi(editingApi.id, payload, { skipSuccTip: true })
+      await updateApi(editingApi.id, payload, { skipSuccTip: true, skipErrTip: true })
     }
     
     message.success(modalType.value === 'add' ? '新增成功' : '更新成功')
