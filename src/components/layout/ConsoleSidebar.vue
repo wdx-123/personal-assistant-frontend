@@ -1,550 +1,350 @@
 <template>
-  <div class="console-sidebar" :class="{ collapsed: isCollapsed }">
-    <!-- Logo 区域 -->
-    <div class="sidebar-header">
-      <div class="logo-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"/>
-        </svg>
+  <LayoutSider
+    class="console-sider"
+    :class="{
+      'console-sider--collapsed': collapsed && !broken,
+      'console-sider--broken': broken,
+      'console-sider--open': broken && !collapsed,
+    }"
+    theme="dark"
+    :width="SIDER_WIDTH"
+    :collapsed-width="collapsedWidth"
+    :collapsed="collapsed"
+    :trigger="null"
+    collapsible
+    breakpoint="lg"
+    @breakpoint="handleBreakpoint"
+  >
+    <div class="console-sider__brand" @click="navigateTo('/console/dashboard')">
+      <div class="console-sider__brand-icon">
+        <img :src="projectIcon" alt="项目图标" />
       </div>
-      <span class="logo-text">用户平台</span>
+      <div class="console-sider__brand-copy">
+        <span class="console-sider__brand-title">个人助手</span>
+        <span class="console-sider__brand-subtitle">控制台</span>
+      </div>
     </div>
 
-    <!-- 菜单列表 -->
-    <div class="sidebar-menu">
-      <template v-for="menu in sidebarMenus" :key="menu.path">
-        <!-- 无子菜单 -->
-        <div 
-          v-if="!menu.children || menu.children.length === 0" 
-          class="menu-item" 
-          :class="{ active: isActive(menu.path) }" 
-          @click="navigateTo(menu.path)"
-        >
-          <div class="menu-title" :title="menu.meta?.title">
-            <div class="title-content">
-              <span class="menu-icon">
-                <component :is="getIcon(menu)" />
-              </span>
-              <span class="menu-text">{{ menu.meta?.title }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 有子菜单 -->
-        <div 
-          v-else 
-          class="menu-item" 
-          :class="{ active: isSubmenuActive(menu) }"
-        >
-          <div class="menu-title" :title="menu.meta?.title" @click="toggleSubmenu(menu.name as string)">
-            <div class="title-content">
-              <span class="menu-icon">
-                <component :is="getIcon(menu)" />
-              </span>
-              <span class="menu-text">{{ menu.meta?.title }}</span>
-            </div>
-            <svg class="submenu-arrow" :class="{ rotated: isSubmenuOpen(menu.name as string) }" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-          
-          <div class="submenu" :class="{ open: isSubmenuOpen(menu.name as string) }">
-            <div 
-              v-for="sub in menu.children" 
-              :key="sub.path"
-              class="submenu-item" 
-              :class="{ active: isActive(sub.path) }" 
-              @click.stop="navigateTo(sub.path)"
-            >
-              {{ sub.meta?.title }}
-            </div>
-          </div>
-        </div>
-      </template>
+    <div class="console-sider__menu-shell">
+      <Menu
+        mode="inline"
+        theme="dark"
+        :items="menuItems"
+        :selected-keys="selectedKeys"
+        :open-keys="effectiveOpenKeys"
+        :inline-collapsed="collapsed && !broken"
+        @openChange="handleOpenChange"
+        @click="handleMenuClick"
+      />
     </div>
-
-    <!-- 底部收缩按钮 -->
-    <div class="sidebar-footer" @click="toggleCollapse">
-      <svg class="collapse-icon" :class="{ rotated: isCollapsed }" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-      </svg>
-      <span class="footer-text">收起侧边栏</span>
-    </div>
-  </div>
+  </LayoutSider>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { usePermissionStore } from '@/stores/permission';
-import * as AntdIcons from '@ant-design/icons-vue';
+import * as AntdIcons from '@ant-design/icons-vue'
+import { Layout, Menu } from 'ant-design-vue'
+import type { ItemType } from 'ant-design-vue'
+import type { Component } from 'vue'
+import type { RouteRecordRaw } from 'vue-router'
+import { h, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { usePermissionStore } from '@/stores/permission'
+import projectIcon from '@/assets/branding/project-icon.svg'
 
-const isCollapsed = ref(false);
-const openSubmenus = ref<Set<string>>(new Set()); 
-const route = useRoute();
-const router = useRouter();
-const permissionStore = usePermissionStore();
+const LayoutSider = Layout.Sider
 
-// 获取动态路由并生成侧边栏菜单
-const sidebarMenus = computed(() => {
-  // 找到 Console 路由
-  const consoleRoute = permissionStore.dynamicRoutes.find(r => r.path === '/console' || r.name === 'Console');
-  if (!consoleRoute || !consoleRoute.children) return [];
+const SIDER_WIDTH = 248
+const DESKTOP_COLLAPSED_WIDTH = 80
+type MenuKey = string | number
 
-  // 转换子路由为菜单项
-  return consoleRoute.children.map(route => {
-    // 处理路径：将相对路径转换为绝对路径
-    const fullPath = route.path.startsWith('/') ? route.path : `/console/${route.path}`;
-    
-    // 处理子菜单路径
-    const children = route.children?.map(child => ({
-      ...child,
-      path: child.path.startsWith('/') ? child.path : `${fullPath}/${child.path}`.replace(/\/+/g, '/')
-    })) || [];
+const props = defineProps<{
+  collapsed: boolean
+  broken: boolean
+}>()
 
-    return {
-      ...route,
-      path: fullPath,
-      children
-    };
-  });
-});
+const emit = defineEmits<{
+  breakpoint: [broken: boolean]
+}>()
 
-// 图标映射
-const Icons = {
-  Home: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
-    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" })
-  ]),
-  Permission: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
-    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" })
-  ]),
-  Team: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
-    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" })
-  ]),
-  Workbench: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
-    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M9.75 3.104v5.714m0 0H4.036m5.714 0L3.75 2.854m6 18.042v-5.714m0 0h5.714m-5.714 0 6 5.964M20.25 8.818h-5.714m0 0V3.104m0 5.714 5.964-6M3.75 15.182h5.714m0 0v5.714m0-5.714-6 5.964" })
-  ]),
-  Settings: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
-    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" }),
-    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M15 12a3 3 0 11-6 0 3 3 0 016 0z" })
-  ]),
-  Default: h('svg', { xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" }, [
-    h('path', { 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2", d: "M4 6h16M4 12h16M4 18h16" })
-  ])
-};
+type MenuRouteRecord = RouteRecordRaw & {
+  children?: MenuRouteRecord[]
+}
 
-const getIcon = (menu: any): any => {
-  // 1. 优先使用 meta.icon 配置的 Ant Design 图标
-  if (menu.meta?.icon && AntdIcons[menu.meta.icon as keyof typeof AntdIcons]) {
-    return AntdIcons[menu.meta.icon as keyof typeof AntdIcons];
+const route = useRoute()
+const router = useRouter()
+const permissionStore = usePermissionStore()
+const openKeys = ref<MenuKey[]>([])
+
+const collapsedWidth = computed(() => (props.broken ? 0 : DESKTOP_COLLAPSED_WIDTH))
+
+const getFallbackIcon = (name: string) => {
+  if (name.includes('Dashboard')) return AntdIcons.DashboardOutlined
+  if (name.includes('Workbench')) return AntdIcons.AppstoreOutlined
+  if (name.includes('Permission')) return AntdIcons.SafetyCertificateOutlined
+  if (name.includes('Team')) return AntdIcons.TeamOutlined
+  if (name.includes('Settings')) return AntdIcons.SettingOutlined
+  return AntdIcons.AppstoreOutlined
+}
+
+const getIconComponent = (menu: MenuRouteRecord): Component => {
+  const iconName = String(menu.meta?.icon || '').trim()
+  const matchedIcon = iconName
+    ? AntdIcons[iconName as keyof typeof AntdIcons]
+    : null
+
+  if (matchedIcon) return matchedIcon as Component
+  return getFallbackIcon(String(menu.name || ''))
+}
+
+const withConsolePath = (basePath: string, nextPath: string) => {
+  if (nextPath.startsWith('/')) return nextPath
+  return `${basePath}/${nextPath}`.replace(/\/+/g, '/')
+}
+
+const menuState = computed(() => {
+  const routeToAncestorKeys: Record<string, string[]> = {}
+  const routeToSelectedKey: Record<string, string> = {}
+
+  const buildMenuItems = (
+    records: MenuRouteRecord[],
+    basePath: string,
+    parentKeys: string[] = [],
+    nearestVisibleKey?: string,
+  ): ItemType[] => {
+    return records.flatMap((record) => {
+      const fullPath = withConsolePath(basePath, record.path)
+      const title = String(record.meta?.title || '').trim()
+      const hidden = Boolean(record.meta?.hideInMenu)
+      const nextNearestVisibleKey = hidden ? nearestVisibleKey : fullPath
+      const visibleChildren = buildMenuItems(
+        Array.isArray(record.children) ? record.children : [],
+        fullPath,
+        hidden ? parentKeys : [...parentKeys, fullPath],
+        nextNearestVisibleKey,
+      )
+
+      routeToAncestorKeys[fullPath] = parentKeys
+      routeToSelectedKey[fullPath] = nearestVisibleKey || parentKeys[parentKeys.length - 1] || fullPath
+
+      if (hidden) {
+        return visibleChildren
+      }
+
+      const menuItem: ItemType = {
+        key: fullPath,
+        icon: h(getIconComponent(record)),
+        label: title || String(record.name || fullPath),
+      }
+
+      routeToSelectedKey[fullPath] = fullPath
+
+      if (visibleChildren.length > 0) {
+        return [
+          {
+            ...menuItem,
+            children: visibleChildren,
+          },
+        ]
+      }
+
+      if (record.component) {
+        return [menuItem]
+      }
+
+      return []
+    })
   }
 
-  // 2. 兜底逻辑：根据 name 匹配旧的 SVG 图标
-  const name = menu.name as string;
-  if (name.includes('Dashboard')) return Icons.Home;
-  if (name.includes('Workbench')) return Icons.Workbench;
-  if (name.includes('Permission')) return Icons.Permission;
-  if (name.includes('Team')) return Icons.Team;
-  if (name.includes('Settings')) return Icons.Settings;
-  return Icons.Default;
-};
+  const consoleRoute = permissionStore.dynamicRoutes.find(
+    (record) => record.path === '/console' || record.name === 'Console',
+  ) as MenuRouteRecord | undefined
 
-// 切换侧边栏收起/展开
-const toggleCollapse = () => {
-  isCollapsed.value = !isCollapsed.value;
-};
+  const items = buildMenuItems(
+    Array.isArray(consoleRoute?.children) ? consoleRoute.children : [],
+    '/console',
+  )
 
-// 切换子菜单展开/收起
-const toggleSubmenu = (key: string) => {
-  if (isCollapsed.value) {
-    isCollapsed.value = false;
+  return {
+    items,
+    routeToAncestorKeys,
+    routeToSelectedKey,
   }
-  
-  if (openSubmenus.value.has(key)) {
-    openSubmenus.value.delete(key);
-  } else {
-    openSubmenus.value.add(key);
-  }
-};
+})
 
-// 检查子菜单是否展开
-const isSubmenuOpen = (key: string) => {
-  return openSubmenus.value.has(key) && !isCollapsed.value;
-};
+const menuItems = computed(() => menuState.value.items)
 
-// 路由跳转
+const selectedKeys = computed(() => {
+  const selectedKey =
+    menuState.value.routeToSelectedKey[route.path] ||
+    menuState.value.routeToSelectedKey[route.matched[route.matched.length - 1]?.path || '']
+
+  return selectedKey ? [selectedKey] : []
+})
+
+const currentRouteAncestorKeys = computed(
+  () => menuState.value.routeToAncestorKeys[route.path] || [],
+)
+
+const effectiveOpenKeys = computed(() => (props.collapsed ? [] : openKeys.value))
+
+watch(
+  currentRouteAncestorKeys,
+  (keys) => {
+    if (!keys.length) return
+    openKeys.value = Array.from(new Set([...openKeys.value, ...keys]))
+  },
+  { immediate: true },
+)
+
+const handleOpenChange = (keys: MenuKey[]) => {
+  openKeys.value = keys
+}
+
 const navigateTo = (path: string) => {
-  router.push(path);
-};
+  if (route.path === path) return
+  void router.push(path)
+}
 
-// 检查当前路由是否激活
-const isActive = (path: string) => {
-  return route.path === path;
-};
+const handleMenuClick = ({ key }: { key: MenuKey }) => {
+  navigateTo(String(key))
+}
 
-// 检查子菜单是否激活
-const isSubmenuActive = (menu: any) => {
-  if (!menu.children) return isActive(menu.path);
-  return menu.children.some((child: any) => isActive(child.path));
-};
-
-// 初始化：自动展开当前激活的子菜单
-const initOpenSubmenus = () => {
-  sidebarMenus.value.forEach(menu => {
-    if (menu.children && isSubmenuActive(menu)) {
-      openSubmenus.value.add(menu.name as string);
-    }
-  });
-};
-
-// 监听路由变化，更新展开状态（可选，如果需要保持展开）
-initOpenSubmenus();
-
+const handleBreakpoint = (broken: boolean) => {
+  emit('breakpoint', broken)
+}
 </script>
 
 <style scoped>
-/* ============================================
-   侧边栏容器
-   ============================================ */
-.console-sidebar {
-  width: 240px;
-  height: 100%;
-  background: #f2f3f5;
-  color: #333;
+.console-sider {
+  z-index: 110;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 6px 0 24px rgba(15, 23, 42, 0.18);
+}
+
+.console-sider :deep(.ant-layout-sider-children) {
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
-  overflow: hidden;
-  box-shadow: 1px 0 24px rgba(0, 0, 0, 0.06), 1px 0 8px rgba(0, 0, 0, 0.04);
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
 }
 
-.console-sidebar.collapsed {
-  width: 64px;
-}
-
-/* ============================================
-   Header 区域
-   ============================================ */
-.sidebar-header {
+.console-sider__brand {
   height: 64px;
+  padding: 0 18px;
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  background: #fff;
-  font-size: 18px;
-  font-weight: 600;
-  gap: 12px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  white-space: nowrap;
-  position: relative;
-  z-index: 1;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
 }
 
-/* 收起时 Header：Logo 图标保持位置 */
-.collapsed .sidebar-header {
-  padding: 0 16px;
-  justify-content: flex-start;
-  gap: 0;
-}
-
-.logo-icon {
-  width: 32px;
-  height: 32px;
-  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
-  border-radius: 8px;
+.console-sider__brand-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
 }
 
-.logo-icon svg {
-  width: 18px;
-  height: 18px;
+.console-sider__brand-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
-.logo-text {
-  color: #1a1a1a;
+.console-sider__brand-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: opacity 0.2s ease, width 0.2s ease;
+}
+
+.console-sider__brand-title {
+  color: #f8fafc;
+  font-size: 15px;
   font-weight: 600;
-  opacity: 1;
-  overflow: hidden;
-  transition: opacity 0.15s ease 0.1s, 
-              width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              margin 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  line-height: 1.1;
 }
 
-/* 收起时文字完全隐藏，不占空间 */
-.collapsed .logo-text {
-  opacity: 0;
-  width: 0;
-  margin: 0;
-  transition: opacity 0.1s ease, 
-              width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              margin 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+.console-sider__brand-subtitle {
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 12px;
+  line-height: 1.1;
 }
 
-/* ============================================
-   菜单区域
-   ============================================ */
-.sidebar-menu {
-  padding: 12px 0;
+.console-sider__menu-shell {
   flex: 1;
-  overflow-x: hidden;
+  min-height: 0;
+  padding: 14px 10px 18px;
   overflow-y: auto;
 }
 
-.menu-item {
-  margin-bottom: 2px;
-  position: relative;
-}
-
-/* 激活指示器 - 左边蓝条（收起时也能看到） */
-.menu-title {
-  margin: 0 8px;
-  padding: 0 12px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  color: #595959;
-  font-size: 14px;
-  justify-content: space-between;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-/* 收起时菜单项保持位置 */
-.collapsed .menu-title {
-  margin: 0 8px;
-  padding: 0 12px;
-  justify-content: flex-start;
-}
-
-.menu-title:hover {
-  color: #1890ff;
-  background-color: rgba(24, 144, 255, 0.08);
-}
-
-.menu-item.active > .menu-title {
-  background: rgba(24, 144, 255, 0.1);
-  color: #1890ff;
-  font-weight: 500;
-}
-
-.menu-item.active > .menu-title::before {
-  content: '';
-  position: absolute;
-  left: -8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 24px;
-  background: #1890ff;
-  border-radius: 0 3px 3px 0;
-  box-shadow: 0 0 8px rgba(24, 144, 255, 0.4);
-}
-
-.title-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-/* 收起时 title-content 也居中 */
-.collapsed .title-content {
-  gap: 0;
-}
-
-.menu-icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  stroke-width: 1.8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 覆盖 Ant Design 图标样式以确保居中 */
-.menu-icon :deep(svg) {
-  width: 100%;
-  height: 100%;
-}
-
-/* 菜单文字 */
-.menu-text {
-  opacity: 1;
-  white-space: nowrap;
-  transition: opacity 0.15s ease 0.1s;
-}
-
-.collapsed .menu-text {
-  opacity: 0;
-  width: 0;
-  transition: opacity 0.1s ease;
-}
-
-/* ============================================
-   子菜单箭头
-   ============================================ */
-.submenu-arrow {
-  width: 14px;
-  height: 14px;
-  color: #8c8c8c;
-  flex-shrink: 0;
-  opacity: 1;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.15s ease 0.1s;
-}
-
-.submenu-arrow.rotated {
-  transform: rotate(180deg);
-}
-
-.collapsed .submenu-arrow {
-  opacity: 0;
-  width: 0;
-  transition: opacity 0.1s ease;
-}
-
-/* ============================================
-   子菜单
-   ============================================ */
-.submenu {
-  background: rgba(0, 0, 0, 0.03);
-  margin: 0 8px;
-  border-radius: 8px;
-  overflow: hidden;
-  max-height: 0;
-  opacity: 0;
-  transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.2s ease,
-              margin 0.2s ease;
-}
-
-.submenu.open {
-  max-height: 200px;
-  opacity: 1;
-  margin-top: 4px;
-  transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.2s ease 0.05s,
-              margin 0.2s ease;
-}
-
-.collapsed .submenu {
-  max-height: 0 !important;
-  opacity: 0 !important;
-  margin: 0 8px !important;
-}
-
-.submenu-item {
-  padding: 0 12px 0 44px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  color: #595959;
-  font-size: 13px;
-  position: relative;
-  transition: all 0.2s ease;
-}
-
-.submenu-item:first-child {
-  padding-top: 4px;
-}
-
-.submenu-item:last-child {
-  padding-bottom: 4px;
-}
-
-.submenu-item:hover {
-  color: #1890ff;
-  background-color: rgba(24, 144, 255, 0.08);
-}
-
-.submenu-item.active {
-  color: #1890ff;
-  background: rgba(24, 144, 255, 0.12);
-  font-weight: 500;
-}
-
-/* ============================================
-   底部收缩按钮
-   ============================================ */
-.sidebar-footer {
-  height: 48px;
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  cursor: pointer;
-  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.04);
-  color: #8c8c8c;
-  font-size: 13px;
-  gap: 10px;
-  background: #fff;
-  position: relative;
-  z-index: 1;
-  transition: all 0.2s ease;
-}
-
-/* 收起时底部保持位置 */
-.collapsed .sidebar-footer {
-  justify-content: flex-start;
-  padding: 0 16px;
-}
-
-.sidebar-footer:hover {
-  color: #1890ff;
-  background: rgba(24, 144, 255, 0.06);
-}
-
-.collapse-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.collapse-icon.rotated {
-  transform: rotate(180deg);
-}
-
-.footer-text {
-  white-space: nowrap;
-  opacity: 1;
-  transition: opacity 0.15s ease 0.1s;
-}
-
-.collapsed .footer-text {
-  opacity: 0;
-  width: 0;
-  transition: opacity 0.1s ease;
-}
-
-/* ============================================
-   滚动条样式
-   ============================================ */
-.sidebar-menu::-webkit-scrollbar {
-  width: 4px;
-}
-
-.sidebar-menu::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.08);
-  border-radius: 2px;
-}
-
-.sidebar-menu::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.15);
-}
-
-.sidebar-menu::-webkit-scrollbar-track {
+.console-sider__menu-shell :deep(.ant-menu) {
   background: transparent;
+  border-inline-end: none;
+}
+
+.console-sider__menu-shell :deep(.ant-menu-item),
+.console-sider__menu-shell :deep(.ant-menu-submenu-title) {
+  border-radius: 10px;
+  margin-inline: 0;
+  width: 100%;
+}
+
+.console-sider__menu-shell :deep(.ant-menu-inline-collapsed > .ant-menu-item),
+.console-sider__menu-shell :deep(.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title) {
+  padding-inline: calc(50% - 16px);
+}
+
+.console-sider__menu-shell :deep(.ant-menu-dark .ant-menu-item-selected) {
+  background: linear-gradient(90deg, #1677ff 0%, #3b82f6 100%);
+  box-shadow: 0 8px 18px rgba(22, 119, 255, 0.24);
+}
+
+.console-sider__menu-shell :deep(.ant-menu-dark .ant-menu-sub.ant-menu-inline) {
+  background: rgba(2, 12, 27, 0.32);
+  border-radius: 12px;
+  margin-top: 6px;
+  margin-bottom: 8px;
+}
+
+.console-sider__menu-shell :deep(.ant-menu-dark .ant-menu-item:hover),
+.console-sider__menu-shell :deep(.ant-menu-dark .ant-menu-submenu-title:hover) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.console-sider__menu-shell :deep(.ant-menu-dark.ant-menu-inline .ant-menu-sub.ant-menu-inline .ant-menu-item) {
+  margin-inline: 8px;
+  width: calc(100% - 16px);
+}
+
+.console-sider--collapsed .console-sider__brand {
+  padding-inline: 20px;
+}
+
+.console-sider--collapsed .console-sider__brand-copy {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.console-sider--broken {
+  position: fixed !important;
+  inset: 0 auto 0 0;
+  height: 100vh;
+  box-shadow: none;
+}
+
+.console-sider--open {
+  box-shadow: 12px 0 32px rgba(15, 23, 42, 0.28);
+}
+
+@media (max-width: 991px) {
+  .console-sider__menu-shell {
+    padding-bottom: 28px;
+  }
 }
 </style>

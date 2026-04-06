@@ -1,4 +1,5 @@
 import router from '@/router'
+import { ASSISTANT_ALWAYS_ACCESSIBLE_PATHS } from '@/constants/assistant'
 import { useAuthStore } from '@/stores/auth'
 import { usePermissionStore } from '@/stores/permission'
 import type { RouteLocationNormalized } from 'vue-router'
@@ -41,6 +42,13 @@ const addAccessRoutes = async () => {
 const isConsoleRoute = (to: Pick<RouteLocationNormalized, 'path'> | string) => {
   const path = typeof to === 'string' ? to : to.path
   return path.startsWith('/console')
+}
+
+const isAlwaysAccessibleConsoleRoute = (
+  to: Pick<RouteLocationNormalized, 'path'> | string,
+) => {
+  const path = typeof to === 'string' ? to : to.path
+  return ASSISTANT_ALWAYS_ACCESSIBLE_PATHS.has(path)
 }
 
 const needsRouteRematch = (to: RouteLocationNormalized) => {
@@ -146,9 +154,10 @@ router.beforeEach(async (to: RouteLocationNormalized, _from: RouteLocationNormal
         const cachedMenus = authStore.myMenus.slice()
         const browsingOrgId = authStore.browsingOrgId || authStore.user?.current_org_id
         const targetIsConsole = isConsoleRoute(to)
+        const targetIsAlwaysAccessibleConsole = isAlwaysAccessibleConsoleRoute(to)
 
         try {
-          if (cachedMenus.length > 0) {
+          if (cachedMenus.length > 0 || targetIsAlwaysAccessibleConsole) {
             await addAccessRoutes()
             continueAfterRouteSetup(to, next)
             void refreshMenusInBackground(
@@ -156,7 +165,7 @@ router.beforeEach(async (to: RouteLocationNormalized, _from: RouteLocationNormal
               permissionStore,
               cachedMenus,
               browsingOrgId || undefined,
-              targetIsConsole
+              cachedMenus.length > 0 && targetIsConsole
             )
             return
           }
@@ -190,6 +199,19 @@ router.beforeEach(async (to: RouteLocationNormalized, _from: RouteLocationNormal
           }
 
           authStore.setMyMenus(cachedMenus)
+          if (targetIsAlwaysAccessibleConsole) {
+            await addAccessRoutes()
+            continueAfterRouteSetup(to, next)
+            void refreshMenusInBackground(
+              authStore,
+              permissionStore,
+              cachedMenus,
+              browsingOrgId || undefined,
+              false
+            )
+            return
+          }
+
           if (targetIsConsole) {
             message.warning(getMenuLoadFailureMessage({
               hasCachedMenus: cachedMenus.length > 0,

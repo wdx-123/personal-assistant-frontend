@@ -6,6 +6,52 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --assistant-font-family-sans:
+    "Noto Sans SC", "Noto Sans", system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --assistant-type-hero-eyebrow-size: 11px;
+  --assistant-type-hero-eyebrow-weight: 600;
+  --assistant-type-hero-eyebrow-line-height: 1.45;
+  --assistant-type-hero-eyebrow-tracking: 0.12em;
+
+  --assistant-type-hero-title-size: clamp(28px, 3.5vw, 40px);
+  --assistant-type-hero-title-weight: 500;
+  --assistant-type-hero-title-line-height: 1.22;
+  --assistant-type-hero-title-tracking: -0.015em;
+
+  --assistant-type-hero-greeting-size: clamp(19px, 2.2vw, 24px);
+  --assistant-type-hero-greeting-weight: 500;
+  --assistant-type-hero-greeting-line-height: 1.45;
+  --assistant-type-hero-greeting-tracking: -0.01em;
+
+  --assistant-type-hero-subtitle-size: 15px;
+  --assistant-type-hero-subtitle-weight: 400;
+  --assistant-type-hero-subtitle-line-height: 1.8;
+
+  --assistant-type-input-size: 15px;
+  --assistant-type-input-weight: 400;
+  --assistant-type-input-line-height: 1.65;
+
+  --assistant-type-chip-size: 13px;
+  --assistant-type-chip-weight: 500;
+  --assistant-type-chip-line-height: 1.4;
+
+  --assistant-type-sidebar-title-size: 15px;
+  --assistant-type-sidebar-title-weight: 600;
+  --assistant-type-sidebar-title-line-height: 1.45;
+
+  --assistant-type-sidebar-item-size: 14px;
+  --assistant-type-sidebar-item-weight: 400;
+  --assistant-type-sidebar-item-line-height: 1.5;
+
+  --assistant-type-compact-hero-greeting-size: 18px;
+  --assistant-type-compact-hero-title-size: clamp(24px, 4vw, 30px);
+  --assistant-type-compact-hero-subtitle-size: 14px;
+  --assistant-type-mobile-hero-title-size: clamp(24px, 6.6vw, 30px);
+}
+
 /* 自定义全局样式 */
 body {
   font-family:

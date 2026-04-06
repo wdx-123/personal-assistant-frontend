@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
+import { ASSISTANT_ALWAYS_ACCESSIBLE_PATHS } from '@/constants/assistant'
 import { reverseRouteMap } from '@/router/route-map'
 import { useAuthStore } from '@/stores/auth'
 import type { MenuItem } from '@/types/permission.types'
@@ -17,20 +18,30 @@ export const usePermissionStore = defineStore('permission', () => {
 
   // 核心功能：生成你有权访问的路由
   const generateRoutes = async (): Promise<RouteRecordRaw[]> => {
+    if (isRoutesAdded.value && dynamicRoutes.value.length > 0) {
+      return dynamicRoutes.value
+    }
+
     const authStore = useAuthStore()
     const myMenus = authStore.myMenus // 后端返回的菜单列表
     const { asyncRoutes } = await import('@/router/async-routes')
 
     // 第一步：把所有“允许访问的路径”都整理到一个白名单里
     const allowedPathList = getAllowedPaths(myMenus)
+    const alwaysAllowedPaths = new Set(ASSISTANT_ALWAYS_ACCESSIBLE_PATHS)
     // 提取图标映射
     const iconMap = getIconMap(myMenus)
 
     // 第二步：拿着白名单，去过滤前端写好的所有路由
-    const accessedRoutes = filterAsyncRoutes(asyncRoutes, allowedPathList, iconMap)
+    const accessedRoutes = filterAsyncRoutes(
+      asyncRoutes,
+      allowedPathList,
+      iconMap,
+      alwaysAllowedPaths,
+    )
     // 保存结果
     dynamicRoutes.value = accessedRoutes
-    isRoutesAdded.value = true
+    isRoutesAdded.value = myMenus.length > 0
     return accessedRoutes
   }
 
@@ -75,7 +86,13 @@ export const usePermissionStore = defineStore('permission', () => {
   }
 
   // --- 辅助函数：过滤路由 ---
-  const filterAsyncRoutes = (routes: RouteRecordRaw[], allowedPaths: Set<string>, iconMap: Map<string, string>, parentPath = '/'): RouteRecordRaw[] => {
+  const filterAsyncRoutes = (
+    routes: RouteRecordRaw[],
+    allowedPaths: Set<string>,
+    iconMap: Map<string, string>,
+    alwaysAllowedPaths: Set<string>,
+    parentPath = '/',
+  ): RouteRecordRaw[] => {
     const filtered: RouteRecordRaw[] = []
 
     routes.forEach(route => {
@@ -105,17 +122,25 @@ export const usePermissionStore = defineStore('permission', () => {
 
       // 3. 判断当前路由是否在白名单里
       // 先查直接路径
-      let isAllowed = allowedPaths.has(fullPath)
+      let isAllowed =
+        allowedPaths.has(fullPath) || alwaysAllowedPaths.has(fullPath)
       
       // 如果没查到，再查查它的“映射路径”（后端路径）
       if (!isAllowed && reverseRouteMap[fullPath]) {
         const backendPath = reverseRouteMap[fullPath]
-        isAllowed = allowedPaths.has(backendPath)
+        isAllowed =
+          allowedPaths.has(backendPath) || alwaysAllowedPaths.has(backendPath)
       }
 
       // 4. 如果有子路由，递归去过滤子路由
       if (tmpRoute.children) {
-        tmpRoute.children = filterAsyncRoutes(tmpRoute.children, allowedPaths, iconMap, fullPath)
+        tmpRoute.children = filterAsyncRoutes(
+          tmpRoute.children,
+          allowedPaths,
+          iconMap,
+          alwaysAllowedPaths,
+          fullPath,
+        )
         
         // 关键逻辑：如果子路由里有能访问的，那父路由也得留着
         if (tmpRoute.children.length > 0) {
@@ -149,7 +174,7 @@ export const usePermissionStore = defineStore('permission', () => {
     // 否则拼接到父路径后面
     // 注意处理一下双斜杠的问题
     const cleanBasePath = basePath === '/' ? '' : basePath
-    return `${cleanBasePath}/${routePath}`
+    return `${cleanBasePath}/${routePath}`.replace(/\/+/g, '/')
   }
 
   return {

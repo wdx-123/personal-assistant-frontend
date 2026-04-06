@@ -83,7 +83,6 @@
         <a-space>
           <a-button
             v-permission="['permission:api:sync', 'permission:api:sync_routes']"
-            type="primary"
             @click="syncRoutes"
           >
             同步路由
@@ -123,9 +122,7 @@
             <div class="action-buttons">
               <a-button
                 v-permission="['permission:api:edit', 'permission:api:update']"
-                type="primary"
                 size="small"
-                class="btn-edit"
                 @click="openEditModal(record)"
               >
                 编辑
@@ -138,10 +135,8 @@
               >
                 <a-button
                   v-permission="['permission:api:delete']"
-                  type="primary"
                   danger
                   size="small"
-                  class="btn-delete"
                 >
                   删除
                 </a-button>
@@ -466,17 +461,30 @@ onMounted(() => {
 
 <style scoped>
 .page-container {
-  padding: 24px;
-  background-color: #f0f2f5;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   min-height: 100%;
 }
 
 .search-card {
-  margin-bottom: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .content-card {
   min-height: 500px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.content-card :deep(.ant-card-body) {
+  display: flex;
+  min-height: 500px;
+  flex-direction: column;
 }
 
 .toolbar {
@@ -486,28 +494,15 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
-/* 调整搜索表单样式 */
 .search-form :deep(.ant-form-item) {
-  margin-bottom: 24px; /* 统一底部间距 */
+  margin-bottom: 20px;
 }
 
-/* 搜索按钮颜色 - 接近截图中的蓝色 */
-.btn-search {
-  background-color: #1677ff;
-  border-color: #1677ff;
-}
-
-.btn-search:hover {
-  background-color: #4096ff;
-  border-color: #4096ff;
-}
-
-/* 调整操作按钮样式 */
 .action-buttons {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 :deep(.ant-btn) {
@@ -523,39 +518,5 @@ onMounted(() => {
 
 :deep(.ant-btn .anticon) {
   margin-right: 4px;
-}
-
-.btn-edit,
-.btn-delete {
-  border-radius: 4px;
-  padding: 0 12px;
-  height: 28px;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 覆盖 Ant Design 默认的按钮阴影，使其看起来更扁平，接近截图风格 */
-.btn-edit {
-  background-color: #3b82f6; /* 接近截图的蓝色 */
-  border-color: #3b82f6;
-  box-shadow: none;
-}
-
-.btn-edit:hover {
-  background-color: #2563eb;
-  border-color: #2563eb;
-}
-
-.btn-delete {
-  background-color: #ef4444; /* 接近截图的红色 */
-  border-color: #ef4444;
-  box-shadow: none;
-}
-
-.btn-delete:hover {
-  background-color: #dc2626;
-  border-color: #dc2626;
 }
 </style>

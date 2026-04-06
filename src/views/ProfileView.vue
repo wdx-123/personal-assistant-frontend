@@ -132,8 +132,7 @@ const handleSave = () => {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  margin-top: 50px;
-  padding: 80px 24px 24px;
+  padding: 24px 24px 28px;
   box-sizing: border-box;
   overflow-y: auto;
 }
@@ -199,7 +198,7 @@ const handleSave = () => {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  padding: 80px 50px 100px 50px;
+  padding: 56px 50px 72px;
 }
 
 .profile-form {
@@ -229,7 +228,7 @@ const handleSave = () => {
 @media (max-width: 800px) {
   .profile-container {
     max-width: none;
-    padding: 72px 16px 16px;
+    padding: 20px 16px 16px;
   }
 
   .profile-form {

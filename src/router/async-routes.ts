@@ -15,20 +15,44 @@ export const asyncRoutes: RouteRecordRaw[] = [
         path: 'dashboard',
         name: 'ConsoleDashboard',
         component: () => import('@/views/Console/Dashboard.vue'),
-        meta: { title: '主页' }
+        meta: {
+          title: '主页',
+          icon: 'DashboardOutlined',
+        }
+      },
+      {
+        path: 'assistant',
+        name: 'ConsoleAssistant',
+        component: () => import('@/views/Console/Workbench/AssistantWorkbench.vue'),
+        meta: {
+          title: 'AI助手',
+          icon: 'RobotOutlined',
+        }
       },
       {
         path: 'workbench',
         name: 'ConsoleWorkbench',
         component: () => import('@/views/Console/Workbench.vue'),
-        meta: { title: '工作台' },
-        redirect: '/console/workbench/task',
+        meta: {
+          title: '工作台',
+          icon: 'AppstoreOutlined',
+        },
+        redirect: '/console/assistant',
         children: [
           {
             path: 'task',
             name: 'WorkbenchTask',
             component: () => import('@/views/Console/Workbench/TaskWorkbench.vue'),
             meta: { title: 'OJ任务' }
+          },
+          {
+            path: 'assistant',
+            name: 'WorkbenchAssistantLegacy',
+            redirect: '/console/assistant',
+            meta: {
+              title: 'AI助手',
+              hideInMenu: true,
+            }
           }
         ]
       },
@@ -36,7 +60,10 @@ export const asyncRoutes: RouteRecordRaw[] = [
         path: 'permission',
         name: 'ConsolePermission',
         component: () => import('@/views/Console/Permission.vue'),
-        meta: { title: '权限管理' },
+        meta: {
+          title: '权限管理',
+          icon: 'SafetyCertificateOutlined',
+        },
         redirect: '/console/permission/role',
         children: [
           {
@@ -63,7 +90,10 @@ export const asyncRoutes: RouteRecordRaw[] = [
         path: 'team',
         name: 'ConsoleTeam',
         component: () => import('@/views/Console/Team.vue'),
-        meta: { title: '团队管理' },
+        meta: {
+          title: '团队管理',
+          icon: 'TeamOutlined',
+        },
         redirect: '/console/team/list',
         children: [
           {
@@ -84,7 +114,10 @@ export const asyncRoutes: RouteRecordRaw[] = [
         path: 'settings',
         name: 'ConsoleSettings',
         component: () => import('@/views/Console/Settings.vue'),
-        meta: { title: '设置' },
+        meta: {
+          title: '设置',
+          icon: 'SettingOutlined',
+        },
       }
     ]
   }

@@ -3564,11 +3564,16 @@ onMounted(() => {
 .page-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
 .search-card,
-.content-card,
+.content-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
 .section-card {
   border-radius: 20px;
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
@@ -3664,7 +3669,7 @@ onMounted(() => {
 
 .search-form :deep(.ant-form-item) {
   margin-right: 0;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .task-search-item {
@@ -3688,7 +3693,7 @@ onMounted(() => {
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  padding-bottom: 24px;
+  padding-bottom: 20px;
   flex: 0 0 auto;
   margin-left: auto;
   white-space: nowrap;

@@ -1,122 +1,171 @@
 <script setup lang="ts">
-/**
- * 控制台页面
- * 背景透明，保留全局背景图
- */
-import { defineAsyncComponent, ref } from 'vue';
-import { onBeforeRouteLeave } from 'vue-router';
+import { Layout } from 'ant-design-vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { ASSISTANT_ROUTE_PATH } from '@/constants/assistant'
 
-const HeaderBar = defineAsyncComponent(() => import("@/components/layout/HeaderBar.vue"));
-const ConsoleSidebar = defineAsyncComponent(() => import("@/components/layout/ConsoleSidebar.vue"));
+const LayoutHeader = Layout.Header
+const LayoutContent = Layout.Content
 
-const isExiting = ref(false);
+const HeaderBar = defineAsyncComponent(() => import('@/components/layout/HeaderBar.vue'))
+const ConsoleSidebar = defineAsyncComponent(() => import('@/components/layout/ConsoleSidebar.vue'))
+const AssistantShell = defineAsyncComponent(() => import('@/components/layout/AssistantShell.vue'))
 
-// 路由离开前的守卫
-onBeforeRouteLeave((to, _from, next) => {
-  // 如果是去首页，执行收起动画
-  if (to.path === '/home' || to.path === '/') {
-    isExiting.value = true;
-    setTimeout(() => {
-      next();
-    }, 500);
-  } else {
-    next();
+const route = useRoute()
+const isAssistantWorkbench = computed(() => route.path.startsWith(ASSISTANT_ROUTE_PATH))
+const isTeamMembersCompact = computed(() => route.path.startsWith('/console/team/members'))
+const isManagementCanvas = computed(() =>
+  route.path.startsWith('/console/permission')
+  || route.path.startsWith('/console/workbench/task')
+  || route.path.startsWith('/console/team/members'),
+)
+const isSiderBroken = ref(false)
+const desktopCollapsed = ref(false)
+const mobileCollapsed = ref(true)
+
+const siderCollapsed = computed(() =>
+  isSiderBroken.value ? mobileCollapsed.value : desktopCollapsed.value,
+)
+
+const setSiderCollapsed = (nextCollapsed: boolean) => {
+  if (isSiderBroken.value) {
+    mobileCollapsed.value = nextCollapsed
+    return
   }
-});
+
+  desktopCollapsed.value = nextCollapsed
+}
+
+const toggleSider = () => {
+  setSiderCollapsed(!siderCollapsed.value)
+}
+
+const closeMobileSider = () => {
+  if (!isSiderBroken.value) return
+  mobileCollapsed.value = true
+}
+
+const handleSiderBreakpoint = (broken: boolean) => {
+  isSiderBroken.value = broken
+
+  if (broken) {
+    mobileCollapsed.value = true
+  }
+}
+
+watch(
+  () => route.path,
+  () => {
+    if (isSiderBroken.value) {
+      mobileCollapsed.value = true
+    }
+  },
+)
 </script>
 
 <template>
-  <div class="console-view">
-    <!-- 左侧导航栏 -->
-    <div class="sidebar-wrapper" :class="{ 'slide-out': isExiting }">
-      <ConsoleSidebar />
-    </div>
-    
-    <!-- 右侧内容区域 -->
-    <div class="main-content" :class="{ 'fade-out': isExiting }">
-      <HeaderBar class="console-header-bar" />
-      <div class="content-container">
-        <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </router-view>
-      </div>
-    </div>
-  </div>
+  <Layout class="console-layout" has-sider>
+    <ConsoleSidebar
+      :collapsed="siderCollapsed"
+      :broken="isSiderBroken"
+      @breakpoint="handleSiderBreakpoint"
+    />
+
+    <div
+      v-if="isSiderBroken && !siderCollapsed"
+      class="console-layout__mask"
+      @click="closeMobileSider"
+    />
+
+    <Layout class="console-layout__main">
+      <LayoutHeader class="console-layout__header">
+        <HeaderBar
+          :collapsed="siderCollapsed"
+          :is-broken="isSiderBroken"
+          @toggle-sider="toggleSider"
+        />
+      </LayoutHeader>
+
+      <LayoutContent class="console-layout__content">
+        <div
+          class="content-container"
+          :class="{
+            'content-container--assistant': isAssistantWorkbench,
+            'content-container--surface': isManagementCanvas,
+            'content-container--team-members': isTeamMembersCompact,
+          }"
+        >
+          <router-view v-slot="{ Component }">
+            <transition name="fade" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
+        </div>
+      </LayoutContent>
+    </Layout>
+
+    <AssistantShell />
+  </Layout>
 </template>
 
 <style scoped>
-.console-view {
+.console-layout {
   width: 100%;
   height: 100%;
-  display: flex;
-  flex-direction: row; /* 改为行布局 */
+  min-height: 0;
+  background: #f3f6fb;
 }
 
-.sidebar-wrapper {
-  height: 100%;
-  /* 初始进场动画 */
-  animation: slide-in-left 0.5s ease-out backwards;
-  transition: transform 0.5s ease-in-out;
-  z-index: 10;
-}
-
-.sidebar-wrapper.slide-out {
-  transform: translateX(-100%);
-}
-
-.main-content {
-  flex: 1;
+.console-layout__main {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  /* 统一右侧背景色，与侧边栏一致 */
-  background: rgba(242, 243, 245, 0.95);
-  backdrop-filter: blur(10px);
-  /* 进场动画延迟，等侧边栏出来后再渐显 */
-  animation: fade-in 0.8s ease-out backwards;
-  transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+  background: #f3f6fb;
 }
 
-.main-content.fade-out {
-  opacity: 0;
-  transform: translateX(20px);
+.console-layout__header {
+  padding: 0;
+  height: 64px;
+  line-height: normal;
+  background: #ffffff;
+  border-bottom: 1px solid #eef2f7;
+  z-index: 95;
 }
 
-@keyframes slide-in-left {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(0);
-  }
+.console-layout__content {
+  min-height: 0;
+  background: #f3f6fb;
 }
 
-@keyframes fade-in {
-  0% {
-    opacity: 0;
-  }
-  50% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
+.console-layout__mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.36);
+  z-index: 94;
 }
 
 .content-container {
-  flex: 1;
-  padding: 24px;
+  width: 100%;
+  height: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  width: 100%;
+  padding: 24px;
   box-sizing: border-box;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.26) transparent;
   scrollbar-gutter: stable;
+}
+
+.content-container--surface {
+  min-height: 100%;
+  background: #ffffff;
+}
+
+.content-container--team-members {
+  padding-top: 16px;
+  padding-bottom: 16px;
 }
 
 .content-container::-webkit-scrollbar {
@@ -140,10 +189,17 @@ onBeforeRouteLeave((to, _from, next) => {
   background: rgba(100, 116, 139, 0.4);
 }
 
-/* Transition for router-view */
+.content-container--assistant {
+  max-width: none;
+  min-height: 100%;
+  padding: 0;
+  background: #ffffff;
+  overflow: hidden;
+}
+
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity 0.2s ease;
 }
 
 .fade-enter-from,
@@ -151,19 +207,18 @@ onBeforeRouteLeave((to, _from, next) => {
   opacity: 0;
 }
 
-/* 覆盖 HeaderBar 样式使其适应控制台布局 */
-:deep(.header-bar-wrapper) {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-}
+@media (max-width: 991px) {
+  .content-container {
+    padding: 18px 16px;
+  }
 
-:deep(.header-bar) {
-  background: transparent !important;
-  backdrop-filter: none !important;
-  box-shadow: none !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  .content-container--assistant {
+    padding: 0;
+  }
+
+  .content-container--team-members {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
 }
 </style>

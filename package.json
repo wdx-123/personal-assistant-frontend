@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "algorithm-platform",
   "private": true,
   "version": "1.0.0",
@@ -23,13 +23,16 @@
   "dependencies": {
     "@vueuse/core": "^10.9.0",
     "ant-design-vue": "^4.2.6",
+    "ant-design-x-vue": "^1.6.0",
     "axios": "^1.6.8",
     "dayjs": "^1.11.20",
+    "markdown-it": "^14.1.1",
     "pinia": "^2.1.7",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
     "@types/node": "^20.12.7",
     "@typescript-eslint/eslint-plugin": "^7.7.0",
     "@typescript-eslint/parser": "^7.7.0",

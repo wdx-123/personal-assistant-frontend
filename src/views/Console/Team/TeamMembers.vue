@@ -1,36 +1,21 @@
 <template>
   <div class="page-container">
-    <!-- 团队概览头部 -->
-    <div class="team-header-card">
-      <div class="team-summary">
-        <div class="team-avatar-lg" :style="{ backgroundColor: getAvatarColor(currentOrg?.name || '') }">
-          {{ (currentOrg?.name || '组').charAt(0).toUpperCase() }}
-        </div>
-        <div class="team-details">
-          <div class="team-title-row">
-            <h2 class="team-title">{{ currentOrg?.name || '未选择组织' }}</h2>
-            <span class="role-badge">所有者</span>
-          </div>
-          <p class="team-description">{{ currentOrg?.description || '暂无组织描述' }}</p>
-          <div class="team-stats">
-            <div class="stat-item">
-              <span class="stat-label">成员数</span>
-              <span class="stat-value">{{ pagination.total }}</span>
-            </div>
-            <div class="stat-divider"></div>
-            <div class="stat-item">
-              <span class="stat-label">创建时间</span>
-              <span class="stat-value">{{ currentOrg?.createdAt || '-' }}</span>
-            </div>
-            <div class="stat-divider"></div>
-            <div class="stat-item">
-              <span class="stat-label">状态</span>
-              <span class="stat-value status-active">活跃</span>
-            </div>
-          </div>
+    <div class="page-header">
+      <div class="page-header__main">
+        <h2 class="page-title">{{ currentOrg?.name || '未选择组织' }}</h2>
+        <p v-if="currentOrg?.description" class="page-description">
+          {{ currentOrg.description }}
+        </p>
+        <div class="page-meta">
+          <span>成员 {{ pagination.total }}</span>
+          <span>创建于 {{ currentOrg?.createdAt || '-' }}</span>
+          <span>状态 活跃</span>
         </div>
       </div>
-      <div class="header-search">
+    </div>
+
+    <div class="search-card">
+      <div class="search-layout">
         <div class="search-input-wrapper">
           <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -43,28 +28,30 @@
             @keydown.enter="searchMembers"
           />
         </div>
-        <button
-          class="btn btn-primary"
-          @click="searchMembers"
-        >
-          搜索
-        </button>
-        <button
-          class="btn btn-secondary"
-          @click="resetSearch"
-        >
-          重置
-        </button>
-        <button
-          v-permission="['permission:org:exit']"
-          class="btn btn-danger"
-          @click="handleLeaveTeam"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          退出团队
-        </button>
+        <div class="search-actions">
+          <button
+            class="btn btn-primary"
+            @click="searchMembers"
+          >
+            搜索
+          </button>
+          <button
+            class="btn btn-secondary"
+            @click="resetSearch"
+          >
+            重置
+          </button>
+          <button
+            v-permission="['permission:org:exit']"
+            class="btn btn-danger"
+            @click="handleLeaveTeam"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            退出团队
+          </button>
+        </div>
       </div>
     </div>
 
@@ -260,15 +247,6 @@ const mapOrg = (item: OrgItem): OrgOption => ({
   createdAt: item.created_at ? String(item.created_at).slice(0, 10) : '-'
 })
 
-const getAvatarColor = (name: string) => {
-  const colors = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2']
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return colors[Math.abs(hash) % colors.length]
-}
-
 const fetchOrgs = async () => {
   try {
     const data = await getOrgList({ page: 0, page_size: 0 }, { skipSuccTip: true })
@@ -443,123 +421,68 @@ watch(
 
 <style scoped>
 .page-container {
-  padding: 24px;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 18px;
 }
 
-/* 头部卡片样式 */
-.team-header-card {
-  background: white;
-  padding: 24px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
+.page-header {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  justify-content: space-between;
+  gap: 14px;
 }
 
-.team-summary {
+.page-header__main {
   display: flex;
-  gap: 20px;
-}
-
-.team-avatar-lg {
-  width: 80px;
-  height: 80px;
-  background-color: #1890ff;
-  color: white;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  font-weight: 600;
-  box-shadow: 0 4px 6px rgba(24, 144, 255, 0.2);
-}
-
-.team-details {
-  display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 8px;
 }
 
-.team-title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.team-title {
+.page-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: #0f172a;
+  line-height: 1.3;
 }
 
-.role-badge {
-  background-color: #ecfdf5;
-  color: #059669;
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-weight: 500;
-}
-
-.team-description {
+.page-description {
   margin: 0;
-  color: #6b7280;
-  font-size: 14px;
-  max-width: 600px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.team-stats {
+.page-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
-  margin-top: 4px;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.stat-label {
+  gap: 14px;
   font-size: 12px;
-  color: #9ca3af;
+  color: #94a3b8;
+  line-height: 1.4;
 }
 
-.stat-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
+.search-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  padding: 16px 18px;
 }
 
-.stat-divider {
-  width: 1px;
-  height: 12px;
-  background-color: #e5e7eb;
-}
-
-.status-active {
-  color: #059669;
-}
-
-/* 搜索区域样式 */
-.header-search {
+.search-layout {
   display: flex;
-  gap: 12px;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .search-input-wrapper {
   position: relative;
-  width: 240px;
+  width: 280px;
 }
 
 .search-icon {
@@ -574,12 +497,15 @@ watch(
 
 .search-input {
   width: 100%;
-  padding: 8px 12px 8px 36px;
+  min-height: 38px;
+  padding: 8px 12px 8px 34px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.3;
   outline: none;
   transition: all 0.2s;
+  box-sizing: border-box;
 }
 
 .search-input:focus {
@@ -587,28 +513,69 @@ watch(
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
 }
 
-/* 表格样式 */
+.search-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .content-card {
-  background: white;
-  border-radius: 8px;
   border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  flex: 1;
   display: flex;
   flex-direction: column;
 }
 
 .table-container {
-  flex: 1;
-  overflow-y: auto;
+  overflow-x: auto;
 }
 
 .pagination-wrapper {
   display: flex;
   justify-content: flex-end;
-  padding: 16px 20px;
+  padding: 14px 18px;
   border-top: 1px solid #f3f4f6;
+}
+
+.pagination-wrapper :deep(.ant-pagination) {
+  align-items: center;
+  gap: 4px;
+}
+
+.pagination-wrapper :deep(.ant-pagination-item),
+.pagination-wrapper :deep(.ant-pagination-prev),
+.pagination-wrapper :deep(.ant-pagination-next) {
+  min-width: 32px;
+  height: 32px;
+  line-height: 30px;
+  margin-inline-end: 0;
+}
+
+.pagination-wrapper :deep(.ant-pagination-item a) {
+  line-height: 30px;
+}
+
+.pagination-wrapper :deep(.ant-pagination-total-text),
+.pagination-wrapper :deep(.ant-pagination-options) {
+  margin-inline-end: 8px;
+}
+
+.pagination-wrapper :deep(.ant-pagination-options-size-changer) {
+  margin-inline-end: 0;
+}
+
+.pagination-wrapper :deep(.ant-select-selector) {
+  height: 32px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.pagination-wrapper :deep(.ant-select-selection-item) {
+  line-height: 30px !important;
 }
 
 .data-table {
@@ -617,20 +584,27 @@ watch(
 }
 
 .data-table th {
-  background-color: #f9fafb;
-  padding: 12px 16px;
+  background-color: #f8fafc;
+  padding: 11px 14px;
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: #64748b;
   border-bottom: 1px solid #e5e7eb;
+  line-height: 1.35;
 }
 
 .data-table td {
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-bottom: 1px solid #f3f4f6;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.4;
   color: #374151;
+  vertical-align: middle;
+}
+
+.data-table tbody tr:hover td {
+  background: #fafafa;
 }
 
 .data-table tr:last-child td {
@@ -654,8 +628,8 @@ watch(
 }
 
 .member-avatar {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   object-fit: cover;
   background-color: #f3f4f6;
@@ -664,23 +638,31 @@ watch(
 .user-info {
   display: flex;
   flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 .username {
   font-weight: 500;
   color: #111827;
+  line-height: 1.3;
 }
 
 .user-id {
   font-size: 12px;
+  line-height: 1.2;
   color: #9ca3af;
 }
 
 .role-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1.2;
 }
 
 .role-admin {
@@ -700,6 +682,7 @@ watch(
   border-radius: 50%;
   margin-right: 6px;
   margin-bottom: 1px;
+  vertical-align: middle;
 }
 
 .bg-green { background-color: #10b981; }
@@ -716,13 +699,16 @@ watch(
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
+  min-height: 38px;
+  padding: 8px 14px;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.2;
   font-weight: 500;
   cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.2s;
+  box-sizing: border-box;
 }
 
 .btn-primary {
@@ -741,11 +727,14 @@ watch(
 }
 
 .btn-xs {
-  padding: 6px 16px;
-  font-size: 14px;
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 12px;
+  line-height: 1.2;
   border-radius: 4px;
   cursor: pointer;
   border: 1px solid transparent;
+  box-sizing: border-box;
 }
 
 .btn-xs.btn-primary {
@@ -767,17 +756,19 @@ watch(
 }
 
 .btn-danger {
-  background-color: #fef2f2;
+  background-color: #ffffff;
+  border-color: #fecaca;
   color: #dc2626;
 }
 
 .btn-danger:hover {
-  background-color: #fee2e2;
+  background-color: #fef2f2;
+  border-color: #fca5a5;
 }
 
 .icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 /* Modal Styles */
@@ -848,5 +839,27 @@ watch(
   margin: 8px 0 0;
   font-size: 12px;
   color: #6b7280;
+}
+
+@media (max-width: 768px) {
+  .page-container {
+    gap: 16px;
+  }
+
+  .search-input-wrapper {
+    width: 100%;
+  }
+
+  .search-actions {
+    width: 100%;
+  }
+
+  .search-card {
+    padding: 14px;
+  }
+
+  .pagination-wrapper {
+    padding: 14px;
+  }
 }
 </style>
